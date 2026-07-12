@@ -9,6 +9,7 @@
 import type { Artifact, EngineDeps, ImageModelPort, StoragePort } from "@occestra/studio-core";
 import { CostGovernor, DEFAULT_LIMITS } from "./governor.js";
 import { ModelCritique } from "./critique.js";
+import { VisionDescriber } from "./vision.js";
 import { ModelRouter } from "./router.js";
 import { TtlCache } from "./cache.js";
 import { OpenMeteoWeather } from "./live/weather.js";
@@ -127,6 +128,18 @@ export function buildDeps(env: ProviderEnv, options: BuildDepsOptions = {}): Bui
         return new FakeCritique();
       })();
 
+  /* ---------------------------------------------------------------- vision */
+
+  live["vision"] = Boolean(vision);
+  const media = vision
+    ? new VisionDescriber({ vision, storage, now })
+    : (() => {
+        coverageGaps.push(
+          "VISION_UNAVAILABLE: no vision-capable model — uploaded photographs cannot be read, and keepsakes are built from words alone",
+        );
+        return undefined;
+      })();
+
   /* --------------------------------------------------------------- weather */
 
   // Open-Meteo is keyless, so weather is live unless the network itself is gone.
@@ -178,6 +191,7 @@ export function buildDeps(env: ProviderEnv, options: BuildDepsOptions = {}): Bui
     critique,
     storage,
     clock: new SystemClock(),
+    ...(media ? { vision: media } : {}),
     weather,
     places,
     site,

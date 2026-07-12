@@ -5,6 +5,7 @@ export * from "./cache.js";
 export * from "./governor.js";
 export * from "./router.js";
 export * from "./critique.js";
+export * from "./vision.js";
 export * from "./fakes.js";
 export * from "./deps.js";
 export * from "./live/weather.js";

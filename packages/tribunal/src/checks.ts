@@ -410,15 +410,29 @@ const SURFACE_KINDS = new Set([
   "brand_mark",
 ]);
 
+/** Formats that actually carry type a human reads off a surface. */
+const TEXT_SURFACE_FORMATS = new Set(["html", "svg"]);
+
 export async function checkContrast(ctx: CheckContext): Promise<CheckResult> {
   const id: CheckId = "CONTRAST_LOW";
 
-  if (!SURFACE_KINDS.has(ctx.artifact.kind)) {
-    return pass(id, false, `A ${ctx.artifact.kind} has no text surface; contrast does not apply.`);
-  }
-
   const layers = ctx.artifact.spec?.layers;
-  if (!layers || layers.length === 0) {
+
+  // Declared layers are always checkable, whatever the artifact is.
+  if (layers && layers.length > 0) {
+    // fall through to the real check below
+  } else if (!SURFACE_KINDS.has(ctx.artifact.kind)) {
+    return pass(id, false, `A ${ctx.artifact.kind} has no text surface; contrast does not apply.`);
+  } else if (!TEXT_SURFACE_FORMATS.has(ctx.artifact.format)) {
+    // A generated PNG carries no type at all — Occestra forbids lettering in its imagery,
+    // precisely because generated text is unreliable. There is nothing to measure, and
+    // calling that a coverage gap fills honest packs with noise that means nothing.
+    return pass(
+      id,
+      false,
+      `A generated ${ctx.artifact.format} carries no lettering (Occestra never renders type into imagery), so there is no contrast to measure.`,
+    );
+  } else {
     return skip(id, false, "Artifact declares no text layers; contrast is not checkable.");
   }
 

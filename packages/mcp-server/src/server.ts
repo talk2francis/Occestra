@@ -247,19 +247,48 @@ export function buildServer(ctx: ServerContext): McpServer {
         "",
         "EXAMPLE: title='Our first summer in Porto', description='we walked the bridge at dusk and ate too many pastries' -> a cyanotype-style artwork and a page you would actually frame.",
         "",
-        "SCOPE, HONESTLY: this version works from your WRITTEN description. Photo upload (EXIF-stripped, private, deletable) lands in a later release. It renders the objects and the feeling of a memory — never a recognisable human face.",
+        "UPLOAD YOUR PHOTOS: POST them to /uploads first (multipart, up to 8 images, 10MB each). Every file is re-encoded on arrival, which STRIPS EXIF — including the GPS coordinates of your home. The originals are never written to disk. Pass the returned keys as mediaRefs.",
         "",
-        "PRIVACY: nothing personal ever goes on chain. Only a hash of the finished manifest is anchored.",
+        "NOBODY IS IDENTIFIED. Occestra COUNTS the people in your photographs. It does not name them, recognise them, guess their ages, or infer their relationships — not ever, not even if asked. If YOU name someone in your notes, that is your fact about your own life and we use it as yours.",
+        "",
+        "FACTS AND PROSE ARE SEPARATED. The story page has a 'What we can see' section (only what your photographs and your notes establish) and a 'The story' section (written prose, labelled as prose). A 'What we do not know' section lists what we could NOT establish — we do not fill those in. Call the tool again with confirmGraph to correct them; your version is used exactly as given.",
+        "",
+        "PRIVACY IS THE FEATURE: your uploads are private, never indexed, served only through expiring links, and DELETE /projects/:keepsakeId destroys the pack, the artifacts, AND the photographs, from disk, for real. Nothing personal ever goes on chain — only a hash of the finished manifest.",
       ].join("\n"),
       inputSchema: {
         title: z.string().min(2).max(200).describe("What you call this memory."),
-        description: z.string().min(10).max(4000).describe("What happened, in your words."),
+        description: z.string().max(4000).optional().describe("What happened, in your words. Names YOU use are treated as your own facts."),
         momentDate: z.string().max(40).optional().describe("When it happened."),
         tone: z.string().max(200).optional().describe("e.g. 'nostalgic, quiet'"),
         styleId: StyleId.optional(),
+        mediaRefs: z
+          .array(z.string().min(1).max(200))
+          .max(8)
+          .optional()
+          .describe("Private upload keys from POST /uploads. EXIF (and GPS) already stripped on ingest."),
+        confirmGraph: z
+          .object({
+            momentDate: z.string().max(40).optional(),
+            chapters: z
+              .array(
+                z.object({
+                  title: z.string().min(2).max(80),
+                  whatHappened: z.string().min(5).max(600),
+                  fromMedia: z.array(z.string()).optional(),
+                }),
+              )
+              .min(1)
+              .max(6),
+            themes: z.array(z.string().min(2).max(60)).min(1).max(5),
+            uncertainties: z.array(z.string().min(3).max(200)).optional(),
+          })
+          .optional()
+          .describe(
+            "YOUR corrected Story Graph. Call once without it, read the 'What we do not know' section, fix it, and call again with this. It is used exactly as you give it — we do not 'improve' your memory.",
+          ),
       },
     },
-    async (input) => run(() => makeKeepsake(ctx, input), (pack) => packResult(ctx, pack)),
+    async (input) => run(() => makeKeepsake(ctx, input as never), (pack) => packResult(ctx, pack)),
   );
 
   /* ----------------------------------------------------------- oce_launch_kit */

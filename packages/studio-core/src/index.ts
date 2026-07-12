@@ -5,3 +5,4 @@ export * from "./manifest.js";
 export * from "./pipelines/travel.js";
 export * from "./pipelines/celebrate.js";
 export * from "./pipelines/launch.js";
+export * from "./pipelines/remember.js";

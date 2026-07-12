@@ -10,6 +10,7 @@ import express, { type Express, type Request, type Response } from "express";
 import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
 import { PRICES, OkxGate, isFree, type PaymentGate } from "./gate.js";
+import { handleDelete, handleUpload } from "./uploads.js";
 import { VERSION, buildServer, type ServerContext } from "./server.js";
 
 export interface AppContext extends ServerContext {
@@ -167,6 +168,18 @@ export function buildApp(ctx: AppContext): Express {
     }
 
     res.type(object.contentType).send(Buffer.from(object.bytes));
+  });
+
+  /* ---------------------------------------------------------------- uploads */
+
+  // Private by default. EXIF (and GPS) stripped on ingest. Never indexed, never public.
+  app.post("/uploads", async (req, res) => {
+    await handleUpload({ store: ctx.store }, req, res);
+  });
+
+  // Delete my project. It actually deletes: pack, artifacts, AND the uploads behind them.
+  app.delete("/projects/:id", (req, res) => {
+    handleDelete({ store: ctx.store }, req, res);
   });
 
   /* -------------------------------------------------------------------- mcp */

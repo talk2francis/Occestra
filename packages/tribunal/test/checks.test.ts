@@ -261,6 +261,28 @@ describe("CONTRAST_LOW", () => {
     expect(result.detail).toContain("does not apply");
   });
 
+  it("does not fire on a generated image — Occestra never renders type into imagery", async () => {
+    // A live paid keepsake recorded "CONTRAST_LOW: no text layers" against a generated PNG.
+    // But we forbid lettering in imagery precisely because generated text is unreliable, so
+    // there is nothing to measure. A coverage gap that means nothing is noise in an honest pack.
+    const art = artifact({ kind: "keepsake_art", format: "png", data: undefined, uri: "k.png" });
+    const result = await checkContrast(ctx(art));
+
+    expect(result.passed).toBe(true);
+    expect(result.skipped).toBeUndefined(); // NOT a gap
+    expect(result.detail).toContain("no lettering");
+  });
+
+  it("still checks an image that DOES declare layers", async () => {
+    const card = artifact({
+      kind: "carousel",
+      format: "png",
+      uri: "c.png",
+      spec: { layers: [{ role: "body", fg: "#C8B4FF", bg: "#FAF7F2", body: true }] },
+    });
+    expect((await checkContrast(ctx(card))).passed).toBe(false);
+  });
+
   it("exempts large display type from the body-copy floor", async () => {
     const display = artifact({
       kind: "invitation",

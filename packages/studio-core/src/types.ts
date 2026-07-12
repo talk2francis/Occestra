@@ -464,6 +464,33 @@ export interface ClockPort {
 }
 
 /**
+ * Looking at a user's private photograph.
+ *
+ * The hard rule of this port, and it is not negotiable: it describes WHAT IS THERE. It counts
+ * people; it never names them, never guesses their relationships, never infers their age,
+ * ethnicity, or mood as fact, and never claims to recognise anyone. A memory is not an
+ * identification exercise, and a keepsake studio that quietly does face recognition on family
+ * photos is a surveillance product wearing a nice font.
+ */
+export interface MediaDescription {
+  /** Plainly what is in the frame. Objects and setting, not interpretation. */
+  summary: string;
+  objects: string[];
+  setting: string;
+  /** How many people are visible. A COUNT. Never an identity, never a name. */
+  peopleCount: number;
+  timeOfDay?: string;
+  /** Anything the model could not make out. Stated, not smoothed over. */
+  uncertainties: string[];
+  source: SourceTag;
+}
+
+export interface VisionPort {
+  /** `key` is a private storage key. The bytes never leave our storage except to the model. */
+  describe(key: string): Promise<MediaDescription>;
+}
+
+/**
  * The Tribunal, as a port.
  *
  * @occestra/tribunal depends on this package, so this package cannot import it back without
@@ -504,6 +531,8 @@ export interface EngineDeps {
   critique: CritiquePort;
   storage: StoragePort;
   clock: ClockPort;
+  /** Reads private uploads. Counts people; identifies no one. */
+  vision?: VisionPort;
   weather?: WeatherPort;
   places?: PlacesPort;
   site?: SitePort;

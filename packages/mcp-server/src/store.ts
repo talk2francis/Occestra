@@ -97,6 +97,15 @@ export class Store {
         created_at  INTEGER NOT NULL
       );
 
+      -- Which private uploads a pack was built from. Without this, "delete my project"
+      -- would remove the pack and quietly leave the person's photographs on disk.
+      CREATE TABLE IF NOT EXISTS pack_uploads (
+        pack_id    TEXT NOT NULL,
+        key        TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (pack_id, key)
+      );
+
       -- Replay protection for x402: an EIP-3009 nonce is single-use, forever.
       CREATE TABLE IF NOT EXISTS payment_nonces (
         nonce      TEXT PRIMARY KEY,
@@ -170,11 +179,33 @@ export class Store {
     };
   }
 
+  /** Record which private uploads a pack was built from, so delete can find them again. */
+  linkUploads(packId: string, keys: string[]): void {
+    const insert = this.db.prepare(
+      "INSERT OR IGNORE INTO pack_uploads (pack_id, key, created_at) VALUES (?, ?, ?)",
+    );
+    const now = Date.now();
+    this.db.transaction(() => {
+      for (const key of keys) insert.run(packId, key, now);
+    })();
+  }
+
+  uploadsFor(packId: string): string[] {
+    const rows = this.db
+      .prepare("SELECT key FROM pack_uploads WHERE pack_id = ?")
+      .all(packId) as Array<{ key: string }>;
+    return rows.map((row) => row.key);
+  }
+
+  /**
+   * Delete my project. It has to ACTUALLY delete — the pack, its artifacts, and the private
+   * uploads it was built from — or it is a lie with a button on it.
+   */
   deletePack(id: string): boolean {
     const pack = this.getPack(id);
     if (!pack) return false;
 
-    // "Delete my project" must actually delete. Bytes first, rows second.
+    // Bytes first, rows second: a crash halfway through must not leave orphaned photographs.
     for (const artifact of pack.artifacts) {
       if (artifact.uri) {
         try {
@@ -185,8 +216,17 @@ export class Store {
       }
     }
 
+    for (const key of this.uploadsFor(id)) {
+      try {
+        rmSync(this.pathFor(key), { force: true });
+      } catch {
+        // already gone
+      }
+    }
+
     this.db.transaction(() => {
       this.db.prepare("DELETE FROM artifacts WHERE pack_id = ?").run(id);
+      this.db.prepare("DELETE FROM pack_uploads WHERE pack_id = ?").run(id);
       this.db.prepare("DELETE FROM packs WHERE id = ?").run(id);
     })();
 

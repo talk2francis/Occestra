@@ -32,6 +32,9 @@ import {
   type LaunchKind,
   runCelebrate,
   runLaunch,
+  runRemember,
+  type RememberDeps,
+  type StoryGraph,
 } from "@occestra/studio-core";
 import { OQS_VERSION, runTribunal, type TribunalReport } from "@occestra/tribunal";
 import { HOUSE_STYLES, styleSystemPrompt, type CostGovernor } from "@occestra/providers";
@@ -517,91 +520,68 @@ export async function moodboard(ctx: PipelineContext, input: MoodboardInput): Pr
 
 export interface MakeKeepsakeInput {
   title: string;
-  description: string;
+  description?: string | undefined;
   momentDate?: string | undefined;
   tone?: string | undefined;
   styleId?: HouseStyleId | undefined;
+  /** Private upload keys from POST /uploads. EXIF-stripped on ingest, never public. */
+  mediaRefs?: string[] | undefined;
+  /** The owner's corrected Story Graph. When given, it is used AS-IS. */
+  confirmGraph?: StoryGraph | undefined;
 }
 
+/** The full REMEMBER studio (Phase 9). Privacy is enforced in code, not in a policy page. */
 export async function makeKeepsake(ctx: PipelineContext, input: MakeKeepsakeInput): Promise<Pack> {
-  const styleId = input.styleId ?? "sunprint";
-
   const contract: RememberContract = {
     id: `r_${ctx.deps.clock.now()}`,
     studio: "remember",
-    styleId,
+    styleId: input.styleId ?? "sunprint",
     createdAt: nowIso(ctx),
     requester: "agent",
     title: input.title,
     tone: input.tone ?? "nostalgic, quiet, tender",
-    notes: input.description,
-    mediaRefs: [],
+    mediaRefs: input.mediaRefs ?? [],
     deliverables: ["keepsake_art", "story_page"],
     locale: "en",
+    ...(input.description ? { notes: input.description } : {}),
     ...(input.momentDate ? { momentDate: input.momentDate } : {}),
   };
 
-  screen(contract);
+  const rememberDeps: RememberDeps = {
+    text: ctx.deps.text,
+    image: ctx.deps.image,
+    storage: ctx.deps.storage,
+    clock: ctx.deps.clock,
+    styleFor: (id) => HOUSE_STYLES[id],
+    ...(ctx.deps.vision ? { vision: ctx.deps.vision } : {}),
+    ...(ctx.grader ? { grader: ctx.grader } : {}),
+  };
 
-  const keepsakeId = newKeepsakeId(ctx.deps.clock.now());
-  const size = "1024x1024";
+  const { pack } = await runRemember(
+    contract,
+    rememberDeps,
+    input.confirmGraph ? { confirmGraph: input.confirmGraph } : {},
+  );
 
-  const { uri } = await makeImage(ctx, {
-    subject: [
-      `A keepsake artwork for a remembered moment: ${input.title}.`,
-      `The moment, in the owner's words: ${input.description}`,
-      "Render the FEELING and the OBJECTS of the memory — never a recognisable human face.",
-      "No text, no lettering.",
-    ].join(" "),
-    styleId,
-    size,
-    key: `keepsakes/${keepsakeId}.png`,
-  });
+  let sealed: Pack = {
+    ...pack,
+    coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])],
+  };
 
-  const art = artifact({
-    id: "keepsake_art",
-    kind: "keepsake_art",
-    title: input.title,
-    format: "png",
-    uri,
-    styleId,
-    spec: { size },
-  });
+  if (ctx.sealer) {
+    sealed = await ctx.sealer.seal(sealed, "remember");
+    if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
+  }
 
-  const written = await ctx.deps.text.complete({
-    role: "writer",
-    system: [
-      "You write the short prose that sits beside a keepsake — the caption on the back of a photograph, not an essay.",
-      "",
-      "Rules you do not break:",
-      "- Use ONLY what you were told. Invent nothing about the people, the place, or what it meant.",
-      "- Separate what is known from what is felt. Never dress up a guess as a fact.",
-      "- 120 words at most. Plain, unsentimental, specific.",
-      "",
-      "Return markdown with '## The moment' (what happened, from what you were told) and '## Why it stays' (one short paragraph).",
-    ].join("\n"),
-    prompt: [
-      `Title: ${input.title}`,
-      input.momentDate ? `When: ${input.momentDate}` : "",
-      `Tone: ${contract.tone}`,
-      `What the owner told us:\n${input.description}`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    maxTokens: 500,
-    temperature: 0.7,
-  });
+  ctx.store.savePack(sealed);
 
-  const story = artifact({
-    id: "story_page",
-    kind: "story_page",
-    title: `${input.title} — the story`,
-    format: "md",
-    data: written.text,
-  });
+  // Remember WHICH private uploads this pack was built from, so "delete my project" can
+  // actually destroy them. Without this link the photographs would survive the delete.
+  if (contract.mediaRefs.length > 0) {
+    ctx.store.linkUploads(sealed.id, contract.mediaRefs);
+  }
 
-  const { artifacts, reports, gaps } = await gradeAll(ctx, contract, [art, story], styleId);
-  return assemble(ctx, contract, "remember", artifacts, reports, gaps);
+  return sealed;
 }
 
 /* ------------------------------------------------------------ oce_launch_kit */
