@@ -168,6 +168,7 @@ export class Store {
         kind: artifact.kind,
         title: artifact.title,
         format: artifact.format,
+        ...(artifact.styleId ? { styleId: artifact.styleId } : {}),
         // Text ships inline; binaries ship as a signed URL, never as a raw storage key.
         ...(artifact.format === "png" || artifact.format === "svg"
           ? { url: artifact.uri ? this.signedUrlFor(artifact.uri, 86_400) : undefined }

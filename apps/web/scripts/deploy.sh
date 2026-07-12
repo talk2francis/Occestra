@@ -9,6 +9,7 @@ npx next build
 # Standalone bundles JS but not static assets or public/ (Next self-host docs).
 cp -r .next/static .next/standalone/apps/web/.next/static
 cp -r public .next/standalone/apps/web/public
+cp -r assets .next/standalone/apps/web/assets   # OG fonts read at runtime
 
 systemctl restart occestra-web
 sleep 2
