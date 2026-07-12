@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import Database from "better-sqlite3";
 import type { Pack, StoragePort, StoredObject } from "@occestra/studio-core";
 
-export type OrderStatus = "pending" | "paid" | "refused" | "failed";
+export type OrderStatus = "pending" | "paid" | "refused" | "failed" | "demo";
 
 export interface OrderRow {
   id: string;
@@ -273,6 +273,59 @@ export class Store {
       .prepare("SELECT COALESCE(SUM(price_usdt), 0) AS total FROM orders WHERE status = 'paid'")
       .get() as { total: number };
     return row.total;
+  }
+
+  /** Demo runs started since a timestamp — the per-day allowance check. */
+  demoRunsSince(sinceMs: number): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS n FROM orders WHERE status = 'demo' AND created_at >= ?")
+      .get(sinceMs) as { n: number };
+    return row.n;
+  }
+
+  /**
+   * Honest live counters for /stats. Every number is computed from what the
+   * store actually holds; when they are small they are shown small.
+   */
+  stats(): {
+    packsCreated: number;
+    sealsAnchored: number;
+    tribunalRepairs: number;
+    coverageGapsDisclosed: number;
+    paidOrders: number;
+    revenueUsdt: number;
+  } {
+    const packs = this.db.prepare("SELECT body FROM packs").all() as Array<{ body: string }>;
+    let repairs = 0;
+    let gaps = 0;
+    for (const row of packs) {
+      try {
+        const pack = JSON.parse(row.body) as {
+          quality?: { repairedCount?: number };
+          coverageGaps?: unknown[];
+        };
+        repairs += pack.quality?.repairedCount ?? 0;
+        gaps += pack.coverageGaps?.length ?? 0;
+      } catch {
+        // an unreadable row must never take the stats page down
+      }
+    }
+
+    const anchored = this.db
+      .prepare("SELECT COUNT(*) AS n FROM seals_pending WHERE anchored_at IS NOT NULL")
+      .get() as { n: number };
+    const paid = this.db
+      .prepare("SELECT COUNT(*) AS n FROM orders WHERE status = 'paid'")
+      .get() as { n: number };
+
+    return {
+      packsCreated: packs.length,
+      sealsAnchored: anchored.n,
+      tribunalRepairs: repairs,
+      coverageGapsDisclosed: gaps,
+      paidOrders: paid.n,
+      revenueUsdt: this.revenueUsdt(),
+    };
   }
 
   /* --------------------------------------------------------- payment nonces */

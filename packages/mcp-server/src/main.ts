@@ -83,6 +83,8 @@ const ctx: AppContext = {
   live: built.live,
   ...(sealer ? { sealer, sealerAddress: sealer.signer } : {}),
   ...(registryAddress ? { registry: registryAddress } : {}),
+  ...(env["OCE_DEMO_SECRET"] ? { demoSecret: env["OCE_DEMO_SECRET"] } : {}),
+  ...(env["OCE_DEMO_DAILY_CAP"] ? { demoDailyCap: Number(env["OCE_DEMO_DAILY_CAP"]) } : {}),
 };
 
 const app = buildApp(ctx);

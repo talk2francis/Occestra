@@ -5,22 +5,59 @@
  * studio-core must stay pure). So this is where the two are joined: the pipeline asks for a
  * grade through a port, and this hands it the genuine article, repair loop and all.
  */
-import type { EngineDeps, GradePort, GradeRequest, GradeResult } from "@occestra/studio-core";
+import type { Artifact, EngineDeps, GradePort, GradeRequest, GradeResult } from "@occestra/studio-core";
 import { runTribunal } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
+
+/**
+ * Real Tribunal moments, surfaced as they happen. Every event fires from an
+ * actual execution point in the grade/repair loop — the Studio's live view
+ * renders these; it never invents them.
+ */
+export type GraderEvent =
+  | { type: "grading"; kind: string; title: string }
+  | { type: "artifact_failed"; kind: string; title: string; repairBrief: string }
+  | { type: "artifact_repaired"; kind: string; title: string; attempt: number }
+  | {
+      type: "graded";
+      kind: string;
+      title: string;
+      pass: boolean;
+      repairs: number;
+      axes?: Record<string, number>;
+      issues?: string[];
+    };
 
 export interface GraderConfig {
   deps: EngineDeps;
   linkChecker?: (url: string) => Promise<boolean>;
   policyAllowlist?: readonly string[];
+  /** Fires at real grade/repair boundaries. Absent in production paid calls. */
+  onEvent?: (event: GraderEvent) => void;
 }
 
 export function buildGrader(config: GraderConfig): GradePort {
-  const { deps } = config;
+  const { deps, onEvent } = config;
 
   return {
     async grade(request: GradeRequest): Promise<GradeResult> {
       const style = request.styleId ? HOUSE_STYLES[request.styleId] : undefined;
+      const { kind, title } = request.artifact;
+
+      onEvent?.({ type: "grading", kind, title });
+
+      // Announce the repair loop at the exact moments the Tribunal drives it.
+      let attempt = 0;
+      const regenerate =
+        request.regenerate && onEvent
+          ? async (brief: string, previous: Artifact): Promise<Artifact> => {
+              attempt += 1;
+              onEvent({ type: "artifact_failed", kind, title, repairBrief: brief });
+              const repaired = await request.regenerate!(brief, previous);
+              onEvent({ type: "artifact_repaired", kind, title, attempt });
+              return repaired;
+            }
+          : request.regenerate;
 
       const outcome = await runTribunal({
         artifact: request.artifact,
@@ -33,7 +70,17 @@ export function buildGrader(config: GraderConfig): GradePort {
           ...(config.linkChecker ? { linkChecker: config.linkChecker } : {}),
           ...(config.policyAllowlist ? { policyAllowlist: config.policyAllowlist } : {}),
         },
-        ...(request.regenerate ? { regenerate: request.regenerate } : {}),
+        ...(regenerate ? { regenerate } : {}),
+      });
+
+      onEvent?.({
+        type: "graded",
+        kind,
+        title,
+        pass: outcome.report.pass,
+        repairs: outcome.report.repairs,
+        ...(outcome.report.axes ? { axes: outcome.report.axes } : {}),
+        issues: outcome.report.issues,
       });
 
       return {

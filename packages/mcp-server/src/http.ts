@@ -10,13 +10,17 @@ import express, { type Express, type Request, type Response } from "express";
 import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
 import { PRICES, OkxGate, isFree, type PaymentGate } from "./gate.js";
+import { handleDemoRun } from "./demo.js";
 import { handleDelete, handleUpload } from "./uploads.js";
-import { VERSION, buildServer, type ServerContext } from "./server.js";
+import { VERSION, buildServer, packResult, type ServerContext } from "./server.js";
 
 export interface AppContext extends ServerContext {
   gate: PaymentGate;
   sealerAddress?: string;
   live?: Record<string, boolean>;
+  /** Shared secret for the internal Studio demo route; absent = route is off. */
+  demoSecret?: string;
+  demoDailyCap?: number;
 }
 
 /* -------------------------------------------------------------- rate limit */
@@ -134,6 +138,28 @@ export function buildApp(ctx: AppContext): Express {
       return;
     }
     res.type("text/markdown").send(rubricAsMarkdown());
+  });
+
+  /* ---------------------------------------------------------- live counters */
+
+  app.get("/stats", (_req, res) => {
+    res.json({ ...ctx.store.stats(), oqsVersion: rubricAsJson().oqsVersion, asOf: new Date().toISOString() });
+  });
+
+  /* -------------------------------------------- internal Studio demo (SSE) */
+
+  // Real pipelines, real events, metered. Reached only via the Next server
+  // with the shared secret — see demo.ts for the full contract.
+  app.post("/internal/demo/run", (req, res) => {
+    void handleDemoRun(
+      {
+        ...ctx,
+        demoDailyCap: ctx.demoDailyCap ?? 8,
+        packForClient: (pack) => packResult(ctx, pack),
+      },
+      req,
+      res,
+    );
   });
 
   /* --------------------------------------------------------- public keepsake */

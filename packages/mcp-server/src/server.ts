@@ -49,7 +49,7 @@ export interface ServerContext extends PipelineContext {
 }
 
 /** What every paid tool returns: the work, the grade, and the receipt. */
-function packResult(ctx: ServerContext, pack: Pack, note?: string) {
+export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
   const anchor = ctx.store.anchorOf(pack.id);
 
   return {

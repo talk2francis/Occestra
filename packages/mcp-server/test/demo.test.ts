@@ -1,0 +1,150 @@
+/**
+ * The Studio demo route: secret-gated, metered, and every SSE event must come
+ * from a real execution point — the fakes here still exercise the genuine
+ * pipeline, grader and sealer paths end to end.
+ */
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { AddressInfo } from "node:net";
+import type { Server } from "node:http";
+import { getAddress, type Hex } from "viem";
+import { afterAll, describe, expect, it } from "vitest";
+import {
+  FakeCritique,
+  FakeImageModel,
+  FakePlaces,
+  FakeTextModel,
+  FakeWeather,
+  FixedClock,
+} from "@occestra/providers";
+import { Sealer } from "@occestra/receipts";
+import type { EngineDeps } from "@occestra/studio-core";
+import { DevGate } from "../src/gate.js";
+import { buildGrader } from "../src/grader.js";
+import { buildApp, type AppContext } from "../src/http.js";
+import { Store } from "../src/store.js";
+
+const KEY: Hex = `0x${"11".repeat(32)}`;
+const REGISTRY = getAddress("0x000000000000000000000000000000000000dead");
+const NOW = Date.parse("2026-07-12T10:00:00.000Z");
+
+const dirs: string[] = [];
+const servers: Server[] = [];
+
+function makeApp(over: Partial<AppContext> = {}) {
+  const dataDir = mkdtempSync(join(tmpdir(), "occestra-demo-test-"));
+  dirs.push(dataDir);
+
+  const store = new Store({ dataDir, urlSecret: "test-secret", baseUrl: "http://test.local" });
+  const deps: EngineDeps = {
+    text: new FakeTextModel(() => "## The plan\n\nA real fake plan."),
+    image: new FakeImageModel(),
+    critique: new FakeCritique(88),
+    storage: store.storage,
+    clock: new FixedClock(NOW),
+    weather: new FakeWeather(),
+    places: new FakePlaces(),
+  };
+
+  const ctx: AppContext = {
+    deps,
+    store,
+    coverageGaps: [],
+    grader: buildGrader({ deps }),
+    sealer: new Sealer({ privateKey: KEY, chainId: 196, verifyingContract: REGISTRY }),
+    publicBaseUrl: "http://test.local",
+    chainId: 196,
+    registry: REGISTRY,
+    gate: new DevGate(),
+    demoSecret: "shhh",
+    demoDailyCap: 2,
+    ...over,
+  };
+
+  const app = buildApp(ctx);
+  const server = app.listen(0);
+  servers.push(server);
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  return { base, store };
+}
+
+afterAll(() => {
+  for (const server of servers) server.close();
+  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+});
+
+const BODY = {
+  tool: "oce_make_keepsake",
+  arguments: { title: "Test moment", description: "a quiet afternoon" },
+};
+
+async function runDemo(base: string, secret?: string, body: unknown = BODY) {
+  return fetch(`${base}/internal/demo/run`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(secret ? { "x-oce-demo-secret": secret } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+function parseEvents(text: string): Array<Record<string, unknown>> {
+  return text
+    .split("\n\n")
+    .filter((chunk) => chunk.startsWith("data: "))
+    .map((chunk) => JSON.parse(chunk.slice(6)) as Record<string, unknown>);
+}
+
+describe("the internal demo route", () => {
+  it("404s without the shared secret, and when no secret is configured at all", async () => {
+    const { base } = makeApp();
+    expect((await runDemo(base)).status).toBe(404);
+    expect((await runDemo(base, "wrong")).status).toBe(404);
+
+    const bare = makeApp({ demoSecret: undefined as never });
+    expect((await runDemo(bare.base, "shhh")).status).toBe(404);
+  });
+
+  it("streams real pipeline events in order and finishes with the pack", async () => {
+    const { base, store } = makeApp();
+    const res = await runDemo(base, "shhh");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+
+    const events = parseEvents(await res.text());
+    const types = events.map((event) => event["type"]);
+
+    expect(types[0]).toBe("run_started");
+    expect(types).toContain("grading");
+    expect(types).toContain("graded");
+    expect(types.at(-1)).toBe("run_complete");
+
+    // The finished pack is the store's pack, serialised for the client.
+    const done = events.at(-1) as { pack: { keepsakeId: string; seal?: { anchored: boolean } } };
+    expect(done.pack.keepsakeId).toMatch(/^oce_[0-9a-z]{22}$/);
+    expect(store.getPack(done.pack.keepsakeId)).toBeDefined();
+    // Sealed but not yet anchored — and it says so.
+    expect(done.pack.seal?.anchored).toBe(false);
+
+    // The run is recorded as demo, never as paid volume.
+    const orders = store.orders(10);
+    expect(orders[0]?.status).toBe("demo");
+    expect(orders[0]?.priceUsdt).toBe(0);
+  });
+
+  it("enforces the daily allowance", async () => {
+    const { base } = makeApp({ demoDailyCap: 1 });
+    expect((await runDemo(base, "shhh")).status).toBe(200);
+    const second = await runDemo(base, "shhh");
+    expect(second.status).toBe(429);
+  });
+
+  it("rejects a malformed brief before spending anything", async () => {
+    const { base, store } = makeApp();
+    const res = await runDemo(base, "shhh", { tool: "oce_launch_kit", arguments: {} });
+    expect(res.status).toBe(400);
+    expect(store.demoRunsSince(0)).toBe(0);
+  });
+});
