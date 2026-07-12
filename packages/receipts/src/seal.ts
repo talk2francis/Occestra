@@ -31,8 +31,14 @@ export const X_LAYER_MAINNET = defineChain({
   blockExplorers: { default: { name: "OKLink", url: "https://www.oklink.com/x-layer" } },
 });
 
+/**
+ * X Layer's testnet is chain 1952, NOT the 195 that older docs (and our own AGENTS.md)
+ * record. Verified against the live RPC on 2026-07-12: eth_chainId at testrpc.xlayer.tech
+ * returns 1952. Signing with 195 makes every transaction bounce with an unhelpful
+ * "missing or invalid parameters".
+ */
 export const X_LAYER_TESTNET = defineChain({
-  id: 195,
+  id: 1952,
   name: "X Layer Testnet",
   nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
   rpcUrls: { default: { http: ["https://testrpc.xlayer.tech"] } },
@@ -42,8 +48,9 @@ export const X_LAYER_TESTNET = defineChain({
 
 export function chainFor(chainId: number) {
   if (chainId === 196) return X_LAYER_MAINNET;
-  if (chainId === 195) return X_LAYER_TESTNET;
-  throw new Error(`Occestra only seals on X Layer (196 or 195), not chain ${chainId}`);
+  // 195 is accepted as a legacy alias for the testnet, but it resolves to the real id.
+  if (chainId === 1952 || chainId === 195) return X_LAYER_TESTNET;
+  throw new Error(`Occestra only seals on X Layer (196 mainnet or 1952 testnet), not chain ${chainId}`);
 }
 
 /* --------------------------------------------------------------------- leaf */

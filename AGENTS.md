@@ -29,7 +29,7 @@ Lifestyle Companion + Artistic Excellence (category wins), Best Product, Creativ
 
 ## Chain constants
 - X Layer mainnet: chainId 196, RPC https://rpc.xlayer.tech, explorer https://www.oklink.com/x-layer
-- X Layer testnet: chainId 195, RPC https://testrpc.xlayer.tech, explorer https://www.oklink.com/x-layer-testnet
+- X Layer testnet: chainId 1952 (NOT 195 — see Deviations; verified live), RPC https://testrpc.xlayer.tech, explorer https://www.oklink.com/x-layer-testnet
 - Gas token OKB. Settlement asset USDT. X Layer USDT (bridged): 0x1E4a5963aBFD975d8c9021ce480b42188849D41d
 - CAIP-2 naming where required: eip155:196 / eip155:195.
 
@@ -125,8 +125,22 @@ OCE_PAYMENT_MODE (dev|okx), OCE_TREASURY (required in prod), OCE_SEALER_KEY (sec
 ## Definition of done per package
 studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests incl. cross-language EVM proof. providers: >=14 tests (mocked fetch/fake clients, NO network in tests). mcp-server: >=10 tests + live smoke. Whole repo: typecheck + build clean at every checkpoint. Commit at every checkpoint.
 
+## LIVE (Phase 6)
+- KeepsakeRegistry MAINNET (196): 0x1653509df702b45d67b3eb12ca37de9f5fc21f08
+  https://www.oklink.com/x-layer/address/0x1653509df702b45d67b3eb12ca37de9f5fc21f08
+  deploy tx 0x9a29626b3f2749bac9c2a882a4c8f763ccb8fc0e039c00fbada6aa697cb19cc2
+- KeepsakeRegistry TESTNET (1952): 0xb5cc81bdf4e069ecfdd06ee5883d8f254d68404f (3 leaves sealed + verified)
+- Sealer / treasury: 0x0d63f9EeB86813230B72017444cea16Cd4A453F2
+- Endpoints: https://occestra.xyz (holding page), https://api.occestra.xyz/mcp (ASP, live HTTPS)
+- systemd occestra-mcp.service (PORT 8412), env at /etc/occestra/env (chmod 600), Caddy auto-HTTPS
+- Agent ID: (pending listing)
+
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
+
+- 2026-07-12 — X LAYER TESTNET IS CHAIN 1952, NOT 195. The RPC at testrpc.xlayer.tech returns eth_chainId = 1952. Signing with 195 makes every tx bounce with a useless "missing or invalid parameters". receipts/chainFor() now maps 1952 (and accepts 195 as a legacy alias resolving to the same chain). Cost an hour; do not rediscover.
+- 2026-07-12 — X Layer rejects EIP-1559 (type 0x02) deploys. Use legacy transactions with an explicit gasPrice from eth_gasPrice (0.02 gwei observed on both nets). deploy.mjs does this.
+- 2026-07-12 — Wallet holds 2.5 USD₮0 + 2.5 USDC + 0.03 OKB. NO SWAP WAS NEEDED: the token the owner bridged as "USDT" IS USD₮0 (0x779d...3736), which is exactly the x402 settlement asset. Bridged USDT (0x1E4a...D41d) balance is zero and is NOT used.
 
 - 2026-07-12 — Repo root is ./occestra (existing GitHub repo talk2francis/Occestra, cloned rather than `git init` fresh). It already contained README.md, LICENSE (MIT), and occestra.md (product vision). Phase 0 scaffolding was layered on top; the initial commit is therefore "chore: bootstrap occestra monorepo + AGENTS.md" on the existing history rather than a root commit. Reason: preserving the owner's existing repo + remote.
 - 2026-07-12 — Product was renamed from an earlier planning-era working name to Occestra before Phase 0 (owner directive: the old name must appear nowhere in the shipped repo). All identifiers in this file already reflect the final name: OCE_ env prefix, oce_ tool prefix, @occestra/ scope, oce_ keepsake ids, OQS rubric name, EIP-712 domain name "Occestra", occestra.xyz domains. KeepsakeRegistry.sol name and the tagline are unchanged per the rename map. If a pasted phase prompt still uses the old name, apply the rename map before executing it.

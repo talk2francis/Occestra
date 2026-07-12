@@ -52,10 +52,17 @@ if (balance === 0n) {
 const artifact = await compile();
 console.log(`compiled: ${artifact.solcVersion}`);
 
+// X Layer's RPCs reject type-0x02 (EIP-1559) deploys with "missing or invalid parameters".
+// Legacy pricing is what the chain actually wants, so ask it for a gas price and use it.
+const gasPrice = await publicClient.getGasPrice();
+console.log(`gasPrice: ${gasPrice} wei (legacy)`);
+
 const hash = await walletClient.deployContract({
   abi: artifact.abi,
   bytecode: artifact.bytecode,
   args: [sealer],
+  type: "legacy",
+  gasPrice,
 });
 console.log(`tx:       ${hash}`);
 console.log("waiting for confirmation...");
