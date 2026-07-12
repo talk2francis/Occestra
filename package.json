@@ -2,7 +2,7 @@
   "name": "occestra",
   "version": "0.1.0",
   "private": true,
-  "description": "Occestra \u2014 the Occasion Studio. Every moment, made monumental.",
+  "description": "Occestra — the Occasion Studio. Every moment, made monumental.",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -31,6 +31,7 @@
     "esbuild@0.28.1": true,
     "esbuild@0.21.5": true,
     "sharp@0.33.5": true,
-    "better-sqlite3@11.10.0": true
+    "better-sqlite3@11.10.0": true,
+    "sharp@0.34.5": true
   }
 }

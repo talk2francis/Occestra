@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/*
+ * Amethyst Daylight — the only theme. Tokens are law (AGENTS.md).
+ * Purple <= 15% of any viewport. Lilac ONLY for active/generating states.
+ */
+@theme {
+  --color-ground: #faf7f2;
+  --color-panel: #f1ece4;
+  --color-ink: #17141a;
+  --color-plum: #2d1b4e;
+  --color-amethyst: #6b3fa0;
+  --color-lilac: #c8b4ff;
+  --color-silver: #8e8a94;
+
+  --color-pass: #2fa96b;
+  --color-repair: #d9822b;
+  --color-fail: #c24141;
+  --color-info: #5ba8ff;
+
+  --font-serif: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-grotesk), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-data), ui-monospace, "SF Mono", monospace;
+
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --shadow-lift: 0 1px 2px rgb(23 20 26 / 0.05), 0 8px 24px -8px rgb(23 20 26 / 0.12);
+  --shadow-keepsake: 0 2px 4px rgb(23 20 26 / 0.06), 0 24px 48px -16px rgb(45 27 78 / 0.18);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-lilac);
+  color: var(--color-plum);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amethyst);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------ typography */
+
+.font-serif {
+  font-variation-settings: "opsz" 72;
+}
+
+/* Editorial display: serif, tight leading, slight negative tracking. */
+.text-display {
+  font-family: var(--font-serif);
+  font-weight: 480;
+  font-size: clamp(2.6rem, 1.2rem + 6vw, 5.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+  font-variation-settings: "opsz" 144;
+}
+
+.text-headline {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(1.9rem, 1rem + 2.8vw, 3.1rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 96;
+}
+
+.text-subhead {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(1.25rem, 1rem + 0.9vw, 1.6rem);
+  line-height: 1.25;
+  letter-spacing: -0.008em;
+  font-variation-settings: "opsz" 40;
+}
+
+/* Kicker: the grotesk half of every SectionHeading pairing. */
+.text-kicker {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.text-data {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose-measure {
+  max-width: 34em;
+}
+
+/* ------------------------------------------------------- paper + texture */
+
+/* Torn-paper edge for artifact frames — used sparingly. */
+.deckle {
+  clip-path: polygon(
+    0.6% 1.8%, 4% 0.4%, 9% 1.6%, 15% 0.2%, 22% 1.4%, 30% 0.5%, 38% 1.8%,
+    47% 0.3%, 56% 1.5%, 64% 0.4%, 72% 1.7%, 80% 0.6%, 88% 1.9%, 95% 0.5%,
+    99.4% 1.6%, 99.7% 8%, 98.9% 16%, 99.6% 26%, 98.8% 37%, 99.5% 48%,
+    98.9% 60%, 99.6% 71%, 98.8% 82%, 99.5% 92%, 99.2% 98.2%, 94% 99.6%,
+    87% 98.4%, 79% 99.7%, 70% 98.6%, 61% 99.5%, 52% 98.3%, 43% 99.6%,
+    34% 98.5%, 26% 99.7%, 18% 98.4%, 11% 99.6%, 5% 98.6%, 0.5% 99.3%,
+    0.3% 93%, 1.1% 84%, 0.4% 74%, 1.2% 63%, 0.5% 52%, 1.1% 41%, 0.4% 30%,
+    1.2% 19%, 0.5% 9%
+  );
+}
+
+/* Hairline rules that read as print, not UI chrome. */
+.rule {
+  border-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+/* ------------------------------------------------------------- utilities */
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
