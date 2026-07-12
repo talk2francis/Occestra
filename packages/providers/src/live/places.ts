@@ -58,6 +58,64 @@ function filterFor(query: string): string {
   return CATEGORY_TAGS.find(({ match }) => match.test(query))?.filter ?? '["amenity"="restaurant"]';
 }
 
+/**
+ * OpenStreetMap has no ratings, so we cannot rank by quality — and we will not invent a
+ * score we do not have. What we CAN do is rank by the signals actually present in the data:
+ *
+ *  - A venue whose owner filled in the address, website, phone, cuisine and opening hours is
+ *    a venue someone cares about. Tag completeness is a real, honest proxy for that.
+ *  - A global fast-food chain is almost never the answer to "warm, candlelit, a long table",
+ *    and Overpass will happily hand you a Pizza Hut. Demote them.
+ *
+ * This changes the ORDER we present real venues in. It never invents one, and never claims
+ * a quality judgement we have no basis for.
+ */
+const CHAINS = [
+  "mcdonald",
+  "burger king",
+  "kfc",
+  "pizza hut",
+  "domino",
+  "subway",
+  "starbucks",
+  "hard rock cafe",
+  "tgi friday",
+  "papa john",
+  "taco bell",
+  "wendy",
+  "dunkin",
+  "costa coffee",
+  "five guys",
+  "chipotle",
+  "nando",
+  "wagamama",
+];
+
+const QUALITY_TAGS = [
+  "addr:street",
+  "website",
+  "phone",
+  "opening_hours",
+  "cuisine",
+  "outdoor_seating",
+  "reservation",
+  "wheelchair",
+];
+
+export function venueScore(tags: Record<string, string>): number {
+  const name = (tags["name"] ?? "").toLowerCase();
+
+  // A chain is still a real place — it just goes to the bottom, not off the list.
+  const chainPenalty = CHAINS.some((chain) => name.includes(chain)) ? -20 : 0;
+
+  const completeness = QUALITY_TAGS.reduce(
+    (score, tag) => score + (tags[tag] ? 1 : 0),
+    0,
+  );
+
+  return completeness + chainPenalty;
+}
+
 function addressOf(tags: Record<string, string>): string {
   const parts = [
     [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" "),
@@ -136,6 +194,8 @@ export class OverpassPlaces implements PlacesPort {
 
       return parsed.data.elements
         .filter((element) => element.tags?.["name"])
+        // Rank before we truncate, or the shortlist is just whatever Overpass returned first.
+        .sort((a, b) => venueScore(b.tags ?? {}) - venueScore(a.tags ?? {}))
         .slice(0, limit)
         .map((element) => {
           const tags = element.tags ?? {};

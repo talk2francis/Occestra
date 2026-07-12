@@ -19,6 +19,7 @@ import {
 import { Sealer, verifySeal } from "@occestra/receipts";
 import type { EngineDeps } from "@occestra/studio-core";
 import { DevGate, OkxGate, PRICES, TOOL_NAMES, toAtomic } from "../src/gate.js";
+import { buildGrader } from "../src/grader.js";
 import { buildApp } from "../src/http.js";
 import { buildServer, type ServerContext } from "../src/server.js";
 import { Store } from "../src/store.js";
@@ -51,6 +52,8 @@ function makeCtx(over: Partial<ServerContext> = {}): ServerContext & { store: St
     deps,
     store,
     coverageGaps: [],
+    // The real Tribunal, injected through the GradePort exactly as main.ts does it.
+    grader: buildGrader({ deps }),
     sealer: new Sealer({ privateKey: KEY, chainId: 196, verifyingContract: REGISTRY }),
     publicBaseUrl: "http://test.local",
     chainId: 196,
@@ -123,7 +126,17 @@ describe("the 8 tools", () => {
     expect(result["studio"]).toBe("celebrate");
 
     const artifacts = result["artifacts"] as Array<Record<string, unknown>>;
-    expect(artifacts.map((a) => a["kind"])).toEqual(["plan", "schedule", "budget", "contingency"]);
+    // Phase 7: the deep CELEBRATE pipeline also ships a self-contained guest guide.
+    expect(artifacts.map((a) => a["kind"])).toEqual([
+      "plan",
+      "schedule",
+      "budget",
+      "contingency",
+      "guest_guide",
+    ]);
+    const guide = artifacts.find((a) => a["kind"] === "guest_guide")!;
+    expect(guide["content"]).toContain("<!doctype html>");
+    expect(guide["content"]).not.toMatch(/<script/i);
 
     // Every grounded claim carries a source, and every artifact carries its report.
     const plan = artifacts[0]!;
@@ -133,7 +146,7 @@ describe("the 8 tools", () => {
     }
 
     // The budget adds up, because the Tribunal would have hard-failed it otherwise.
-    const budget = JSON.parse(artifacts[2]!["content"] as string) as {
+    const budget = JSON.parse(artifacts.find((a) => a["kind"] === "budget")!["content"] as string) as {
       total: number;
       lineItems: Array<{ amount: number }>;
     };

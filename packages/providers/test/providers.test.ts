@@ -19,6 +19,7 @@ import {
   UpstreamError,
   buildDeps,
   checkLinks,
+  venueScore,
   dominantColors,
   extractJson,
   fetchJson,
@@ -337,6 +338,79 @@ describe("places", () => {
 });
 
 /* ---------------------------------------------------------------- live: market */
+
+describe("venue ranking", () => {
+  it("puts a cared-for restaurant above a Pizza Hut — order only, never invented quality", () => {
+    const taberna = {
+      name: "Taberna Real",
+      "addr:street": "Rua da Prata",
+      website: "https://taberna.test",
+      phone: "+351",
+      opening_hours: "19:00-23:00",
+      cuisine: "portuguese",
+    };
+    const chain = { name: "Pizza Hut", "addr:street": "Avenida", website: "https://pizzahut.test" };
+    const bare = { name: "Unnamed Grill" };
+
+    expect(venueScore(taberna)).toBeGreaterThan(venueScore(bare));
+    expect(venueScore(chain)).toBeLessThan(venueScore(bare)); // a chain is demoted, not deleted
+    expect(venueScore(taberna)).toBeGreaterThan(venueScore(chain));
+  });
+
+  it("ranks the shortlist before truncating it", async () => {
+    const now = Date.now();
+    const { impl } = fakeFetch([
+      { body: [{ lat: "38.72", lon: "-9.14", display_name: "Lisbon" }] },
+      {
+        body: {
+          elements: [
+            { type: "node", id: 1, lat: 38.7, lon: -9.1, tags: { name: "Hard Rock Cafe", website: "https://hrc.test" } },
+            {
+              type: "node",
+              id: 2,
+              lat: 38.71,
+              lon: -9.13,
+              tags: {
+                name: "Taberna Real",
+                "addr:street": "Rua da Prata",
+                website: "https://t.test",
+                phone: "+351",
+                opening_hours: "19:00-23:00",
+                cuisine: "portuguese",
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const places = new OverpassPlaces(new TtlCache(() => now), impl, () => now);
+    const results = await places.search({ query: "dinner", city: "Lisbon", limit: 1 });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.name).toBe("Taberna Real"); // NOT the chain that Overpass listed first
+  });
+});
+
+describe("strict json over the wire", () => {
+  it("puts the word 'json' in the messages — OpenAI 400s without it", async () => {
+    const { impl, calls } = fakeFetch([
+      { body: { choices: [{ message: { content: "{}" } }], model: "gpt-4o", usage: { prompt_tokens: 1, completion_tokens: 1 } } },
+    ]);
+
+    const router = new ModelRouter({ OPENAI_API_KEY: "o", fetchImpl: impl });
+    await router.complete({ role: "planner", system: "You are a planner.", prompt: "plan", json: true });
+
+    const body = JSON.parse(String(calls[0]!.init?.body)) as {
+      response_format?: { type: string };
+      messages: Array<{ role: string; content: unknown }>;
+    };
+
+    expect(body.response_format).toEqual({ type: "json_object" });
+    // The literal word must survive into the messages, or the request is rejected outright.
+    expect(JSON.stringify(body.messages).toLowerCase()).toContain("json");
+  });
+});
 
 describe("okx market", () => {
   it("signs with the OKX HMAC scheme and maps a token", async () => {

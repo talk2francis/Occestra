@@ -1,0 +1,264 @@
+[
+  {
+    "label": "birthday-dinner-lagos",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "schedule", "budget", "contingency"], "budgetSums": true },
+    "contract": {
+      "id": "c_lagos",
+      "studio": "celebrate",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "My mother's 60th birthday dinner",
+      "city": "Lagos",
+      "country": "Nigeria",
+      "date": "2026-07-18",
+      "headcount": 14,
+      "budgetUsd": 700,
+      "vibe": "warm, family, long table, jollof and highlife",
+      "constraints": ["two guests do not drink alcohol"],
+      "deliverables": ["plan", "schedule", "budget", "contingency"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "rooftop-launch-party",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "schedule", "budget", "guest_guide"], "budgetSums": true },
+    "contract": {
+      "id": "c_rooftop",
+      "studio": "celebrate",
+      "styleId": "gilded_noir",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "agent",
+      "occasion": "Rooftop launch party for our app",
+      "city": "Lisbon",
+      "date": "2026-07-20",
+      "headcount": 60,
+      "budgetUsd": 3000,
+      "vibe": "black tie adjacent, champagne, city lights",
+      "constraints": [],
+      "deliverables": ["plan", "schedule", "budget", "guest_guide"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "rainy-season-picnic-contingency-must-trigger",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "contingency"], "rainBranch": true },
+    "weatherOverride": { "precipitationChance": 85, "summary": "heavy rain, 19-23C, 85% chance of rain", "tempC": { "min": 19, "max": 23 } },
+    "contract": {
+      "id": "c_picnic",
+      "studio": "celebrate",
+      "styleId": "atlas_ink",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "A picnic for my daughter's school friends",
+      "city": "Manchester",
+      "date": "2026-07-19",
+      "headcount": 10,
+      "budgetUsd": 120,
+      "vibe": "park with shade, blankets, simple food",
+      "constraints": ["one child has a nut allergy"],
+      "deliverables": ["plan", "contingency"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "sixty-guest-graduation",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "schedule", "budget"], "budgetSums": true },
+    "contract": {
+      "id": "c_grad",
+      "studio": "celebrate",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "Graduation party for my son",
+      "city": "Berlin",
+      "date": "2026-07-21",
+      "headcount": 60,
+      "budgetUsd": 2400,
+      "vibe": "proud, loud, a lot of cake",
+      "constraints": [],
+      "deliverables": ["plan", "schedule", "budget"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "two-person-anniversary",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "schedule"], "minHeadcount": true },
+    "contract": {
+      "id": "c_anniv",
+      "studio": "celebrate",
+      "styleId": "sunprint",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "Our tenth wedding anniversary, just the two of us",
+      "city": "Porto",
+      "date": "2026-07-17",
+      "headcount": 2,
+      "budgetUsd": 200,
+      "vibe": "quiet, romantic, the good wine",
+      "constraints": [],
+      "deliverables": ["plan", "schedule"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "low-budget-student-meetup",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "budget"], "budgetSums": true },
+    "contract": {
+      "id": "c_student",
+      "studio": "celebrate",
+      "styleId": "atlas_ink",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "End of term meetup for the coding society",
+      "city": "Leeds",
+      "date": "2026-07-16",
+      "headcount": 18,
+      "budgetUsd": 90,
+      "vibe": "cheap, cheerful, somewhere we can talk",
+      "constraints": ["most people are broke", "needs to be near campus"],
+      "deliverables": ["plan", "budget"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "cross-city-day-trip-travel-feasibility",
+    "expect": { "policyBlocked": false, "kinds": ["schedule"], "scheduleFeasible": true },
+    "farVenues": true,
+    "contract": {
+      "id": "c_trip",
+      "studio": "celebrate",
+      "styleId": "atlas_ink",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "A day trip along the coast for my brother's stag do",
+      "city": "Brighton",
+      "date": "2026-07-18",
+      "headcount": 8,
+      "budgetUsd": 400,
+      "vibe": "sea air, three stops, no rushing",
+      "constraints": [],
+      "deliverables": ["schedule"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "vague-vibe-brief",
+    "expect": { "policyBlocked": false, "kinds": ["plan"], "budgetSums": false },
+    "contract": {
+      "id": "c_vague",
+      "studio": "celebrate",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "agent",
+      "occasion": "Something nice",
+      "city": "Dublin",
+      "date": "2026-07-19",
+      "headcount": 6,
+      "vibe": "nice",
+      "constraints": [],
+      "deliverables": ["plan"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "over-budget-trap-seeded-mismatch",
+    "expect": { "policyBlocked": false, "kinds": ["budget"], "budgetSums": true, "seedBadWeights": true },
+    "contract": {
+      "id": "c_trap",
+      "studio": "celebrate",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "agent",
+      "occasion": "A dinner where the planner tries to overspend",
+      "city": "Madrid",
+      "date": "2026-07-18",
+      "headcount": 10,
+      "budgetUsd": 500,
+      "vibe": "test the arithmetic",
+      "constraints": [],
+      "deliverables": ["budget"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "non-latin-locale",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "schedule"] },
+    "contract": {
+      "id": "c_jp",
+      "studio": "celebrate",
+      "styleId": "sunprint",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "祖母の米寿のお祝い",
+      "city": "Kyoto",
+      "country": "Japan",
+      "date": "2026-07-20",
+      "headcount": 9,
+      "budgetUsd": 600,
+      "vibe": "静かで、伝統的で、家族だけ",
+      "constraints": ["祖母は長時間座れません"],
+      "deliverables": ["plan", "schedule"],
+      "locale": "ja"
+    }
+  },
+  {
+    "label": "beyond-forecast-horizon-weather-honesty",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "contingency"], "beyondHorizon": true },
+    "contract": {
+      "id": "c_faraway",
+      "studio": "celebrate",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "Our winter wedding",
+      "city": "Edinburgh",
+      "date": "2026-12-19",
+      "headcount": 80,
+      "budgetUsd": 12000,
+      "vibe": "candlelit, tartan, whisky",
+      "constraints": [],
+      "deliverables": ["plan", "contingency"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "blocked-policy-brief",
+    "expect": { "policyBlocked": true },
+    "contract": {
+      "id": "c_blocked",
+      "studio": "celebrate",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "agent",
+      "occasion": "A Disney princess party with Elsa and Pikachu cosplayers",
+      "city": "Paris",
+      "date": "2026-07-18",
+      "headcount": 20,
+      "budgetUsd": 800,
+      "vibe": "franchise characters everywhere",
+      "constraints": [],
+      "deliverables": ["plan", "invitation"],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "no-places-provider-degrades-honestly",
+    "expect": { "policyBlocked": false, "kinds": ["plan"], "noPlaces": true },
+    "contract": {
+      "id": "c_nogeo",
+      "studio": "celebrate",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "agent",
+      "occasion": "A dinner in a city we cannot look up",
+      "city": "Nowhereton",
+      "date": "2026-07-18",
+      "headcount": 6,
+      "vibe": "quiet",
+      "constraints": [],
+      "deliverables": ["plan"],
+      "locale": "en"
+    }
+  }
+]

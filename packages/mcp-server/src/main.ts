@@ -7,6 +7,7 @@ import { buildDeps } from "@occestra/providers";
 import type { Address, Hex } from "viem";
 import { AnchorWorker } from "./anchor.js";
 import { DevGate, OkxGate, type PaymentGate } from "./gate.js";
+import { buildGrader } from "./grader.js";
 import { buildApp, type AppContext } from "./http.js";
 import { VERSION } from "./server.js";
 import { Store } from "./store.js";
@@ -72,6 +73,7 @@ if (PAYMENT_MODE === "okx") {
 const ctx: AppContext = {
   deps: built.deps,
   store,
+  grader: buildGrader({ deps: built.deps, linkChecker: built.linkChecker }),
   coverageGaps: built.coverageGaps,
   linkChecker: built.linkChecker,
   governor: built.governor,

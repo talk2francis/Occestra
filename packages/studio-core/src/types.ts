@@ -94,6 +94,7 @@ export const LAUNCH_KINDS = [
 ] as const;
 
 export const CelebrateKindSchema = z.enum(CELEBRATE_KINDS);
+export type CelebrateKind = z.infer<typeof CelebrateKindSchema>;
 export const RememberKindSchema = z.enum(REMEMBER_KINDS);
 export const LaunchKindSchema = z.enum(LAUNCH_KINDS);
 
@@ -162,6 +163,8 @@ export const PlanPayloadSchema = z.object({
   claims: z.array(PlanClaimSchema).default([]),
   /** Explicitly stated unknowns. Honesty about coverage is part of the product. */
   uncertainties: z.array(z.string()).default([]),
+  /** What the host has to actually do, and by when. */
+  prepChecklist: z.array(z.string()).default([]),
 });
 export type PlanPayload = z.infer<typeof PlanPayloadSchema>;
 
@@ -451,6 +454,34 @@ export interface StoragePort {
 
 export interface ClockPort {
   now(): number;
+}
+
+/**
+ * The Tribunal, as a port.
+ *
+ * @occestra/tribunal depends on this package, so this package cannot import it back without
+ * a cycle — and studio-core must stay pure anyway. So the grader is injected: the pipeline
+ * calls grade(), and mcp-server hands it the real runTribunal. Studio-core stays pure, and
+ * every artifact still gets graded and repaired.
+ */
+export interface GradeRequest {
+  artifact: Artifact;
+  contract: OccasionContract;
+  styleId?: HouseStyleId;
+  /** Regenerate the artifact from a repair brief. Omit for artifacts that cannot be redone. */
+  regenerate?: (repairBrief: string, previous: Artifact) => Promise<Artifact>;
+}
+
+export interface GradeResult {
+  /** The final artifact, repaired if repairs happened, with its report attached. */
+  artifact: Artifact;
+  pass: boolean;
+  repairs: number;
+  coverageGaps: string[];
+}
+
+export interface GradePort {
+  grade(request: GradeRequest): Promise<GradeResult>;
 }
 
 /** Optional cost/rate ceilings; the governor in @occestra/providers enforces them. */

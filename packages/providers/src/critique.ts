@@ -53,6 +53,25 @@ export interface ModelCritiqueDeps {
   imageBytes?: (artifact: CritiqueRequest["artifact"]) => Promise<Uint8Array | undefined>;
 }
 
+const VISUAL_FORMATS = new Set(["png", "svg"]);
+
+/**
+ * An axis you cannot see is an axis you cannot score.
+ *
+ * A budget in JSON has no palette, no type direction, and no material language — grading it
+ * on style_fidelity against a cyanotype House Style is meaningless, and a critic left to its
+ * own devices will happily score it 30 and fail an artifact that is perfectly correct.
+ *
+ * The published rubric already covers this ("if you cannot assess an axis, score it 70 and
+ * say so — do not punish the artifact for your own blind spot"). This makes that instruction
+ * impossible to ignore rather than merely advisory. The rubric itself is unchanged.
+ */
+function inapplicableAxes(format: string): string[] {
+  if (VISUAL_FORMATS.has(format)) return [];
+  // Text/data artifacts have structure and legibility, but no visual style to be faithful to.
+  return ["style_fidelity"];
+}
+
 export class ModelCritique implements CritiquePort {
   constructor(private readonly deps: ModelCritiqueDeps) {}
 
@@ -76,6 +95,18 @@ export class ModelCritique implements CritiquePort {
       .filter(Boolean)
       .join("\n");
 
+    const blind = inapplicableAxes(artifact.format);
+    const system =
+      blind.length === 0
+        ? SYSTEM
+        : [
+            SYSTEM,
+            "",
+            `THIS ARTIFACT IS ${artifact.format.toUpperCase()}, NOT AN IMAGE. It has no palette, no typography, and no material surface.`,
+            `You therefore CANNOT assess: ${blind.join(", ")}. Score ${blind.join(" and ")} EXACTLY 70 and note in issues that the axis does not apply to a ${artifact.format} artifact. Do not invent a visual judgement about something you cannot see, and do not fail correct work for lacking a surface it was never meant to have.`,
+            "Judge composition as the structure and hierarchy of the DOCUMENT, and legibility as whether a human can read and act on it.",
+          ].join("\n");
+
     const content: ChatContent[] = [{ type: "text", text: brief }];
 
     const bytes = await this.deps.imageBytes?.(artifact);
@@ -96,7 +127,7 @@ export class ModelCritique implements CritiquePort {
         const result = await this.deps.vision.completeWithContent(
           {
             role: "critic",
-            system: SYSTEM,
+            system,
             json: true,
             maxTokens: 900,
             temperature: 0.2,

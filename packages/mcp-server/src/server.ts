@@ -129,7 +129,7 @@ export function buildServer(ctx: ServerContext): McpServer {
       description: [
         `Plan a real occasion, grounded in real data. ${price("oce_plan_occasion")}`,
         "",
-        "YOU GET: a plan with a shortlist of REAL candidate venues (each carrying its OpenStreetMap source and the timestamp we retrieved it), a live weather forecast for the date, a running order whose timings are physically possible, a budget whose line items actually sum to the total, and honest contingencies.",
+        "YOU GET: a plan with a shortlist of REAL candidate venues (each carrying its OpenStreetMap source and the timestamp we retrieved it), a live weather forecast for the date, a running order whose timings are physically possible — travel between venues is measured from real coordinates, so nobody is asked to cross town in five minutes — a budget whose line items actually sum to the total, contingencies keyed to the ACTUAL forecast (if rain is likely, the indoor plan becomes the primary plan, not a footnote), a host prep checklist, and a self-contained guest guide page you can send to everyone.",
         "",
         "EXAMPLE: occasion='30th birthday dinner', city='Lisbon', date='2026-07-18', headcount=12, vibe='warm, candlelit, long table' -> venue shortlist with sources, forecast, schedule, budget, contingencies.",
         "",
@@ -146,6 +146,13 @@ export function buildServer(ctx: ServerContext): McpServer {
         budgetUsd: z.number().nonnegative().optional().describe("Total budget in USD. Omitted = estimated per head."),
         constraints: z.array(z.string()).max(20).optional().describe("Real constraints. e.g. ['one guest is vegan', 'no stairs']"),
         styleId: StyleId.optional(),
+        deliverables: z
+          .array(z.enum(["plan", "schedule", "budget", "contingency", "invitation", "guest_guide", "toast", "moodboard"]))
+          .min(1)
+          .optional()
+          .describe(
+            "What to produce. Defaults to plan + schedule + budget + contingency + guest_guide. Add 'invitation' or 'moodboard' for artwork, 'toast' for words to say.",
+          ),
       },
     },
     async (input) => run(() => planOccasion(ctx, input), (pack) => packResult(ctx, pack)),

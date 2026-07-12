@@ -386,8 +386,30 @@ export async function checkImage(ctx: CheckContext): Promise<CheckResult[]> {
   return [dimResult, sizeResult, driftResult];
 }
 
+/**
+ * The published rubric scopes CONTRAST_LOW to "invites/cards" — things with a surface that
+ * a human reads type off. A JSON budget has no surface. Running the check against one and
+ * recording a "not checkable" coverage gap is the code disagreeing with the rubric it
+ * publishes, and it fills honest packs with noise that means nothing.
+ */
+const SURFACE_KINDS = new Set([
+  "invitation",
+  "guest_guide",
+  "carousel",
+  "og_image",
+  "story_page",
+  "keepsake_art",
+  "moodboard",
+  "brand_kit",
+]);
+
 export async function checkContrast(ctx: CheckContext): Promise<CheckResult> {
   const id: CheckId = "CONTRAST_LOW";
+
+  if (!SURFACE_KINDS.has(ctx.artifact.kind)) {
+    return pass(id, false, `A ${ctx.artifact.kind} has no text surface; contrast does not apply.`);
+  }
+
   const layers = ctx.artifact.spec?.layers;
   if (!layers || layers.length === 0) {
     return skip(id, false, "Artifact declares no text layers; contrast is not checkable.");

@@ -127,12 +127,20 @@ export class ChatCompletionsText implements TextModelPort {
     request: Omit<TextCompletionRequest, "prompt">,
     content: ChatContent[],
   ): Promise<TextCompletionResult> {
+    // OpenAI rejects response_format:json_object unless the word "json" actually appears in
+    // the messages ("'messages' must contain the word 'json' in some form"). Without this the
+    // call 400s, the pipeline degrades to its fallback, and the product is quietly worse while
+    // every test still passes. Found by a live smoke, not by a unit test.
+    const system = request.json
+      ? `${request.system}\n\nRespond with a single valid JSON object and nothing else.`
+      : request.system;
+
     const body: Record<string, unknown> = {
       model: this.config.model,
       max_tokens: request.maxTokens ?? 2048,
       temperature: request.temperature ?? 0.7,
       messages: [
-        { role: "system", content: request.system },
+        { role: "system", content: system },
         { role: "user", content },
       ],
     };

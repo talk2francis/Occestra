@@ -251,6 +251,16 @@ describe("CONTRAST_LOW", () => {
     expect((await checkContrast(ctx(good))).passed).toBe(true);
   });
 
+  it("does not apply to artifacts with no text surface — a budget has no contrast", async () => {
+    // The published rubric scopes this check to invites/cards. Running it on a JSON budget
+    // and calling the result a coverage gap is noise that means nothing.
+    const budget = jsonArtifact("budget", { currency: "USD", total: 1, lineItems: [{ label: "x", amount: 1 }] });
+    const result = await checkContrast(ctx(budget));
+    expect(result.passed).toBe(true);
+    expect(result.skipped).toBeUndefined(); // NOT a gap — it simply does not apply
+    expect(result.detail).toContain("does not apply");
+  });
+
   it("exempts large display type from the body-copy floor", async () => {
     const display = artifact({
       kind: "invitation",

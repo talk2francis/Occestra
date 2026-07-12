@@ -25,6 +25,10 @@ import {
   type PlanClaim,
   type RememberContract,
   type SourceTag,
+  type CelebrateDeps,
+  type CelebrateKind,
+  type GradePort,
+  runCelebrate,
 } from "@occestra/studio-core";
 import { OQS_VERSION, runTribunal, type TribunalReport } from "@occestra/tribunal";
 import { HOUSE_STYLES, styleSystemPrompt, type CostGovernor } from "@occestra/providers";
@@ -34,6 +38,8 @@ import type { Store } from "./store.js";
 export interface PipelineContext {
   deps: EngineDeps;
   store: Store;
+  /** The real Tribunal, injected into the pure pipelines. */
+  grader?: GradePort;
   sealer?: Sealer;
   governor?: CostGovernor;
   coverageGaps: string[];
@@ -163,8 +169,14 @@ export interface PlanOccasionInput {
   budgetUsd?: number | undefined;
   constraints?: string[] | undefined;
   styleId?: HouseStyleId | undefined;
+  deliverables?: CelebrateKind[] | undefined;
 }
 
+/**
+ * The full CELEBRATE studio (Phase 7). The pipeline itself lives in studio-core and is pure;
+ * everything that touches the world — models, places, weather, storage, and the Tribunal
+ * itself — is injected here.
+ */
 export async function planOccasion(ctx: PipelineContext, input: PlanOccasionInput): Promise<Pack> {
   const contract: CelebrateContract = {
     id: `c_${ctx.deps.clock.now()}`,
@@ -178,178 +190,35 @@ export async function planOccasion(ctx: PipelineContext, input: PlanOccasionInpu
     headcount: input.headcount,
     vibe: input.vibe,
     constraints: input.constraints ?? [],
-    deliverables: ["plan", "schedule", "budget", "contingency"],
+    deliverables: input.deliverables ?? ["plan", "schedule", "budget", "contingency", "guest_guide"],
     locale: "en",
     ...(input.budgetUsd !== undefined ? { budgetUsd: input.budgetUsd } : {}),
   };
 
-  screen(contract);
+  const celebrateDeps: CelebrateDeps = {
+    text: ctx.deps.text,
+    image: ctx.deps.image,
+    storage: ctx.deps.storage,
+    clock: ctx.deps.clock,
+    styleFor: (id) => HOUSE_STYLES[id],
+    ...(ctx.deps.places ? { places: ctx.deps.places } : {}),
+    ...(ctx.deps.weather ? { weather: ctx.deps.weather } : {}),
+    ...(ctx.grader ? { grader: ctx.grader } : {}),
+  };
 
-  const gaps: string[] = [];
-  const claims: PlanClaim[] = [];
-  const sources: SourceTag[] = [];
+  const { pack } = await runCelebrate(contract, celebrateDeps);
 
-  /* --- ground it: real venues, real weather, each carrying its source --- */
+  // The pipeline is pure and does not know about sealing or the store — that is this layer's
+  // job, and it must behave exactly as it did before (seal, queue the leaf, persist).
+  let sealed: Pack = { ...pack, coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])] };
 
-  let venues: Array<{ name: string; address: string; source: SourceTag }> = [];
-  try {
-    const found = (await ctx.deps.places?.search({
-      query: input.vibe,
-      city: input.city,
-      limit: 5,
-    })) ?? [];
-    venues = found;
-    for (const venue of found) {
-      claims.push({
-        text: `${venue.name} — ${venue.address}. Listed as a candidate venue; NOT booked and NOT confirmed.`,
-        grounded: true,
-        source: venue.source,
-      });
-      sources.push(venue.source);
-    }
-  } catch (error) {
-    gaps.push(
-      `PLACES_UNAVAILABLE: could not shortlist real venues in ${input.city} (${error instanceof Error ? error.message : String(error)})`,
-    );
+  if (ctx.sealer) {
+    sealed = await ctx.sealer.seal(sealed, "celebrate");
+    if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
   }
 
-  let weatherLine = "Weather was not retrieved for this date.";
-  try {
-    const first = venues.find((venue) => "lat" in venue && "lng" in venue) as
-      | { lat?: number; lng?: number }
-      | undefined;
-
-    if (first?.lat !== undefined && first.lng !== undefined && ctx.deps.weather) {
-      const forecast = await ctx.deps.weather.forecast(first.lat, first.lng, input.date);
-      weatherLine = forecast.summary;
-      claims.push({
-        text: `Forecast for ${input.date}: ${forecast.summary}.`,
-        grounded: true,
-        source: forecast.source,
-      });
-      sources.push(forecast.source);
-    } else {
-      gaps.push("WEATHER_UNAVAILABLE: no venue coordinates were available to anchor a forecast");
-    }
-  } catch (error) {
-    gaps.push(
-      `WEATHER_UNAVAILABLE: ${error instanceof Error ? error.message : String(error)} — the plan states this rather than inventing a forecast`,
-    );
-  }
-
-  /* --- the plan itself --- */
-
-  const uncertainties = [
-    "No venue here is booked. Every one is a candidate you still need to call.",
-    ...(weatherLine.includes("not retrieved")
-      ? ["The forecast could not be retrieved, so the outdoor plan is not weather-informed."]
-      : []),
-  ];
-
-  const plan = artifact({
-    id: "plan",
-    kind: "plan",
-    title: `${input.occasion} — the plan`,
-    format: "json",
-    sources,
-    data: JSON.stringify({
-      date: input.date,
-      summary: [
-        `${input.occasion} in ${input.city} for ${input.headcount}.`,
-        `Vibe: ${input.vibe}.`,
-        `Weather: ${weatherLine}`,
-        venues.length > 0
-          ? `${venues.length} real candidate venues shortlisted, each with its source.`
-          : "No venues could be shortlisted; this plan is not grounded in real places.",
-      ].join(" "),
-      claims,
-      uncertainties,
-    }),
-  });
-
-  /* --- schedule: a real evening, with honest travel gaps --- */
-
-  const start = Date.parse(`${input.date.slice(0, 10)}T18:00:00.000Z`);
-  const venueName = venues[0]?.name ?? "the venue";
-  const secondName = venues[1]?.name ?? venueName;
-
-  const schedule = artifact({
-    id: "schedule",
-    kind: "schedule",
-    title: "Running order",
-    format: "json",
-    data: JSON.stringify({
-      items: [
-        {
-          title: "Arrival and first drink",
-          start: new Date(start).toISOString(),
-          end: new Date(start + 60 * 60_000).toISOString(),
-          venue: { name: venueName },
-        },
-        {
-          title: "Dinner",
-          start: new Date(start + 90 * 60_000).toISOString(),
-          end: new Date(start + 210 * 60_000).toISOString(),
-          venue: { name: secondName },
-        },
-        {
-          title: "Toasts and cake",
-          start: new Date(start + 215 * 60_000).toISOString(),
-          end: new Date(start + 245 * 60_000).toISOString(),
-          venue: { name: secondName },
-        },
-      ],
-    }),
-  });
-
-  /* --- budget: it must actually add up, and the Tribunal will check --- */
-
-  const total = input.budgetUsd ?? input.headcount * 45;
-  const food = Math.round(total * 0.62 * 100) / 100;
-  const drinks = Math.round(total * 0.22 * 100) / 100;
-  const flowers = Math.round(total * 0.09 * 100) / 100;
-  const cake = Math.round((total - food - drinks - flowers) * 100) / 100;
-
-  const budget = artifact({
-    id: "budget",
-    kind: "budget",
-    title: "Budget",
-    format: "json",
-    data: JSON.stringify({
-      currency: "USD",
-      total,
-      lineItems: [
-        { label: `Dinner, ${input.headcount} covers`, amount: food },
-        { label: "Drinks", amount: drinks },
-        { label: "Flowers and table", amount: flowers },
-        { label: "Cake", amount: cake },
-      ],
-    }),
-  });
-
-  const contingency = artifact({
-    id: "contingency",
-    kind: "contingency",
-    title: "If it goes wrong",
-    format: "md",
-    data: [
-      "## Contingencies",
-      "",
-      `- **The weather turns.** ${weatherLine.includes("rain") || weatherLine.includes("showers") ? "Rain is genuinely likely — hold an indoor table as the primary, not the backup." : "Keep an indoor table held until the morning of."}`,
-      "- **The venue cannot take you.** Nothing here is booked. Call the shortlist in order, today.",
-      `- **Someone cannot eat something.** ${contract.constraints.length > 0 ? `You told us: ${contract.constraints.join("; ")}. Confirm this with the kitchen when you book.` : "Ask the group before you confirm the menu."}`,
-      "- **People arrive late.** The running order has slack between arrival and dinner; use it rather than compressing the toasts.",
-    ].join("\n"),
-  });
-
-  const { artifacts, reports, gaps: tribunalGaps } = await gradeAll(ctx, contract, [
-    plan,
-    schedule,
-    budget,
-    contingency,
-  ]);
-
-  return assemble(ctx, contract, "celebrate", artifacts, reports, [...gaps, ...tribunalGaps]);
+  ctx.store.savePack(sealed);
+  return sealed;
 }
 
 /* -------------------------------------------------------- oce_design_invite */
