@@ -1,0 +1,15 @@
+node_modules
+dist
+.next
+out
+artifacts-out
+data/
+uploads/
+.env
+.env.*
+!.env.example
+coverage
+*.log
+.DS_Store
+playwright-report
+test-results
