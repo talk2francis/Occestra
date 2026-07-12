@@ -133,7 +133,16 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 - Sealer / treasury: 0x0d63f9EeB86813230B72017444cea16Cd4A453F2
 - Endpoints: https://occestra.xyz (holding page), https://api.occestra.xyz/mcp (ASP, live HTTPS)
 - systemd occestra-mcp.service (PORT 8412), env at /etc/occestra/env (chmod 600), Caddy auto-HTTPS
-- Agent ID: (pending listing)
+- OKX.AI Agent ID: #5213 (ASP "Occestra"), registered on X Layer 196
+  register tx 0xe80a05287f5902e104c1c5525e8d651eb518ec0eaf598378ad6af186d3a819af
+  listing submitted 2026-07-12 — OKX AI quality review "suggested pass", human review <=24h
+- Agent identity wallet: 0x1c823cca15ae0e8506c58280f83a50c7615bb6dc (email chatwithnonso01@gmail.com)
+  NOTE: this is DELIBERATELY a different agentic wallet from Sigil's (francisokafor2001@gmail.com,
+  0x2067b192..., ASP #4943). The onchainos CLI holds ONE email session at a time — to manage Sigil's
+  listing you must `wallet logout` and re-login with the Sigil email (and take a fresh OTP).
+- Ops: /usr/local/bin/occestra-health.sh (cron */5, restarts + alerts after 2 consecutive failures),
+  occestra-backup.sh (nightly 04:17, 14-day retention, /var/backups/occestra), logrotate 14d.
+  Telegram alerting is wired but dormant: set OCE_TELEGRAM_TOKEN + OCE_TELEGRAM_CHAT to enable.
 
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
