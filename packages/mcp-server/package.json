@@ -1,0 +1,31 @@
+{
+  "name": "@occestra/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Occestra ASP — 8 MCP tools behind x402 settlement, store, anchor worker.",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@occestra/providers": "*",
+    "@occestra/receipts": "*",
+    "@occestra/studio-core": "*",
+    "@occestra/tribunal": "*",
+    "better-sqlite3": "^11.7.0",
+    "express": "^5.2.0",
+    "sharp": "^0.33.5",
+    "viem": "^2.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/express": "^5.0.0"
+  }
+}
