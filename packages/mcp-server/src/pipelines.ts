@@ -28,7 +28,10 @@ import {
   type CelebrateDeps,
   type CelebrateKind,
   type GradePort,
+  type LaunchDeps,
+  type LaunchKind,
   runCelebrate,
+  runLaunch,
 } from "@occestra/studio-core";
 import { OQS_VERSION, runTribunal, type TribunalReport } from "@occestra/tribunal";
 import { HOUSE_STYLES, styleSystemPrompt, type CostGovernor } from "@occestra/providers";
@@ -609,151 +612,59 @@ export interface LaunchKitInput {
   description?: string | undefined;
   audience?: string | undefined;
   styleId?: HouseStyleId | undefined;
+  deliverables?: LaunchKind[] | undefined;
 }
 
+/** The full LAUNCH studio (Phase 8). Pipeline is pure; the world arrives through ports. */
 export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Promise<Pack> {
-  const styleId = input.styleId ?? "amethyst_editorial";
-
   const contract: LaunchContract = {
     id: `l_${ctx.deps.clock.now()}`,
     studio: "launch",
-    styleId,
+    styleId: input.styleId ?? "amethyst_editorial",
     createdAt: nowIso(ctx),
     requester: "agent",
     productName: input.productName,
-    deliverables: ["brand_kit", "launch_thread", "og_image"],
+    deliverables:
+      input.deliverables ?? [
+        "brand_kit",
+        "og_image",
+        "brand_mark",
+        "carousel",
+        "launch_thread",
+        "landing_spec",
+        "demo_script",
+      ],
     locale: "en",
     ...(input.url ? { url: input.url } : {}),
     ...(input.description ? { description: input.description } : {}),
     ...(input.audience ? { audience: input.audience } : {}),
   };
 
-  screen(contract);
+  const launchDeps: LaunchDeps = {
+    text: ctx.deps.text,
+    image: ctx.deps.image,
+    storage: ctx.deps.storage,
+    clock: ctx.deps.clock,
+    styleFor: (id) => HOUSE_STYLES[id],
+    ...(ctx.deps.site ? { site: ctx.deps.site } : {}),
+    ...(ctx.deps.market ? { market: ctx.deps.market } : {}),
+    ...(ctx.grader ? { grader: ctx.grader } : {}),
+  };
 
-  const gaps: string[] = [];
-  const sources: SourceTag[] = [];
+  const { pack } = await runLaunch(contract, launchDeps);
 
-  /* --- look at the REAL site, if there is one --- */
+  let sealed: Pack = {
+    ...pack,
+    coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])],
+  };
 
-  let genome = input.description ?? "";
-  let palette: string[] = [];
-
-  if (input.url && ctx.deps.site) {
-    try {
-      const inspection = await ctx.deps.site.inspect(input.url);
-      palette = inspection.palette;
-      sources.push(inspection.source);
-      genome = [
-        `Title: ${inspection.title}`,
-        `Description: ${inspection.description}`,
-        inspection.palette.length > 0 ? `Colours actually used on the site: ${inspection.palette.join(", ")}` : "",
-        inspection.fonts.length > 0 ? `Fonts: ${inspection.fonts.join(", ")}` : "",
-        input.description ? `What the maker says: ${input.description}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-    } catch (error) {
-      gaps.push(
-        `SITE_UNAVAILABLE: could not inspect ${input.url} (${error instanceof Error ? error.message : String(error)}) — the kit is built from the description alone, not from the real site`,
-      );
-    }
-  } else if (!input.url) {
-    gaps.push("NO_URL: no site was given, so the brand genome is not grounded in a real product page");
+  if (ctx.sealer) {
+    sealed = await ctx.sealer.seal(sealed, "launch");
+    if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
   }
 
-  const keepsakeId = newKeepsakeId(ctx.deps.clock.now());
-  const heroSize = "1536x1024";
-
-  const { uri } = await makeImage(ctx, {
-    subject: [
-      `A launch hero image for "${input.productName}".`,
-      genome ? `What the product actually is:\n${genome}` : "",
-      palette.length > 0 ? `Echo the product's own colours where it does not fight the House Style: ${palette.join(", ")}.` : "",
-      "No text, no lettering, no UI mockups, no fake screenshots.",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    styleId,
-    size: heroSize,
-    key: `launch/${keepsakeId}-hero.png`,
-  });
-
-  const hero = artifact({
-    id: "og_image",
-    kind: "og_image",
-    title: `${input.productName} — hero`,
-    format: "png",
-    uri,
-    styleId,
-    spec: { size: heroSize },
-    sources,
-  });
-
-  const thread = await ctx.deps.text.complete({
-    role: "writer",
-    system: [
-      "You write launch threads for people who build things, and who can smell marketing from a mile away.",
-      "",
-      "Rules:",
-      "- Use ONLY what you were given about the product. Invent no features, no metrics, no users, no funding.",
-      "- No hype words: not 'revolutionary', not 'game-changing', not 'excited to announce'.",
-      "- Post 1 says what it IS in one sentence a stranger understands. Post 2 says who it's for and what it replaces. Post 3 is the ask (try it / tell me what's broken).",
-      "- Short lines. No hashtag soup. At most one emoji in the whole thread, and only if it earns its place.",
-      "",
-      "Return markdown: '## Post 1', '## Post 2', '## Post 3'.",
-    ].join("\n"),
-    prompt: [
-      `Product: ${input.productName}`,
-      input.url ? `URL: ${input.url}` : "",
-      input.audience ? `Audience: ${input.audience}` : "",
-      genome ? `What we found:\n${genome}` : "We were given nothing but the name — say so rather than inventing.",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    maxTokens: 800,
-    temperature: 0.7,
-  });
-
-  const launchThread = artifact({
-    id: "launch_thread",
-    kind: "launch_thread",
-    title: `${input.productName} — launch thread`,
-    format: "md",
-    data: thread.text,
-    sources,
-    ...(input.url ? { spec: { links: [input.url] } } : {}),
-  });
-
-  const brandKit = artifact({
-    id: "brand_kit",
-    kind: "brand_kit",
-    title: `${input.productName} — brand genome`,
-    format: "md",
-    sources,
-    data: [
-      `## ${input.productName}`,
-      "",
-      input.url ? `Inspected: ${input.url}` : "_No site was inspected — this is built from the description alone._",
-      "",
-      "### What we actually found",
-      genome || "_Nothing but the name._",
-      "",
-      palette.length > 0 ? `### The product's real colours\n${palette.join("  ·  ")}` : "",
-      "",
-      `### House Style applied\n${HOUSE_STYLES[styleId].name} — ${HOUSE_STYLES[styleId].typeDirection}`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    ...(input.url ? { spec: { links: [input.url] } } : {}),
-  });
-
-  const {
-    artifacts,
-    reports,
-    gaps: tribunalGaps,
-  } = await gradeAll(ctx, contract, [hero, launchThread, brandKit], styleId);
-
-  return assemble(ctx, contract, "launch", artifacts, reports, [...gaps, ...tribunalGaps]);
+  ctx.store.savePack(sealed);
+  return sealed;
 }
 
 /* -------------------------------------------------------------- oce_critique */

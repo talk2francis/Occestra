@@ -271,11 +271,11 @@ export function buildServer(ctx: ServerContext): McpServer {
       description: [
         `Everything you need to launch, built from your ACTUAL site. ${price("oce_launch_kit")}`,
         "",
-        "YOU GET: Occestra opens your URL in a real headless browser, reads the title, description, the colours actually rendered on the page and the fonts actually resolved — an honest brand genome, not a guess from your product's name. Then: a hero image (1536x1024, OG-ready), a three-post launch thread written for people who can smell marketing, and a brand-genome sheet.",
+        "YOU GET: Occestra opens your URL in a real headless browser and reads what is ACTUALLY there — the title, the meta, the colours the page really renders, the fonts it really resolves. That evidence becomes a versioned Brand Genome (positioning, audience, voice, three supportable messages, and the cliches this product must never use). Then the kit: a hero/OG image (1536x1024), a square mark concept that reads at 32px, two social announcement cards, a 6-8 post launch thread with every post inside the platform limit, a section-by-section landing page spec with the copy actually written, and a 90-second demo beat sheet (cold open, problem, live magic, trust beat, price, CTA).",
         "",
         "EXAMPLE: productName='Tidepool', url='https://tidepool.example', audience='solo founders' -> hero + thread + genome, with the site's real palette echoed in the art.",
         "",
-        "HONESTY: it uses only what is on your page and what you tell it. It invents no features, no metrics, no users, no funding. If your site cannot be reached, that is recorded as a coverage gap and the kit says it was built from the description alone.",
+        "HONESTY: it uses only what is on your page and what you tell it. It invents no features, no metrics, no users, no funding. If your site cannot be reached, that is recorded as a coverage gap and the kit says, in writing, that it was built from the description alone. The genome even shows which of your colours it adopted and which it rejected, and why.",
         "",
         "BUILDERS: if you are shipping something this week, this is the tool. The result is sealed on X Layer, so 'made by Occestra, graded, verifiable' is checkable by anyone.",
       ].join("\n"),
@@ -285,6 +285,11 @@ export function buildServer(ctx: ServerContext): McpServer {
         description: z.string().max(2000).optional().describe("What it does, in your words."),
         audience: z.string().max(400).optional().describe("Who it is for."),
         styleId: StyleId.optional(),
+        deliverables: z
+          .array(z.enum(["brand_kit", "brand_mark", "launch_thread", "landing_spec", "demo_script", "og_image", "carousel", "moodboard"]))
+          .min(1)
+          .optional()
+          .describe("What to produce. Defaults to the full kit: genome, hero, mark, 2 social cards, thread, landing spec, demo beat sheet."),
       },
     },
     async (input) => run(() => launchKit(ctx, input), (pack) => packResult(ctx, pack)),

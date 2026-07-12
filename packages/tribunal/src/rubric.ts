@@ -183,6 +183,8 @@ export const THRESHOLDS = {
     launch_thread: 2400,
     story_page: 6000,
     og_image: 120,
+    landing_spec: 9000,
+    demo_script: 4000,
   },
 } as const;
 

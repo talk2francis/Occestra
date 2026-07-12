@@ -71,7 +71,14 @@ const skip = (id: CheckId, hard: boolean, detail: string): CheckResult => ({
   evidence: [],
 });
 
-const IMAGE_KINDS = new Set(["keepsake_art", "moodboard", "og_image", "invitation", "carousel"]);
+const IMAGE_KINDS = new Set([
+  "keepsake_art",
+  "moodboard",
+  "og_image",
+  "invitation",
+  "carousel",
+  "brand_mark",
+]);
 
 function isImage(artifact: Artifact): boolean {
   return artifact.format === "png" || (artifact.format === "svg" && IMAGE_KINDS.has(artifact.kind));
@@ -400,7 +407,7 @@ const SURFACE_KINDS = new Set([
   "story_page",
   "keepsake_art",
   "moodboard",
-  "brand_kit",
+  "brand_mark",
 ]);
 
 export async function checkContrast(ctx: CheckContext): Promise<CheckResult> {

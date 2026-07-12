@@ -67,7 +67,10 @@ export const ArtifactKindSchema = z.enum([
   "story_page",
   "carousel",
   "brand_kit",
+  "brand_mark",
   "launch_thread",
+  "landing_spec",
+  "demo_script",
   "og_image",
   "critique_report",
 ]);
@@ -87,7 +90,10 @@ export const CELEBRATE_KINDS = [
 export const REMEMBER_KINDS = ["keepsake_art", "story_page", "carousel", "moodboard"] as const;
 export const LAUNCH_KINDS = [
   "brand_kit",
+  "brand_mark",
   "launch_thread",
+  "landing_spec",
+  "demo_script",
   "og_image",
   "moodboard",
   "carousel",
@@ -97,6 +103,7 @@ export const CelebrateKindSchema = z.enum(CELEBRATE_KINDS);
 export type CelebrateKind = z.infer<typeof CelebrateKindSchema>;
 export const RememberKindSchema = z.enum(REMEMBER_KINDS);
 export const LaunchKindSchema = z.enum(LAUNCH_KINDS);
+export type LaunchKind = z.infer<typeof LaunchKindSchema>;
 
 export const ArtifactFormatSchema = z.enum(["json", "md", "png", "svg", "html"]);
 export type ArtifactFormat = z.infer<typeof ArtifactFormatSchema>;

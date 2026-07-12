@@ -714,6 +714,11 @@ export async function runCelebrate(
 
   const keepsakeId = newKeepsakeId(deps.clock.now());
 
+  /** Artifact id -> how to remake it from a repair brief. */
+  const regenerators = new Map<string, (brief: string, previous: Artifact) => Promise<Artifact>>();
+  const repairSuffix = (brief: string): string =>
+    `\n\nTHE TRIBUNAL REJECTED YOUR PREVIOUS ATTEMPT. Fix exactly this, then produce it again:\n${brief}`;
+
   if (wanted.has("invitation")) {
     const size = "1024x1536";
     try {
@@ -726,21 +731,33 @@ export async function runCelebrate(
           ].join("\n")
         : "";
 
+      const inviteSubject = [
+        styleSystem,
+        "",
+        "SUBJECT:",
+        `An invitation artwork for: ${contract.occasion}, in ${contract.city}.`,
+        `The feeling: ${contract.vibe}.`,
+        "No text, no lettering, no numerals anywhere in the image — the type is set separately.",
+      ].join("\n");
+
       const generated = await deps.image.generate({
-        prompt: [
-          styleSystem,
-          "",
-          "SUBJECT:",
-          `An invitation artwork for: ${contract.occasion}, in ${contract.city}.`,
-          `The feeling: ${contract.vibe}.`,
-          "No text, no lettering, no numerals anywhere in the image — the type is set separately.",
-        ].join("\n"),
+        prompt: inviteSubject,
         ...(style ? { negative: style.negativePrompt } : {}),
         size,
       });
 
       const uri = `invites/${keepsakeId}.png`;
       await deps.storage.put(uri, Buffer.from(generated.pngBase64, "base64"), "image/png");
+
+      regenerators.set("invitation", async (brief, previous) => {
+        const redone = await deps.image.generate({
+          prompt: inviteSubject + repairSuffix(brief),
+          ...(style ? { negative: style.negativePrompt } : {}),
+          size,
+        });
+        await deps.storage.put(uri, Buffer.from(redone.pngBase64, "base64"), "image/png");
+        return { ...previous };
+      });
 
       artifacts.push(
         artifactOf({
@@ -904,10 +921,15 @@ export async function runCelebrate(
       continue;
     }
 
+    // Hand the Tribunal a way to ACT on its own repair brief. Without this the loop is
+    // inert: it grades, fails, writes a brief, and ships the artifact unrepaired anyway.
+    const regenerate = regenerators.get(artifact.id);
+
     const result = await deps.grader.grade({
       artifact,
       contract,
       ...(contract.styleId ? { styleId: contract.styleId } : {}),
+      ...(regenerate ? { regenerate } : {}),
     });
 
     graded.push(result.artifact);

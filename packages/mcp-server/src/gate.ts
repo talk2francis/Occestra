@@ -312,6 +312,9 @@ export class OkxGate implements PaymentGate {
 
     const settlement = await this.settle(authorization, signature as Hex);
     if (!settlement.ok) {
+      // No money moved, so the buyer's authorization is still good. Give the nonce back or
+      // they would have to re-sign a payment we merely failed to collect.
+      this.config.store.releaseNonce(authorization.nonce);
       return { ok: false, status: 400, reason: `settlement failed: ${settlement.reason}` };
     }
 

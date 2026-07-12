@@ -249,6 +249,18 @@ export class Store {
     }
   }
 
+  /**
+   * Give a nonce back.
+   *
+   * We claim the nonce BEFORE settling (so two concurrent requests cannot both spend it),
+   * but if the settlement then reverts — insufficient balance, a bad RPC minute — no money
+   * moved, and the buyer's signed authorization is still perfectly good. Burning it would
+   * force them to re-sign for a payment they already authorised and we simply failed to take.
+   */
+  releaseNonce(nonce: string): void {
+    this.db.prepare("DELETE FROM payment_nonces WHERE nonce = ?").run(nonce.toLowerCase());
+  }
+
   /* ------------------------------------------------------------------ seals */
 
   queueSeal(leaf: string, keepsakeId: string): void {

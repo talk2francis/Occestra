@@ -442,6 +442,20 @@ describe("payment gate", () => {
     expect((expired as { reason: string }).reason).toContain("validity window");
   });
 
+  it("gives the nonce back when settlement fails — no money moved, so the authorization stands", async () => {
+    const store = makeCtx().store;
+    const nonce = keccak256(toBytes("released"));
+
+    expect(store.claimNonce(nonce, "0xabc", "oce_critique")).toBe(true);
+    expect(store.claimNonce(nonce, "0xabc", "oce_critique")).toBe(false); // spent
+
+    store.releaseNonce(nonce);
+
+    // The buyer signed a good authorization; we simply failed to collect it. They must be
+    // able to present it again rather than re-sign a payment they already made.
+    expect(store.claimNonce(nonce, "0xabc", "oce_critique")).toBe(true);
+  });
+
   it("never gates the free tool, even in deny mode", async () => {
     const store = makeCtx().store;
     const gate = new OkxGate({ store, treasury: TREASURY, chainId: 196 });
