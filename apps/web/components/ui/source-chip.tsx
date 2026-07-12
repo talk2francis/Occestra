@@ -32,7 +32,7 @@ export function SourceChip({
       {source}
       <span
         role="tooltip"
-        className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 rounded-md bg-ink px-2 py-1 font-mono text-[0.62rem] whitespace-nowrap text-ground opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+        className="pointer-events-none absolute -top-8 left-0 z-10 rounded-md bg-ink px-2 py-1 font-mono text-[0.62rem] whitespace-nowrap text-ground opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
       >
         retrieved {pretty}
       </span>

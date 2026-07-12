@@ -49,8 +49,18 @@ for (const route of ROUTES) {
       const res = await page.goto(url, { waitUntil: "networkidle", timeout: 45_000 });
       if (!res || res.status() >= 400) problems.push(`HTTP ${res ? res.status() : "no response"}`);
 
-      // Let entrance animations and lazy content settle before measuring.
-      await page.waitForTimeout(1200);
+      // Scroll through the whole page so in-view animations fire, then return
+      // to the top and let everything settle before measuring.
+      await page.evaluate(async () => {
+        const step = window.innerHeight * 0.7;
+        for (let y = 0; y < document.body.scrollHeight; y += step) {
+          // instant, or the page's smooth scroll-behavior lags behind the loop
+          window.scrollTo({ top: y, behavior: "instant" });
+          await new Promise((r) => setTimeout(r, 180));
+        }
+        window.scrollTo({ top: 0, behavior: "instant" });
+      });
+      await page.waitForTimeout(1600);
 
       const checks = await page.evaluate(() => {
         const doc = document.scrollingElement ?? document.documentElement;
@@ -62,8 +72,10 @@ for (const route of ROUTES) {
           for (const el of document.querySelectorAll("body *")) {
             const r = el.getBoundingClientRect();
             if (r.right > window.innerWidth + 1 || r.left < -1) {
+              const cls = String(el.className).split(" ").slice(0, 3).join(".");
+              const section = el.closest("section[id], footer, header, main > *");
               offenders.push(
-                `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}.${String(el.className).split(" ")[0] ?? ""} right=${Math.round(r.right)}`,
+                `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}${cls ? "." + cls : ""} in <${section?.tagName.toLowerCase()}${section?.id ? "#" + section.id : ""}> right=${Math.round(r.right)} w=${Math.round(r.width)}`,
               );
               if (offenders.length >= 5) break;
             }

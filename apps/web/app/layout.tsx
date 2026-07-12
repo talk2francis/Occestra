@@ -7,7 +7,7 @@ import "./globals.css";
 const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-fraunces",
-  axes: ["opsz", "SOFT", "WONK"],
+  axes: ["opsz"],
   display: "swap",
 });
 
@@ -41,14 +41,14 @@ export const metadata: Metadata = {
     title: "Occestra — Every moment, made monumental.",
     description:
       "Finished, grounded, quality-graded occasion work. Graded by a published standard, repaired until it passes, sealed on X Layer.",
-    images: [{ url: "/og.png", width: 1536, height: 1024, alt: "Occestra — the Occasion Studio" }],
+    images: [{ url: "/og.jpg", width: 1200, height: 800, alt: "Occestra — the Occasion Studio" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Occestra — Every moment, made monumental.",
     description:
       "Finished, grounded, quality-graded occasion work with on-chain provenance on X Layer.",
-    images: ["/og.png"],
+    images: ["/og.jpg"],
   },
 };
 
