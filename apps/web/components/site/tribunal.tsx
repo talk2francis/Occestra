@@ -35,7 +35,7 @@ export function Tribunal() {
           <Reveal>
             <div className="flex h-full flex-col rounded-2xl border border-fail/25 bg-ground p-6 sm:p-7">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-kicker text-ink/45">first draft · {TRIBUNAL_CASE.artifact}</p>
+                <p className="text-kicker text-ink/60">first draft · {TRIBUNAL_CASE.artifact}</p>
                 <GradeChip verdict="fail">fail</GradeChip>
               </div>
               <blockquote className="mt-5 space-y-3 border-l-2 border-fail/30 pl-4 font-serif text-[1.02rem] leading-relaxed text-ink/75 italic">
@@ -69,7 +69,7 @@ export function Tribunal() {
           <Reveal delay={0.12}>
             <div className="flex h-full flex-col rounded-2xl border border-repair/30 bg-ground p-6 sm:p-7">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-kicker text-ink/45">shipped · after the repair loop</p>
+                <p className="text-kicker text-ink/60">shipped · after the repair loop</p>
                 <GradeChip verdict="repair">repaired ×{after.repairs}</GradeChip>
               </div>
               <blockquote className="mt-5 space-y-3 border-l-2 border-pass/40 pl-4 font-serif text-[1.02rem] leading-relaxed text-ink/85 italic">
@@ -103,7 +103,7 @@ export function Tribunal() {
         </div>
 
         <Reveal delay={0.1}>
-          <p className="mt-10 text-[0.92rem] text-ink/55">
+          <p className="mt-10 text-[0.92rem] text-ink/65">
             The rubric is public and versioned — published from the same code that runs it, so what
             you read is what grades you.{" "}
             <a

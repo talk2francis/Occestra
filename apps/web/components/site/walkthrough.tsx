@@ -40,20 +40,20 @@ const AT = {
   sealDone: 22.5,
 } as const;
 
+/**
+ * A coarse clock: 4 ticks/second, not one per frame. Re-rendering this
+ * component 60x/s cost 3+ seconds of main-thread time in Lighthouse; nothing
+ * in the scene changes faster than a quarter second anyway.
+ */
 function useClock(active: boolean) {
   const [t, setT] = useState(0);
-  const start = useRef<number | null>(null);
   useEffect(() => {
     if (!active) return;
-    let raf = 0;
-    const tick = (now: number) => {
-      if (start.current === null) start.current = now;
-      const elapsed = ((now - start.current) / 1000) % DURATION;
-      setT(elapsed);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const started = performance.now();
+    const id = window.setInterval(() => {
+      setT(((performance.now() - started) / 1000) % DURATION);
+    }, 250);
+    return () => window.clearInterval(id);
   }, [active]);
   return t;
 }
@@ -95,7 +95,7 @@ export function Walkthrough() {
         <div className="flex items-center justify-between gap-3 border-b border-ink/10 bg-panel/80 px-4 py-2.5 sm:px-5">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="text-kicker text-amethyst">Celebrate studio</span>
-            <span className="text-data hidden truncate text-ink/45 sm:inline">{CELEBRATE.id}</span>
+            <span className="text-data hidden truncate text-ink/60 sm:inline">{CELEBRATE.id}</span>
           </div>
           <div className="flex items-center gap-2">
             {sealed ? (
@@ -119,7 +119,10 @@ export function Walkthrough() {
         {/* progress hairline */}
         {!reduced && (
           <div className="h-px bg-ink/8">
-            <div className="h-px bg-amethyst/70" style={{ width: `${(now / DURATION) * 100}%` }} />
+            <div
+              className="h-px bg-amethyst/70 transition-[width] duration-300 ease-linear"
+              style={{ width: `${(now / DURATION) * 100}%` }}
+            />
           </div>
         )}
 
@@ -136,7 +139,7 @@ export function Walkthrough() {
                       active ? "bg-lilac ring-3 ring-lilac/40" : done ? "bg-ink/70" : "bg-ink/15"
                     }`}
                   />
-                  <span className={`transition-colors duration-300 ${active ? "font-medium text-plum" : done ? "text-ink/75" : "text-ink/35"}`}>
+                  <span className={`transition-colors duration-300 ${active ? "font-medium text-plum" : done ? "text-ink/80" : "text-ink/65"}`}>
                     {role.name}
                   </span>
                 </li>
@@ -163,7 +166,7 @@ export function Walkthrough() {
                     className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-panel/70 px-2.5 py-1 text-[0.75rem] text-ink/80"
                   >
                     {venue.name}
-                    <span className="text-data text-ink/40">osm</span>
+                    <span className="text-data text-ink/60">osm</span>
                   </motion.span>
                 ))}
               </AnimatePresence>
@@ -182,10 +185,10 @@ export function Walkthrough() {
               <AnimatePresence>
                 {now >= AT.schedule && (
                   <motion.div key="schedule" {...rise} className="rounded-xl border border-ink/10 bg-panel/60 p-3">
-                    <p className="text-kicker mb-2 text-[0.6rem] text-ink/45">Schedule</p>
+                    <p className="text-kicker mb-2 text-[0.6rem] text-ink/60">Schedule</p>
                     {CELEBRATE.schedule.map((item) => (
                       <p key={item.time} className="flex gap-2 text-[0.78rem] leading-6 text-ink/80">
-                        <span className="text-data pt-0.5 text-ink/45">{item.time}</span>
+                        <span className="text-data pt-0.5 text-ink/60">{item.time}</span>
                         {item.title}
                       </p>
                     ))}
@@ -193,11 +196,11 @@ export function Walkthrough() {
                 )}
                 {now >= AT.budget && (
                   <motion.div key="budget" {...rise} className="rounded-xl border border-ink/10 bg-panel/60 p-3">
-                    <p className="text-kicker mb-2 text-[0.6rem] text-ink/45">Budget — {CELEBRATE.budget.total} {CELEBRATE.budget.currency}</p>
+                    <p className="text-kicker mb-2 text-[0.6rem] text-ink/60">Budget — {CELEBRATE.budget.total} {CELEBRATE.budget.currency}</p>
                     {CELEBRATE.budget.items.map((item) => (
                       <p key={item.label} className="flex justify-between text-[0.78rem] leading-6 text-ink/80">
                         {item.label}
-                        <span className="text-data text-ink/55">{item.amount}</span>
+                        <span className="text-data text-ink/65">{item.amount}</span>
                       </p>
                     ))}
                   </motion.div>
@@ -217,7 +220,7 @@ export function Walkthrough() {
                   />
                   <div>
                     <p className="text-[0.82rem] font-medium text-ink/85">Guest guide — shareable page</p>
-                    <p className="text-[0.72rem] text-ink/50">invite suite · toast · contingency plan</p>
+                    <p className="text-[0.72rem] text-ink/60">invite suite · toast · contingency plan</p>
                   </div>
                 </motion.div>
               )}
@@ -248,7 +251,7 @@ export function Walkthrough() {
                 </motion.div>
               )}
               {sealed && (
-                <motion.p key="anchor" {...rise} className="text-data mt-4 max-w-[24rem] break-all text-ink/45">
+                <motion.p key="anchor" {...rise} className="text-data mt-4 max-w-[24rem] break-all text-ink/60">
                   anchored on X Layer · {CELEBRATE.seal.anchorTx.slice(0, 26)}… · {CELEBRATE.seal.anchoredAt}
                 </motion.p>
               )}
@@ -257,7 +260,7 @@ export function Walkthrough() {
         </div>
       </div>
 
-      <p className="text-data mt-3 text-ink/40">
+      <p className="text-data mt-3 text-ink/60">
         A replay of sealed pack {CELEBRATE.id} — real venues, real forecast, real grades, real anchor
         transaction. Product UI, not a screen recording.
       </p>

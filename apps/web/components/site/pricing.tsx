@@ -23,12 +23,12 @@ export function Pricing() {
                 className="group grid gap-1 py-4 transition-colors hover:bg-ground/70 sm:grid-cols-[15rem_1fr_5.5rem] sm:items-baseline sm:gap-6 sm:px-3"
               >
                 <span className="text-data text-[0.82rem] text-ink/85">{tool.name}</span>
-                <span className="text-[0.9rem] text-ink/55">{tool.gives}</span>
+                <span className="text-[0.9rem] text-ink/65">{tool.gives}</span>
                 <span className="text-data text-left text-ink/85 sm:text-right">
                   {tool.price === 0 ? (
                     <span className="font-medium text-pass">free</span>
                   ) : (
-                    <>{tool.price.toFixed(2)} <span className="text-ink/40">USDT</span></>
+                    <>{tool.price.toFixed(2)} <span className="text-ink/60">USDT</span></>
                   )}
                 </span>
               </li>
@@ -37,7 +37,7 @@ export function Pricing() {
         </Reveal>
 
         <Reveal delay={0.12}>
-          <p className="mt-8 max-w-2xl text-[0.92rem] leading-relaxed text-ink/55">
+          <p className="mt-8 max-w-2xl text-[0.92rem] leading-relaxed text-ink/65">
             The 0.01 critique is the honest wedge: run <em>your</em> agent&apos;s output through
             Occestra&apos;s Tribunal and get the graded report and repair brief back. Cheaper than
             finding out from your users.

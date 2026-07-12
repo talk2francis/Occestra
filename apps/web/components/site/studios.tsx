@@ -34,7 +34,7 @@ export function Studios() {
               sizes="(min-width: 1024px) 24rem, 90vw"
               className="deckle w-full shadow-keepsake"
             />
-            <figcaption className="text-data mt-3 text-center text-ink/40">
+            <figcaption className="text-data mt-3 text-center text-ink/60">
               real artifact · guest_guide from sealed pack {CELEBRATE.id.slice(0, 12)}… · graded pass
             </figcaption>
           </figure>
@@ -57,7 +57,7 @@ export function Studios() {
                 retrievedAt={CELEBRATE.forecastSource.retrievedAt}
               />
             </div>
-            <p className="text-data mt-4 max-w-md text-ink/45">“{CELEBRATE.uncertainty}”</p>
+            <p className="text-data mt-4 max-w-md text-ink/60">“{CELEBRATE.uncertainty}”</p>
           </div>
         </Reveal>
 
@@ -87,7 +87,7 @@ export function Studios() {
               sizes="(min-width: 1024px) 24rem, 90vw"
               className="w-full rotate-1 rounded-sm border-8 border-ground shadow-keepsake"
             />
-            <figcaption className="text-data mt-3 text-center text-ink/40">
+            <figcaption className="text-data mt-3 text-center text-ink/60">
               real artifact · sunprint style · repaired ×1, then pass
             </figcaption>
           </figure>
@@ -105,7 +105,7 @@ export function Studios() {
                 sizes="(min-width: 1024px) 38rem, 92vw"
                 className="deckle w-full shadow-keepsake"
               />
-              <figcaption className="text-data mt-3 text-ink/40">
+              <figcaption className="text-data mt-3 text-ink/60">
                 real artifact · og_image · palette drift 10.8 from house style — pass
               </figcaption>
             </figure>

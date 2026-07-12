@@ -45,7 +45,7 @@ export function Seal() {
               Read the raw manifest
             </a>
           </div>
-          <p className="text-data mt-6 text-ink/45">
+          <p className="text-data mt-6 text-ink/60">
             KeepsakeRegistry · {REGISTRY} · X Layer mainnet (196)
           </p>
         </Reveal>
@@ -58,26 +58,26 @@ export function Seal() {
                 <div>
                   <p className="text-kicker text-amethyst">Occasion Pack · Celebrate</p>
                   <p className="text-subhead mt-3">A farewell dinner for a friend moving abroad</p>
-                  <p className="mt-2 text-[0.85rem] text-ink/55">Lisbon · sealed {seal.createdAt.slice(0, 10)}</p>
+                  <p className="mt-2 text-[0.85rem] text-ink/65">Lisbon · sealed {seal.createdAt.slice(0, 10)}</p>
                 </div>
                 <SealMark size={72} className="shrink-0 text-amethyst/90" />
               </div>
 
               <dl className="text-data mt-8 space-y-3 border-t border-ink/10 pt-6 text-ink/60">
                 <div>
-                  <dt className="text-ink/40">keepsake id</dt>
+                  <dt className="text-ink/60">keepsake id</dt>
                   <dd className="mt-0.5 break-all">{CELEBRATE.id}</dd>
                 </div>
                 <div>
-                  <dt className="text-ink/40">manifest hash · keccak256</dt>
+                  <dt className="text-ink/60">manifest hash · keccak256</dt>
                   <dd className="mt-0.5 break-all">{seal.manifestHash}</dd>
                 </div>
                 <div>
-                  <dt className="text-ink/40">signed by · EIP-712</dt>
+                  <dt className="text-ink/60">signed by · EIP-712</dt>
                   <dd className="mt-0.5 break-all">{seal.signer}</dd>
                 </div>
                 <div>
-                  <dt className="text-ink/40">anchored</dt>
+                  <dt className="text-ink/60">anchored</dt>
                   <dd className="mt-0.5">
                     <a
                       href={`https://www.oklink.com/x-layer/tx/${seal.anchorTx}`}
@@ -92,7 +92,7 @@ export function Seal() {
                 </div>
               </dl>
             </div>
-            <p className="text-data mt-4 text-center text-ink/40">
+            <p className="text-data mt-4 text-center text-ink/60">
               a real seal — follow the transaction; the chain agrees
             </p>
           </div>

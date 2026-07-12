@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function StudioPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-24">
-      <Link href="/" className="text-[0.85rem] text-ink/50 transition-colors hover:text-ink">
+      <Link href="/" className="text-[0.85rem] text-ink/60 transition-colors hover:text-ink">
         ← Occestra
       </Link>
       <div className="mt-8">
@@ -41,14 +41,14 @@ export default function StudioPage() {
         {TOOLS.map((tool) => (
           <li key={tool.name} className="flex items-baseline justify-between gap-6 py-3">
             <span className="text-data text-[0.8rem] text-ink/85">{tool.name}</span>
-            <span className="text-data text-ink/55">
+            <span className="text-data text-ink/65">
               {tool.price === 0 ? "free" : `${tool.price.toFixed(2)} USDT`}
             </span>
           </li>
         ))}
       </ul>
 
-      <p className="mt-8 text-[0.9rem] leading-relaxed text-ink/55">
+      <p className="mt-8 text-[0.9rem] leading-relaxed text-ink/65">
         Endpoint: <span className="text-data">{API_BASE}/mcp</span> · manifest at{" "}
         <a href={`${API_BASE}/.well-known/occestra.json`} className="text-amethyst underline decoration-amethyst/30 underline-offset-4">
           .well-known/occestra.json

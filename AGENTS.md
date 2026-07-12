@@ -131,8 +131,10 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
   deploy tx 0x9a29626b3f2749bac9c2a882a4c8f763ccb8fc0e039c00fbada6aa697cb19cc2
 - KeepsakeRegistry TESTNET (1952): 0xb5cc81bdf4e069ecfdd06ee5883d8f254d68404f (3 leaves sealed + verified)
 - Sealer / treasury: 0x0d63f9EeB86813230B72017444cea16Cd4A453F2
-- Endpoints: https://occestra.xyz (holding page), https://api.occestra.xyz/mcp (ASP, live HTTPS)
-- systemd occestra-mcp.service (PORT 8412), env at /etc/occestra/env (chmod 600), Caddy auto-HTTPS
+- Endpoints: https://occestra.xyz (apps/web landing, Phase 10), https://api.occestra.xyz/mcp (ASP, live HTTPS)
+- systemd occestra-mcp.service (PORT 8412) + occestra-web.service (Next standalone, PORT 3010,
+  deploy via apps/web/scripts/deploy.sh), env at /etc/occestra/env (chmod 600), Caddy auto-HTTPS
+- Landing Lighthouse (mobile, production 2026-07-13): perf 89 / a11y 100 / bp 96 / seo 100, LCP 2.5s, CLS 0
 - OKX.AI Agent ID: #5213 (ASP "Occestra"), registered on X Layer 196
   register tx 0xe80a05287f5902e104c1c5525e8d651eb518ec0eaf598378ad6af186d3a819af
   listing submitted 2026-07-12 — OKX AI quality review "suggested pass", human review <=24h
@@ -146,6 +148,12 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
+
+- 2026-07-13 (Phase 10) — apps/web SHIPPED and LIVE at https://occestra.xyz. systemd occestra-web.service runs the Next standalone server on PORT 3010 (:3000 belongs to Archon on this VPS); Caddy apex vhost switched from the static holding page (root /var/www/occestra) to reverse_proxy 127.0.0.1:3010. Deploy = `bash apps/web/scripts/deploy.sh` (next build, copy .next/static + public into the standalone tree, restart service). The phase prompt's xyndicate.xyz/:3000/xyndicate-web/XQS names were mapped per the rename rules. The prompt's /mnt/skills/public/frontend-design/SKILL.md does not exist on this machine — tokens and rules in this file were the design source of truth.
+- 2026-07-13 (Phase 10) — PERFORMANCE, paid for: (1) the hero walkthrough's clock used requestAnimationFrame + setState, re-rendering the component 60x/s — Lighthouse TBT 3,360ms, perf 58. A 250ms setInterval tick plus a CSS width transition on the progress hairline gives the identical visual for TBT 350ms, perf 89. Never drive a React re-render per frame for a scene that changes 4x/second. (2) Fading the hero subline in from opacity 0 pushed LCP to 3.7s — the LCP element doesn't "paint" until it's visible. Above-the-fold text entrances animate transform ONLY.
+- 2026-07-13 (Phase 10) — AUDIT gotcha: the site sets scroll-behavior:smooth, so scripts/audit.mjs's scroll-through loop (which fires whileInView animations before screenshotting) silently lagged behind and sections below ~2500px screenshotted invisible. Audits must scroll with behavior:'instant'.
+- 2026-07-13 (Phase 10) — SHARED VPS: never `pkill -f next` / `pkill -f next-server` here — it killed Archon's app on :3000 (PM2 auto-restarted it). Find the pid by port (`ss -ltnp | grep :3010`) and kill that.
+- 2026-07-13 (Phase 10) — REAL-ARTIFACTS discipline for the landing: everything visual/quoted traces to a pack. Walkthrough + celebrate figure + seal card = sealed pack oce_01kxbz33bb4grnd1xh0gev (guest-guide image rendered from that pack's own guest_guide HTML in the store); Tribunal before/after = dogfood run oce_01kxc0hacey7855y7gfe2q vs sealed oce_01kxc1fs5t73wf0ncs18he (repaired x2 and honestly still marked fail); REMEMBER keepsake = fresh dev-mode run oce_01kxc77b8etpbjrw05xsqt (our own brief, real providers, repaired x1 then pass; saved in artifacts-out/remember-pack.json). All facts on the page live in apps/web/lib/real.ts with pack ids in the header comment.
 
 - 2026-07-12 (Phase 9) — EXIF/GPS stripping is done by RE-ENCODING through sharp, which writes no metadata unless withMetadata() is called. .rotate() runs first so the EXIF orientation is honoured before the EXIF that declared it is discarded. The original bytes are never written to disk — there is no moment at which a file containing someone's home coordinates exists in our storage. Verified live over public HTTPS: a JPEG carrying GPS + camera model + owner name came back as a PNG with all three gone and the image intact.
 - 2026-07-12 (Phase 9) — "Delete my project" needed a pack_uploads link table. Without it deletePack removed the pack and its artifacts and QUIETLY LEFT THE PERSON'S PHOTOGRAPHS ON DISK, because a pack does not otherwise record which uploads it was built from. Verified live: DELETE /projects/:id removed the photo from disk, the signed URL 404s, the keepsake 404s.

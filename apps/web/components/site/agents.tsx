@@ -46,11 +46,11 @@ export function Agents() {
           </div>
           <dl className="text-data mt-8 space-y-3 text-ink/60">
             <div>
-              <dt className="text-ink/40">endpoint</dt>
+              <dt className="text-ink/60">endpoint</dt>
               <dd className="mt-0.5">{API_BASE}/mcp</dd>
             </div>
             <div>
-              <dt className="text-ink/40">manifest</dt>
+              <dt className="text-ink/60">manifest</dt>
               <dd className="mt-0.5">
                 <a
                   href={`${API_BASE}/.well-known/occestra.json`}
@@ -63,7 +63,7 @@ export function Agents() {
               </dd>
             </div>
             <div>
-              <dt className="text-ink/40">published standard</dt>
+              <dt className="text-ink/60">published standard</dt>
               <dd className="mt-0.5">
                 <a
                   href={`${API_BASE}/standard`}
@@ -81,7 +81,7 @@ export function Agents() {
         <Reveal delay={0.12} className="min-w-0">
           <div className="min-w-0 overflow-hidden rounded-2xl border border-ink/70 bg-ink shadow-keepsake">
             <div className="flex items-center justify-between border-b border-ground/10 px-4 py-2.5">
-              <p className="text-data text-ground/50">one paid call, end to end</p>
+              <p className="text-data text-ground/70">one paid call, end to end</p>
               <button
                 onClick={copy}
                 className="rounded-full border border-ground/20 px-3 py-1 text-[0.72rem] font-medium text-ground/70 transition-colors hover:border-ground/50 hover:text-ground"

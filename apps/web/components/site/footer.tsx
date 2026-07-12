@@ -10,7 +10,7 @@ export function Footer() {
             <p className="font-serif text-2xl font-medium tracking-tight" style={{ fontVariationSettings: "'opsz' 40" }}>
               Occestra
             </p>
-            <p className="mt-3 text-[0.9rem] leading-relaxed text-ink/55">
+            <p className="mt-3 text-[0.9rem] leading-relaxed text-ink/65">
               The Occasion Studio. Every moment, made monumental — and every artifact graded,
               repaired, and sealed with provenance you can check yourself.
             </p>
@@ -18,13 +18,13 @@ export function Footer() {
 
           <nav className="grid grid-cols-2 gap-x-14 gap-y-2 text-[0.88rem] sm:grid-cols-3">
             <div className="space-y-2">
-              <p className="text-kicker mb-3 text-ink/40">Product</p>
+              <p className="text-kicker mb-3 text-ink/60">Product</p>
               <a href="#studios" className="block text-ink/60 hover:text-ink">Studios</a>
               <a href="#pricing" className="block text-ink/60 hover:text-ink">Pricing</a>
               <Link href="/studio" className="block text-ink/60 hover:text-ink">Open the Studio</Link>
             </div>
             <div className="space-y-2">
-              <p className="text-kicker mb-3 text-ink/40">Trust</p>
+              <p className="text-kicker mb-3 text-ink/60">Trust</p>
               <a href={`${API_BASE}/standard`} className="block text-ink/60 hover:text-ink">
                 Quality standard (OQS v{OQS_VERSION})
               </a>
@@ -34,7 +34,7 @@ export function Footer() {
               </a>
             </div>
             <div className="space-y-2">
-              <p className="text-kicker mb-3 text-ink/40">Agents</p>
+              <p className="text-kicker mb-3 text-ink/60">Agents</p>
               <a href="#agents" className="block text-ink/60 hover:text-ink">Endpoint &amp; tools</a>
               <a href={`${API_BASE}/.well-known/occestra.json`} className="block text-ink/60 hover:text-ink">
                 Manifest
@@ -52,10 +52,10 @@ export function Footer() {
         </div>
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-ink/8 pt-6">
-          <p className="text-data text-ink/40">
+          <p className="text-data text-ink/60">
             © 2026 Occestra · X Layer mainnet · {REGISTRY.slice(0, 10)}…{REGISTRY.slice(-4)}
           </p>
-          <p className="text-data max-w-md text-ink/40">
+          <p className="text-data max-w-md text-ink/60">
             Everything shown on this page is real, graded output. No fabricated volume, no fake
             reviews — coverage gaps are recorded, not hidden.
           </p>

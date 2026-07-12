@@ -35,8 +35,16 @@ function Prism() {
 
 export function Hero() {
   const reduced = useReducedMotion();
+  // Transform-only entrance for the text: fading the headline/subline from 0
+  // pushes the LCP paint out by a full second. The rise still reads as an
+  // entrance; the words are just never invisible.
   const enter = (delay: number) => ({
-    initial: { opacity: 0, y: reduced ? 0 : 28 },
+    initial: { y: reduced ? 0 : 26 },
+    animate: { y: 0 },
+    transition: { duration: 0.85, ease: EASE, delay },
+  });
+  const fade = (delay: number) => ({
+    initial: { opacity: 0, y: reduced ? 0 : 26 },
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.85, ease: EASE, delay },
   });
@@ -71,12 +79,12 @@ export function Hero() {
               </a>
             </motion.div>
           </div>
-          <motion.div {...enter(0.3)} className="hidden shrink-0 pb-4 md:block" aria-hidden>
+          <motion.div {...fade(0.3)} className="hidden shrink-0 pb-4 md:block" aria-hidden>
             <Prism />
           </motion.div>
         </div>
 
-        <motion.div {...enter(0.42)} className="mt-16 sm:mt-20 md:ml-[8%] lg:ml-[14%]">
+        <motion.div {...fade(0.42)} className="mt-16 sm:mt-20 md:ml-[8%] lg:ml-[14%]">
           <Walkthrough />
         </motion.div>
       </div>

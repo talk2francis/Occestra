@@ -38,7 +38,7 @@ export function Problem() {
             <Reveal key={item.tool} delay={i * 0.06} className={i % 3 === 1 ? "translate-y-4" : ""}>
               <div className={`rounded-lg border border-ink/10 bg-ground p-4 shadow-lift ${item.rotate}`}>
                 <p className="text-[0.85rem] font-medium text-ink/80">{item.tool}</p>
-                <p className="mt-1 text-[0.78rem] text-ink/45">…leaves {item.leaves}</p>
+                <p className="mt-1 text-[0.78rem] text-ink/60">…leaves {item.leaves}</p>
               </div>
             </Reveal>
           ))}
