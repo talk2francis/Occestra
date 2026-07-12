@@ -148,6 +148,16 @@ export function buildApp(ctx: AppContext): Express {
 
   /* -------------------------------------------- internal Studio demo (SSE) */
 
+  app.get("/internal/demo/quota", (req, res) => {
+    if (!ctx.demoSecret || req.get("x-oce-demo-secret") !== ctx.demoSecret) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const cap = ctx.demoDailyCap ?? 8;
+    const used = ctx.store.demoRunsSince(Date.now() - 24 * 60 * 60 * 1000);
+    res.json({ used, cap, remaining: Math.max(0, cap - used) });
+  });
+
   // Real pipelines, real events, metered. Reached only via the Next server
   // with the shared secret — see demo.ts for the full contract.
   app.post("/internal/demo/run", (req, res) => {
