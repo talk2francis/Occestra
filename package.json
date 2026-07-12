@@ -2,7 +2,7 @@
   "name": "occestra",
   "version": "0.1.0",
   "private": true,
-  "description": "Occestra — the Occasion Studio. Every moment, made monumental.",
+  "description": "Occestra \u2014 the Occasion Studio. Every moment, made monumental.",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -18,7 +18,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "clean": "rm -rf packages/*/dist apps/*/dist apps/*/.next",
-    "check": "npm run typecheck && npm run build && npm run test"
+    "check": "npm run typecheck && npm run build && npm run test",
+    "pretest": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

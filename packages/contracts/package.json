@@ -1,0 +1,27 @@
+{
+  "name": "@occestra/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "KeepsakeRegistry.sol — compile, deploy, and a cross-language EVM proof.",
+  "scripts": {
+    "compile": "node script/compile.mjs",
+    "build": "node script/compile.mjs",
+    "test": "npm run compile && node --test test/registry.evm.test.mjs",
+    "deploy:testnet": "node script/deploy.mjs testnet",
+    "deploy:mainnet": "node script/deploy.mjs mainnet",
+    "typecheck": "node -e \"process.exit(0)\""
+  },
+  "dependencies": {
+    "@occestra/receipts": "*",
+    "@occestra/studio-core": "*",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@ethereumjs/common": "^4.4.0",
+    "@ethereumjs/evm": "^3.1.0",
+    "@ethereumjs/statemanager": "^2.4.0",
+    "@ethereumjs/util": "^9.1.0",
+    "solc": "^0.8.28"
+  }
+}
