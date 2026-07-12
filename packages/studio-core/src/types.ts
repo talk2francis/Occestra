@@ -100,11 +100,36 @@ export const LaunchKindSchema = z.enum(LAUNCH_KINDS);
 export const ArtifactFormatSchema = z.enum(["json", "md", "png", "svg", "html"]);
 export type ArtifactFormat = z.infer<typeof ArtifactFormatSchema>;
 
+/**
+ * What the artifact was ASKED to be — the Tribunal grades the rendered artifact against
+ * this, so it must be recorded at generation time, not inferred afterwards.
+ */
+export const ArtifactSpecSchema = z.object({
+  /** "WxH" in pixels, for image artifacts. */
+  size: z.string().regex(/^\d{2,5}x\d{2,5}$/).optional(),
+  /** Declared text-on-background pairs, so contrast is checkable without OCR. */
+  layers: z
+    .array(
+      z.object({
+        role: z.string().min(1),
+        fg: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        bg: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        /** Body copy is held to 4.5:1; large display type is exempt. */
+        body: z.boolean().default(true),
+      }),
+    )
+    .optional(),
+  /** Links the artifact asserts are live (launch kits). */
+  links: z.array(z.string().url()).optional(),
+});
+export type ArtifactSpec = z.infer<typeof ArtifactSpecSchema>;
+
 export const ArtifactSchema = z.object({
   id: z.string().min(1),
   kind: ArtifactKindSchema,
   title: z.string().min(1),
   format: ArtifactFormatSchema,
+  spec: ArtifactSpecSchema.optional(),
   /** Inline payload for text formats. Binary artifacts use `uri` instead. */
   data: z.string().optional(),
   /** Storage key (never a provider URL — see AGENTS.md gotcha 8). */
@@ -116,6 +141,57 @@ export const ArtifactSchema = z.object({
   version: z.literal(1),
 });
 export type Artifact = z.infer<typeof ArtifactSchema>;
+
+/* --------------------------------------------------- artifact JSON payloads */
+
+/**
+ * The JSON bodies the Tribunal can check arithmetically. A claim is "grounded" when it
+ * asserts something about the real world (a venue, an opening time, the weather) — those
+ * MUST carry a source, or SOURCE_MISSING fires. Interpretive prose is not a grounded claim.
+ */
+export const PlanClaimSchema = z.object({
+  text: z.string().min(1),
+  grounded: z.boolean().default(false),
+  source: SourceTagSchema.optional(),
+});
+export type PlanClaim = z.infer<typeof PlanClaimSchema>;
+
+export const PlanPayloadSchema = z.object({
+  date: z.string().min(4),
+  summary: z.string().min(1),
+  claims: z.array(PlanClaimSchema).default([]),
+  /** Explicitly stated unknowns. Honesty about coverage is part of the product. */
+  uncertainties: z.array(z.string()).default([]),
+});
+export type PlanPayload = z.infer<typeof PlanPayloadSchema>;
+
+export const ScheduleItemSchema = z.object({
+  title: z.string().min(1),
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+  venue: z
+    .object({
+      name: z.string().min(1),
+      lat: z.number().optional(),
+      lng: z.number().optional(),
+    })
+    .optional(),
+});
+export type ScheduleItem = z.infer<typeof ScheduleItemSchema>;
+
+export const SchedulePayloadSchema = z.object({
+  items: z.array(ScheduleItemSchema).min(1),
+});
+export type SchedulePayload = z.infer<typeof SchedulePayloadSchema>;
+
+export const BudgetPayloadSchema = z.object({
+  currency: z.string().default("USD"),
+  total: z.number().nonnegative(),
+  lineItems: z
+    .array(z.object({ label: z.string().min(1), amount: z.number() }))
+    .min(1),
+});
+export type BudgetPayload = z.infer<typeof BudgetPayloadSchema>;
 
 /* ---------------------------------------------------------- occasion contract */
 

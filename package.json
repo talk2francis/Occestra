@@ -28,6 +28,7 @@
   },
   "allowScripts": {
     "esbuild@0.28.1": true,
-    "esbuild@0.21.5": true
+    "esbuild@0.21.5": true,
+    "sharp@0.33.5": true
   }
 }

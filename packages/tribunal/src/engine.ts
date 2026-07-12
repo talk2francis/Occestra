@@ -1,0 +1,211 @@
+/**
+ * The Tribunal. Deterministic checks first, model critique second, repair loop third.
+ *
+ * Two invariants worth stating out loud, because everything downstream leans on them:
+ *  - The report ALWAYS ships, pass or fail. A failing artifact with an honest report is a
+ *    better product than a silent one.
+ *  - A dead critique provider degrades the verdict to deterministic-only and records a
+ *    coverage gap. It never throws, and it never aborts a pack.
+ */
+import type {
+  Artifact,
+  CritiqueAxis,
+  CritiquePort,
+  HouseStyle,
+  OccasionContract,
+} from "@occestra/studio-core";
+import { runChecks, sortFindings, type CheckDeps, type CheckResult } from "./checks.js";
+import { AXES, MAX_REPAIRS, OQS_VERSION, passes } from "./rubric.js";
+
+export interface TribunalReport {
+  oqsVersion: string;
+  deterministic: CheckResult[];
+  /** Undefined when the critique provider was unavailable — see notes + coverageGaps. */
+  axes?: Record<CritiqueAxis, number>;
+  issues: string[];
+  pass: boolean;
+  repairs: number;
+  notes: string[];
+  coverageGaps: string[];
+  /** Present only when the artifact still fails after the final pass. */
+  repairBrief?: string;
+}
+
+export interface TribunalDeps extends CheckDeps {
+  critique: CritiquePort;
+}
+
+export interface RunTribunalArgs {
+  artifact: Artifact;
+  contract: OccasionContract;
+  style?: HouseStyle;
+  deps: TribunalDeps;
+  /** Regenerate the artifact from a repair brief. Omit to grade without repairing. */
+  regenerate?: (repairBrief: string, previous: Artifact) => Promise<Artifact>;
+  maxRepairs?: number;
+}
+
+export interface TribunalOutcome {
+  /** The final artifact — repaired if repairs happened — with its report attached. */
+  artifact: Artifact;
+  report: TribunalReport;
+}
+
+interface Graded {
+  deterministic: CheckResult[];
+  axes?: Record<CritiqueAxis, number>;
+  issues: string[];
+  repairBrief?: string;
+  notes: string[];
+  coverageGaps: string[];
+  pass: boolean;
+}
+
+function hardFailures(results: CheckResult[]): CheckResult[] {
+  return results.filter((r) => !r.passed && r.hard);
+}
+
+function softFailures(results: CheckResult[]): CheckResult[] {
+  return results.filter((r) => !r.passed && !r.hard);
+}
+
+async function gradeOnce(args: {
+  artifact: Artifact;
+  contract: OccasionContract;
+  style?: HouseStyle;
+  deps: TribunalDeps;
+}): Promise<Graded> {
+  const { artifact, contract, style, deps } = args;
+  const notes: string[] = [];
+  const coverageGaps: string[] = [];
+
+  const checkCtx = {
+    artifact,
+    contract,
+    ...(style ? { style } : {}),
+    deps: deps satisfies CheckDeps,
+  };
+  const deterministic = await runChecks(checkCtx);
+
+  for (const skipped of deterministic.filter((r) => r.skipped)) {
+    coverageGaps.push(`${skipped.id}: ${skipped.detail}`);
+  }
+
+  let axes: Record<CritiqueAxis, number> | undefined;
+  const issues: string[] = [];
+  let repairBrief: string | undefined;
+
+  try {
+    const critique = await deps.critique.judge({
+      artifact,
+      contract,
+      ...(style ? { style } : {}),
+    } as Parameters<CritiquePort["judge"]>[0]);
+
+    axes = critique.axes;
+    issues.push(...critique.issues);
+    if (critique.repairBrief) repairBrief = critique.repairBrief;
+    notes.push(`Critique by ${critique.model}.`);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    notes.push(
+      "Critique provider unavailable — this verdict rests on the deterministic checks alone.",
+    );
+    coverageGaps.push(`CRITIQUE_UNAVAILABLE: ${reason}`);
+  }
+
+  // Deterministic failures are facts, so they belong in the issue list regardless of the critic.
+  for (const failure of [...hardFailures(deterministic), ...softFailures(deterministic)]) {
+    issues.push(`${failure.id}: ${failure.detail}`);
+  }
+
+  const pass = passes(axes, hardFailures(deterministic).length);
+
+  // Even a silent critic must hand the repair loop something actionable.
+  if (!pass && !repairBrief) {
+    repairBrief = buildRepairBrief(deterministic, axes);
+  }
+
+  return {
+    deterministic,
+    ...(axes ? { axes } : {}),
+    issues,
+    ...(repairBrief ? { repairBrief } : {}),
+    notes,
+    coverageGaps,
+    pass,
+  };
+}
+
+/** A concrete, actionable brief — never "try harder". */
+export function buildRepairBrief(
+  deterministic: CheckResult[],
+  axes?: Record<CritiqueAxis, number>,
+): string {
+  const lines: string[] = ["Fix the following, then regenerate:"];
+
+  for (const failure of sortFindings(deterministic).filter((r) => !r.passed)) {
+    const evidence = failure.evidence.length > 0 ? ` (${failure.evidence.join("; ")})` : "";
+    lines.push(`- [${failure.hard ? "MUST" : "SHOULD"}] ${failure.id}: ${failure.detail}${evidence}`);
+  }
+
+  if (axes) {
+    for (const axis of AXES) {
+      const score = axes[axis.id] ?? 0;
+      if (score < axis.threshold) {
+        lines.push(
+          `- [MUST] ${axis.title} scored ${score}/100 against a floor of ${axis.threshold}. ${axis.description}`,
+        );
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+export async function runTribunal(args: RunTribunalArgs): Promise<TribunalOutcome> {
+  const { contract, style, deps, regenerate } = args;
+  const maxRepairs = args.maxRepairs ?? MAX_REPAIRS;
+
+  let artifact = args.artifact;
+  let repairs = 0;
+  let graded = await gradeOnce({ artifact, contract, ...(style ? { style } : {}), deps });
+  const notes: string[] = [...graded.notes];
+  const coverageGaps: string[] = [...graded.coverageGaps];
+
+  while (!graded.pass && regenerate && repairs < maxRepairs) {
+    const brief = graded.repairBrief ?? buildRepairBrief(graded.deterministic, graded.axes);
+    try {
+      artifact = await regenerate(brief, artifact);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      notes.push("Repair pass could not be run; shipping the artifact as-is with its report.");
+      coverageGaps.push(`REPAIR_FAILED: ${reason}`);
+      break;
+    }
+    repairs += 1;
+    graded = await gradeOnce({ artifact, contract, ...(style ? { style } : {}), deps });
+    notes.push(`Repair pass ${repairs}: ${graded.pass ? "passed" : "still failing"}.`);
+    coverageGaps.push(...graded.coverageGaps);
+  }
+
+  if (!graded.pass && regenerate && repairs >= maxRepairs) {
+    notes.push(
+      `Repair limit reached (${maxRepairs}). Shipping with an honest failing report rather than looping.`,
+    );
+  }
+
+  const report: TribunalReport = {
+    oqsVersion: OQS_VERSION,
+    deterministic: graded.deterministic,
+    ...(graded.axes ? { axes: graded.axes } : {}),
+    issues: graded.issues,
+    pass: graded.pass,
+    repairs,
+    notes: [...new Set([...notes, ...graded.notes])],
+    coverageGaps: [...new Set(coverageGaps)],
+    ...(graded.pass ? {} : { repairBrief: graded.repairBrief ?? "" }),
+  };
+
+  return { artifact: { ...artifact, tribunal: report }, report };
+}
