@@ -1,0 +1,23 @@
+{
+  "name": "@occestra/providers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Occestra providers — model router, House Styles, live-data adapters, cache, cost governor.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "smoke:image": "tsx script/smoke-image.ts"
+  },
+  "dependencies": {
+    "@occestra/studio-core": "*",
+    "playwright": "^1.49.1",
+    "sharp": "^0.33.5",
+    "zod": "^3.23.0"
+  }
+}
