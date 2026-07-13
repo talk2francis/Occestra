@@ -167,6 +167,18 @@ export function Composer({
         >
           {running ? "The syndicate is working…" : "Run the syndicate"}
         </Button>
+        {/* a disabled button must say why, or it reads as broken */}
+        {!running && missingRequired && (
+          <p className="mt-2 text-[0.74rem] text-repair">
+            Fill the fields marked <span className="text-amethyst">*</span> above to run.
+          </p>
+        )}
+        {!running && !missingRequired && remaining <= 0 && cap > 0 && (
+          <p className="mt-2 text-[0.74rem] text-repair">
+            Today&apos;s demo credits are spent — they reset within 24 hours. Agents can still pay
+            per call right now; see <a href="/for-agents" className="underline">for agents</a>.
+          </p>
+        )}
         <p className="mt-3 text-[0.72rem] leading-relaxed text-ink/60">
           <span className="font-medium text-ink/80">
             {remaining} of {cap} demo credits left today.

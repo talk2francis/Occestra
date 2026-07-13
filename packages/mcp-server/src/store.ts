@@ -276,10 +276,14 @@ export class Store {
     return row.total;
   }
 
-  /** Demo runs started since a timestamp — the per-day allowance check. */
+  /**
+   * Demo runs started since a timestamp — the per-day allowance check.
+   * Only payer_ref='demo' counts: internal gallery seeding is recorded with
+   * payer_ref='seed' so it can never eat a visitor's allowance.
+   */
   demoRunsSince(sinceMs: number): number {
     const row = this.db
-      .prepare("SELECT COUNT(*) AS n FROM orders WHERE status = 'demo' AND created_at >= ?")
+      .prepare("SELECT COUNT(*) AS n FROM orders WHERE status = 'demo' AND payer_ref = 'demo' AND created_at >= ?")
       .get(sinceMs) as { n: number };
     return row.n;
   }
