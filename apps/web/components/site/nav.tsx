@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { ButtonLink } from "@/components/ui/button";
 
 const LINKS = [
-  { href: "#studios", label: "Studios" },
-  { href: "#tribunal", label: "The Tribunal" },
-  { href: "#seal", label: "The Seal" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#agents", label: "For agents" },
+  { href: "/#studios", label: "Studios" },
+  { href: "/#tribunal", label: "The Tribunal" },
+  { href: "/gallery", label: "Gallery" },
+  { href: "/standard", label: "The Standard" },
+  { href: "/for-agents", label: "For agents" },
 ] as const;
 
 export function Nav() {
@@ -34,9 +34,14 @@ export function Nav() {
         </Link>
         <div className="hidden items-center gap-7 md:flex">
           {LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="text-[0.85rem] text-ink/60 transition-colors hover:text-ink">
+            <Link
+              key={link.href}
+              href={link.href}
+              prefetch={false}
+              className="text-[0.85rem] text-ink/60 transition-colors hover:text-ink"
+            >
               {link.label}
-            </a>
+            </Link>
           ))}
         </div>
         <ButtonLink href="/studio" size="sm">

@@ -138,6 +138,88 @@ body {
   border-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
 }
 
+/* --------------------------------------------------- published standard */
+
+.rubric-prose h1 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(1.9rem, 1rem + 2.8vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 96;
+  margin-bottom: 0.6em;
+}
+
+.rubric-prose h2 {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-amethyst);
+  margin: 2.4em 0 0.9em;
+}
+
+.rubric-prose p,
+.rubric-prose li {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--color-ink) 75%, transparent);
+  margin-bottom: 0.9em;
+}
+
+.rubric-prose strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.rubric-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 1em 0 1.6em;
+}
+
+.rubric-prose th {
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-ink) 55%, transparent);
+  padding: 0.6em 1em 0.6em 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 15%, transparent);
+}
+
+.rubric-prose td {
+  vertical-align: top;
+  padding: 0.7em 1em 0.7em 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--color-ink) 72%, transparent);
+}
+
+.rubric-prose td:first-child {
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-ink);
+}
+
+.rubric-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-panel);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+/* Wide tables scroll inside the article, never the page. */
+.rubric-prose {
+  overflow-x: auto;
+}
+
 /* ------------------------------------------------------------- utilities */
 
 .no-scrollbar {

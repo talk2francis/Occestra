@@ -13,11 +13,13 @@
   "dependencies": {
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.469.0",
+    "marked": "^18.0.6",
     "next": "^15.4.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sonner": "^1.7.1",
-    "viem": "^2.55.1"
+    "viem": "^2.55.1",
+    "@occestra/tribunal": "*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",

@@ -19,23 +19,25 @@ export function Footer() {
           <nav className="grid grid-cols-2 gap-x-14 gap-y-2 text-[0.88rem] sm:grid-cols-3">
             <div className="space-y-2">
               <p className="text-kicker mb-3 text-ink/60">Product</p>
-              <a href="#studios" className="block text-ink/60 hover:text-ink">Studios</a>
-              <a href="#pricing" className="block text-ink/60 hover:text-ink">Pricing</a>
+              <a href="/#studios" className="block text-ink/60 hover:text-ink">Studios</a>
+              <Link href="/pricing" className="block text-ink/60 hover:text-ink">Pricing</Link>
               <Link href="/studio" className="block text-ink/60 hover:text-ink">Open the Studio</Link>
             </div>
             <div className="space-y-2">
               <p className="text-kicker mb-3 text-ink/60">Trust</p>
-              <a href={`${API_BASE}/standard`} className="block text-ink/60 hover:text-ink">
+              <Link href="/standard" className="block text-ink/60 hover:text-ink">
                 Quality standard (OQS v{OQS_VERSION})
-              </a>
-              <a href="#tribunal" className="block text-ink/60 hover:text-ink">The Tribunal</a>
+              </Link>
+              <Link href="/gallery" className="block text-ink/60 hover:text-ink">Gallery</Link>
+              <Link href="/stats" className="block text-ink/60 hover:text-ink">Live stats</Link>
+              <a href="/#tribunal" className="block text-ink/60 hover:text-ink">The Tribunal</a>
               <a href={EXPLORER_REGISTRY} target="_blank" rel="noopener noreferrer" className="block text-ink/60 hover:text-ink">
                 KeepsakeRegistry ↗
               </a>
             </div>
             <div className="space-y-2">
               <p className="text-kicker mb-3 text-ink/60">Agents</p>
-              <a href="#agents" className="block text-ink/60 hover:text-ink">Endpoint &amp; tools</a>
+              <Link href="/for-agents" className="block text-ink/60 hover:text-ink">Endpoint &amp; tools</Link>
               <a href={`${API_BASE}/.well-known/occestra.json`} className="block text-ink/60 hover:text-ink">
                 Manifest
               </a>
