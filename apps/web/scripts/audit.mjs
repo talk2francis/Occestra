@@ -63,23 +63,33 @@ for (const route of ROUTES) {
       await page.waitForTimeout(1600);
 
       const checks = await page.evaluate(() => {
-        const doc = document.scrollingElement ?? document.documentElement;
-        const overflowX = doc.scrollWidth - window.innerWidth;
+        // Can the page ACTUALLY pan sideways? (overflow-x: clip makes raw
+        // scrollWidth report contained overflow that no user can ever see.)
+        window.scrollTo(99999, window.scrollY);
+        const overflowX = window.scrollX;
+        window.scrollTo(0, window.scrollY);
 
-        // Name the widest offenders so an overflow is debuggable from the report.
+        // Also flag anything poking past the viewport that is NOT inside a
+        // deliberate scroll container — that's a layout bug even when clipped.
         const offenders = [];
-        if (overflowX > 1) {
-          for (const el of document.querySelectorAll("body *")) {
-            const r = el.getBoundingClientRect();
-            if (r.right > window.innerWidth + 1 || r.left < -1) {
-              const cls = String(el.className).split(" ").slice(0, 3).join(".");
-              const section = el.closest("section[id], footer, header, main > *");
-              offenders.push(
-                `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}${cls ? "." + cls : ""} in <${section?.tagName.toLowerCase()}${section?.id ? "#" + section.id : ""}> right=${Math.round(r.right)} w=${Math.round(r.width)}`,
-              );
-              if (offenders.length >= 5) break;
+        for (const el of document.querySelectorAll("body *")) {
+          const r = el.getBoundingClientRect();
+          if (r.right <= window.innerWidth + 1 && r.left >= -1) continue;
+          let parent = el.parentElement;
+          let contained = false;
+          while (parent) {
+            if (/(auto|scroll)/.test(getComputedStyle(parent).overflowX)) {
+              contained = true;
+              break;
             }
+            parent = parent.parentElement;
           }
+          if (contained) continue;
+          const cls = String(el.className).split(" ").slice(0, 3).join(".");
+          offenders.push(
+            `${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}${cls ? "." + cls : ""} right=${Math.round(r.right)} w=${Math.round(r.width)}`,
+          );
+          if (offenders.length >= 5) break;
         }
 
         const missingAlt = [...document.querySelectorAll("img:not([alt])")].map(
@@ -90,9 +100,10 @@ for (const route of ROUTES) {
       });
 
       if (checks.overflowX > 1) {
-        problems.push(
-          `horizontal overflow of ${checks.overflowX}px — ${checks.offenders.join("; ") || "no single offender found"}`,
-        );
+        problems.push(`page pans horizontally by ${checks.overflowX}px`);
+      }
+      if (checks.offenders.length) {
+        problems.push(`elements escape the viewport outside any scroller: ${checks.offenders.join("; ")}`);
       }
       if (checks.missingAlt.length) {
         problems.push(`images missing alt: ${checks.missingAlt.join(", ")}`);

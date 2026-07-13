@@ -38,6 +38,7 @@ export function Footer() {
             <div className="space-y-2">
               <p className="text-kicker mb-3 text-ink/60">Agents</p>
               <Link href="/for-agents" className="block text-ink/60 hover:text-ink">Endpoint &amp; tools</Link>
+              <Link href="/docs" className="block text-ink/60 hover:text-ink">Documentation</Link>
               <a href={`${API_BASE}/.well-known/occestra.json`} className="block text-ink/60 hover:text-ink">
                 Manifest
               </a>

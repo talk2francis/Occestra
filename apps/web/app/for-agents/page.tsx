@@ -160,7 +160,12 @@ export default async function ForAgentsPage() {
       </section>
 
       <p className="mt-12 text-[0.88rem] leading-relaxed text-ink/65">
-        The cheapest way in is <span className="text-data">oce_critique</span> at 0.01 USDT: send
+        Full developer documentation — quickstart, the exact payment flow, provenance
+        verification, studios reference — lives at{" "}
+        <Link href="/docs" className="text-amethyst underline decoration-amethyst/30 underline-offset-4">
+          /docs
+        </Link>
+        . The cheapest way in is <span className="text-data">oce_critique</span> at 0.01 USDT: send
         your own agent&apos;s output and get the graded{" "}
         <Link href="/standard" className="text-amethyst underline decoration-amethyst/30 underline-offset-2">
           OQS report
