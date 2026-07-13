@@ -13,12 +13,13 @@
 | Type | ASP — A2MCP tools (8, x402-paid) + A2A negotiated packages |
 | Description | Use the submitted marketplace copy in `LISTING.md`, verbatim — it is what review approved. Short form: *"The Occasion Studio. Any real moment in, finished quality-graded work out: grounded plans, private keepsakes, launch kits — every artifact graded against a published standard (occestra.xyz/standard), repaired when it fails, and sealed with EIP-712 provenance on X Layer. Verification is free, forever."* |
 | Endpoint | `https://api.occestra.xyz/mcp` |
-| Site / docs | `https://occestra.xyz` · `https://occestra.xyz/docs` |
+| Site / docs | `https://occestra.xyz` · `https://docs.occestra.xyz` |
 | Repo | `https://github.com/talk2francis/Occestra` |
+| SDK | `@occestra/client` on npm |
 | Contract | `0x1653509df702b45d67b3eb12ca37de9f5fc21f08` (X Layer mainnet) |
-| X handle | *(owner fills — the account posting the thread)* |
+| X handle | **@occestrastudio** |
 | X post link | *(the ≤90s demo thread — post per `demo/X-THREAD.md`, paste the post-1 URL here)* |
-| Telegram handle | *(owner fills)* |
+| Telegram handle | **@Franciscco1** (owner, personal) |
 | Form link | *(from the hackathon channel — owner pastes when opening it)* |
 
 ## VERIFY-DAY runbook — the 10 checks, morning of the deadline
@@ -44,8 +45,8 @@ else that day.
    curl -so /dev/null -w "/$r %{http_code}\n" https://occestra.xyz/$r; done` → all 200.
 8. **Stats are current** — `occestra.xyz/stats` renders and the counters look right
    (they're computed live; wrong numbers mean a store problem).
-9. **Unfurls** — paste `occestra.xyz` and one `/k/…` link into a private X DM / Telegram
-   saved-messages → OG cards render.
+9. **Unfurls** — ✅ confirmed 2026-07-13: cards render on both X and Telegram. Re-check only
+   if the OG route or `assets/` fonts change.
 10. **CI green on a clean checkout** — the badge on the repo, or
     `git clone … /tmp/check && cd /tmp/check && npm ci && npm run typecheck && npm run
     build && npm test`.
@@ -55,5 +56,19 @@ else that day.
 - [ ] Extended deadline **in writing** (see banner above).
 - [ ] OKX listing review cleared — watch chatwithnonso01@gmail.com; chase on Telegram if silent.
 - [ ] Record the video per `demo/VIDEO-SCRIPT.md` (after confirming OpenAI credits + ≥2 demo credits).
-- [ ] Post the thread per `demo/X-THREAD.md`; paste the link into the table above.
-- [ ] Fill X + Telegram handles above; submit the form; screenshot the confirmation.
+- [ ] Post the thread per `demo/X-THREAD.md` from **@occestrastudio**; paste the link above.
+- [x] X + Telegram handles filled (2026-07-13).
+- [x] Unfurl cards verified on X + Telegram (2026-07-13).
+- [ ] `npm publish` of `@occestra/client` — needs a 2FA OTP (see below); everything else is ready.
+- [ ] Submit the form; screenshot the confirmation.
+
+### The npm publish, exactly
+
+Logged in as `majesticfranc`; registry rejects publish without a 2FA code:
+
+```bash
+cd /root/occestra/packages/client && npm publish --otp=<6-digit code from your authenticator>
+```
+
+(`dist/` is built and the dry-run passed — the OTP is the only missing piece. If you'd rather
+not hand-type codes, make a granular access token with "bypass 2FA" and `npm set //registry.npmjs.org/:_authToken=…`.)
