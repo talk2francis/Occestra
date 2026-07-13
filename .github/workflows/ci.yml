@@ -21,11 +21,13 @@ jobs:
       # package.json "allowScripts", so a plain ci works on a cold runner.
       - run: npm ci
 
-      - name: typecheck
-        run: npm run typecheck
-
+      # Build BEFORE typecheck: workspace packages import each other's dist
+      # types, so a cold checkout typechecks against nothing until built.
       - name: build (dependency order)
         run: npm run build
+
+      - name: typecheck
+        run: npm run typecheck
 
       - name: test — all packages (fake providers, no network, no secrets)
         run: npm test

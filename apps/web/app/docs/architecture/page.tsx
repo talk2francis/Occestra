@@ -12,7 +12,7 @@ export default function ArchitectureDoc() {
         lede={
           <>
             An npm-workspaces monorepo, dependency-ordered, TypeScript strict everywhere
-            (<InlineCode>exactOptionalPropertyTypes</InlineCode> included), 205 tests across the
+            (<InlineCode>exactOptionalPropertyTypes</InlineCode> included), 223 tests across the
             packages. The design rule that shapes everything: the pipelines are pure, and the
             world arrives through injected ports.
           </>

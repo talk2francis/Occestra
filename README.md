@@ -114,7 +114,7 @@ These are enforced in code, with tests, not stated in a policy page:
                     /k/:id · /standard · /stats · oce_verify_keepsake — all public, all free
 ```
 
-**Monorepo** (npm workspaces, Node 22, TypeScript strict + `exactOptionalPropertyTypes`, **205 tests**):
+**Monorepo** (npm workspaces, Node 22, TypeScript strict + `exactOptionalPropertyTypes`, **223 tests**):
 
 | package | what it owns |
 |---|---|
