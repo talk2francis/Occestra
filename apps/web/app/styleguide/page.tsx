@@ -6,6 +6,7 @@ import { AxisChip, GradeChip } from "@/components/ui/grade-chip";
 import { SealMark } from "@/components/ui/seal-mark";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SourceChip } from "@/components/ui/source-chip";
+import { SealMomentPreview } from "@/components/studio/seal-moment-preview";
 
 export const metadata: Metadata = {
   title: "Styleguide",
@@ -99,6 +100,11 @@ export default function Styleguide() {
           <SourceChip source="openstreetmap" retrievedAt="2026-07-12T19:12:45.096Z" url="https://www.openstreetmap.org/node/489793044" />
           <SourceChip source="open-meteo" retrievedAt="2026-07-12T19:12:45.642Z" />
         </div>
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-kicker text-ink/50">The seal moment &amp; the dignified refusal</h3>
+        <SealMomentPreview />
       </section>
 
       <section className="space-y-4">

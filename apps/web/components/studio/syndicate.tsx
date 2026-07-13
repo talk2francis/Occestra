@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { EASE } from "@/components/motion";
 import { AxisChip, GradeChip } from "@/components/ui/grade-chip";
 import { ROLES, roleForEvent, type DemoEvent } from "@/lib/studio";
+import { RefusalNotice } from "./seal-moment";
 import type { RunStatus } from "./use-run";
 
 /**
@@ -148,6 +149,8 @@ function FeedRow({ event }: { event: DemoEvent }) {
     case "run_complete":
       return <Line tone="plum">Done. The pack is assembled on the right.</Line>;
     case "run_failed":
+      // A policy refusal is an answer, not an error — keep it dignified.
+      if (event.reason === "policy") return <RefusalNotice message={event.message} />;
       return (
         <div className="rounded-xl border border-fail/30 bg-fail/5 p-3.5 text-[0.82rem] text-ink/80">
           {event.message}

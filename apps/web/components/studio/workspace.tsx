@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { StyleSwatch } from "@/lib/studio";
 import { Composer } from "./composer";
 import { PackPanel } from "./pack-panel";
+import { SealMoment, type SealMomentData } from "./seal-moment";
 import { Syndicate } from "./syndicate";
 import { useStudioRun } from "./use-run";
 
@@ -30,14 +31,25 @@ export function Workspace({
   }, []);
 
   const run = useStudioRun(refreshQuota);
+  const [moment, setMoment] = useState<SealMomentData>();
 
   useEffect(() => {
-    if (run.status === "failed" && run.error) toast.error(run.error);
-    if (run.status === "done") toast.success("Pack assembled, graded, and sealed.");
-  }, [run.status, run.error]);
+    // Policy refusals render as a dignified notice in the feed — no toast.
+    const policy = run.events.some((event) => event.type === "run_failed" && event.reason === "policy");
+    if (run.status === "failed" && run.error && !policy) toast.error(run.error);
+    if (run.status === "done" && run.pack) {
+      setMoment({
+        passRate: run.pack.quality.passRate,
+        repairedCount: run.pack.quality.repairedCount,
+        sealed: Boolean(run.pack.seal),
+        keepsakeId: run.pack.keepsakeId,
+      });
+    }
+  }, [run.status, run.error, run.pack, run.events]);
 
   return (
     <div className="flex min-h-screen flex-col">
+      {moment && <SealMoment data={moment} onDone={() => setMoment(undefined)} />}
       <header className="flex items-center justify-between gap-4 border-b border-ink/10 bg-panel/60 px-5 py-3 sm:px-8">
         <div className="flex items-baseline gap-4">
           <Link

@@ -34,7 +34,7 @@ export type DemoEvent =
     }
   | { type: "sealing" }
   | { type: "run_complete"; pack: FinishedPack }
-  | { type: "run_failed"; message: string };
+  | { type: "run_failed"; message: string; reason?: "policy" | "error" };
 
 export interface FinishedArtifact {
   id: string;

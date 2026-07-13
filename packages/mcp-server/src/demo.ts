@@ -32,7 +32,7 @@ export type DemoEvent =
   | GraderEvent
   | { type: "sealing" }
   | { type: "run_complete"; pack: unknown }
-  | { type: "run_failed"; message: string };
+  | { type: "run_failed"; message: string; reason: "policy" | "error" };
 
 const StyleId = z.enum(["amethyst_editorial", "gilded_noir", "sunprint", "atlas_ink"]);
 
@@ -219,11 +219,11 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
     if (ctx.sealer && pack.seal) emit({ type: "sealing" });
     emit({ type: "run_complete", pack: ctx.packForClient(pack) });
   } catch (error) {
-    const message =
-      error instanceof PolicyRefusal
-        ? error.politeMessage
-        : "the run failed — nothing was charged, and nothing pretended to succeed";
-    emit({ type: "run_failed", message });
+    const policy = error instanceof PolicyRefusal;
+    const message = policy
+      ? (error as PolicyRefusal).politeMessage
+      : "the run failed — nothing was charged, and nothing pretended to succeed";
+    emit({ type: "run_failed", message, reason: policy ? "policy" : "error" });
   } finally {
     clearInterval(heartbeat);
     if (!closed) res.end();
