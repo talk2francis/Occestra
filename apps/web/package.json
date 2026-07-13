@@ -11,6 +11,10 @@
     "audit": "node scripts/audit.mjs"
   },
   "dependencies": {
+    "@occestra/tribunal": "*",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/three": "^0.185.1",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.469.0",
     "marked": "^18.0.6",
@@ -18,8 +22,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sonner": "^1.7.1",
-    "viem": "^2.55.1",
-    "@occestra/tribunal": "*"
+    "three": "^0.185.1",
+    "viem": "^2.55.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",

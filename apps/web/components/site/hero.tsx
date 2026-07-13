@@ -1,13 +1,15 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import { ButtonLink } from "@/components/ui/button";
 import { EASE } from "@/components/motion";
 import { Walkthrough } from "./walkthrough";
 
 /**
- * The one deliberate 3D-feeling element on the site: a faceted amethyst,
- * drawn as SVG, turning very slowly. Static under reduced motion.
+ * The SVG prism: the fallback face of the 3D stone — reduced motion, missing
+ * WebGL, and the beat before the lazy chunk lands.
  */
 function Prism() {
   const reduced = useReducedMotion();
@@ -31,6 +33,30 @@ function Prism() {
       </g>
     </motion.svg>
   );
+}
+
+const PrismCanvas = dynamic(() => import("./prism-3d"), {
+  ssr: false,
+  loading: () => <Prism />,
+});
+
+function supportsWebgl(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+/** The real stone when the machine can afford it; the drawing when it can't. */
+function HeroPrism() {
+  const reduced = useReducedMotion();
+  const [webgl, setWebgl] = useState<boolean>();
+  useEffect(() => setWebgl(supportsWebgl()), []);
+  if (reduced || webgl === false) return <Prism />;
+  if (webgl === undefined) return <Prism />;
+  return <PrismCanvas />;
 }
 
 export function Hero() {
@@ -68,7 +94,12 @@ export function Hero() {
               X&nbsp;Layer.
             </motion.p>
             <motion.div {...enter(0.28)} className="mt-9 flex flex-wrap items-center gap-4">
-              <ButtonLink href="/studio" size="lg">
+              <ButtonLink
+                href="/studio"
+                size="lg"
+                onMouseEnter={() => window.dispatchEvent(new Event("oce-cta-press"))}
+                onMouseLeave={() => window.dispatchEvent(new Event("oce-cta-release"))}
+              >
                 Open the Studio
               </ButtonLink>
               <a
@@ -80,7 +111,7 @@ export function Hero() {
             </motion.div>
           </div>
           <motion.div {...fade(0.3)} className="hidden shrink-0 pb-4 md:block" aria-hidden>
-            <Prism />
+            <HeroPrism />
           </motion.div>
         </div>
 
