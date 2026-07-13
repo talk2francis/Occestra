@@ -2,7 +2,7 @@
 
 **Every moment, made monumental.** Give Occestra any real moment — a birthday next Saturday, a product launching Friday, a trip just taken — and a syndicate of studio roles plans it, designs it, and writes it. Then two mechanisms no other creative agent on the marketplace has do their work: **every artifact is graded against a published quality standard and repaired until it passes (or shipped honestly marked fail)**, and **the finished pack is sealed with EIP-712 provenance anchored on X Layer mainnet**, verifiable by anyone, forever, without trusting our servers.
 
-Live ASP on OKX.AI (**Agent #5213**), built for the OKX.AI Genesis Hackathon on X Layer.
+Registered on OKX.AI as **Agent #5213** (on-chain, X Layer mainnet; marketplace listing in review) — built for the OKX.AI Genesis Hackathon.
 
 | | |
 |---|---|
@@ -56,8 +56,14 @@ Nothing personal ever touches the chain — hash only, by hard rule.
 | Studio | For | Delivers | Grounded in |
 |---|---|---|---|
 | **CELEBRATE** | the moment that's coming | plan · schedule · budget · contingencies · invitation suite · guest guide · toast · moodboard | OpenStreetMap venues (ranked, chains demoted), Open-Meteo forecasts — every claim carries source + retrievedAt; **no venue is ever claimed as booked** |
-| **REMEMBER** | the moment that happened | keepsake art (sunprint default) · story page separating fact from prose · carousel | your photos and notes — EXIF/GPS stripped on arrival, people **counted never identified**, deletion deletes the photographs too (verified live) |
+| **REMEMBER** | the moment that happened | keepsake art (sunprint default) · story page separating fact from prose | your photos and notes — EXIF/GPS stripped on arrival, people **counted never identified**, deletion deletes the photographs too (verified live) |
 | **LAUNCH** | the thing you're shipping | brand genome · hero visual · brand mark · launch thread · 90-second beat sheet · OG images | your **actual site**, rendered in a headless browser — resolved colours and type, not guesses |
+
+Real output, straight from the store — a graded guest guide, a keepsake that failed once and came back repaired, a launch hero:
+
+| CELEBRATE · guest guide (sealed pack) | REMEMBER · sunprint, repaired ×1 then pass | LAUNCH · hero collage (graded pass) |
+|---|---|---|
+| <img src="assets/guest-guide.webp" alt="Real guest guide artifact: a farewell dinner in Lisbon with schedule, weather and honest booking notes" width="260"> | <img src="assets/keepsake-art.webp" alt="Real keepsake artwork: a cyanotype sunprint of pressed leaves, an envelope, a key and an open hand" width="260"> | <img src="assets/launch-hero.webp" alt="Real launch hero: an editorial paper collage of a film camera with a deep amethyst sun" width="260"> |
 
 ## Two rails to buy it
 
@@ -85,6 +91,8 @@ These are enforced in code, with tests, not stated in a policy page:
 - **The standard doesn't bend** — our gallery keeps packs with 60% pass rates. The grade is not for sale, including to us.
 
 ## Architecture
+
+<img src="assets/architecture.svg" width="100%" alt="Occestra architecture: three caller rails feed the payment gate and eight MCP tools; studio pipelines ground themselves in the real world; the Tribunal grades and repairs; receipts seal and anchor to KeepsakeRegistry on X Layer; verification is public and free.">
 
 ```
     MCP · x402 per call        A2A packages         The Studio (web, SSE)

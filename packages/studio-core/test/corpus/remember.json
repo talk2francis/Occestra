@@ -1,0 +1,224 @@
+[
+  {
+    "label": "quiet-trip-with-photos",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "minArtifacts": 2
+    },
+    "contract": {
+      "id": "r_c1",
+      "studio": "remember",
+      "styleId": "sunprint",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "Our trip to Abuja",
+      "notes": "Three days in March. Aso Rock at sunset, suya at midnight, the long drive home.",
+      "momentDate": "2026-03-14",
+      "mediaRefs": [
+        "up_abc123",
+        "up_def456"
+      ],
+      "tone": "nostalgic, warm",
+      "deliverables": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "title-only-no-notes",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "keepsake_art"
+      ],
+      "minArtifacts": 1
+    },
+    "contract": {
+      "id": "r_c2",
+      "studio": "remember",
+      "styleId": "sunprint",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "The last day of the shop",
+      "mediaRefs": [],
+      "tone": "quiet",
+      "deliverables": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "celebrity-story-blocked",
+    "expect": {
+      "policyBlocked": true
+    },
+    "contract": {
+      "id": "r_c3",
+      "studio": "remember",
+      "styleId": "gilded_noir",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "The night I met Rihanna",
+      "notes": "Make the artwork show Rihanna hugging me at the concert.",
+      "mediaRefs": [],
+      "tone": "starstruck",
+      "deliverables": [
+        "keepsake_art"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "grandmother-tribute",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "minArtifacts": 2
+    },
+    "contract": {
+      "id": "r_c4",
+      "studio": "remember",
+      "styleId": "sunprint",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "Grandma's kitchen on Sunday mornings",
+      "notes": "Fried plantain before anyone was awake. The wooden spoon I was never allowed to touch, and the one time she let me stir.",
+      "mediaRefs": [
+        "up_kitchen1"
+      ],
+      "tone": "tender",
+      "deliverables": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "first-pitch-unsupported-kind-requested",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "minArtifacts": 2
+    },
+    "contract": {
+      "id": "r_c5",
+      "studio": "remember",
+      "styleId": "gilded_noir",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "My first pitch demo",
+      "notes": "Hands shaking, the slides froze once, applause anyway. Twelve people in a room that felt like a stadium.",
+      "momentDate": "2025-11-20",
+      "mediaRefs": [],
+      "tone": "proud, a little embarrassed",
+      "deliverables": [
+        "keepsake_art",
+        "story_page",
+        "carousel"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "rainy-drive-cinematic",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "keepsake_art"
+      ],
+      "minArtifacts": 1
+    },
+    "contract": {
+      "id": "r_c6",
+      "studio": "remember",
+      "styleId": "atlas_ink",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "The rain on the drive to Ibadan",
+      "notes": "The expressway went silver for an hour. Someone in the back hummed a song from ten years ago.",
+      "mediaRefs": [],
+      "tone": "quiet, cinematic",
+      "deliverables": [
+        "keepsake_art"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "ship-night-agent-requester",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "minArtifacts": 2
+    },
+    "contract": {
+      "id": "r_c7",
+      "studio": "remember",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "title": "The night the product went live",
+      "notes": "A rented VPS, one Caddy config, one burner wallet with just enough gas. Nobody was watching. It still felt enormous.",
+      "momentDate": "2026-07-12",
+      "mediaRefs": [],
+      "tone": "electric, sleepless",
+      "deliverables": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "many-photos-privacy-path",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "minArtifacts": 2
+    },
+    "contract": {
+      "id": "r_c8",
+      "studio": "remember",
+      "styleId": "sunprint",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "Cousins' reunion at the beach house",
+      "notes": "Eight of us, one leaking cooler, a bonfire that would not start until it suddenly did.",
+      "mediaRefs": [
+        "up_1",
+        "up_2",
+        "up_3",
+        "up_4",
+        "up_5",
+        "up_6"
+      ],
+      "tone": "joyful, sandy",
+      "deliverables": [
+        "keepsake_art",
+        "story_page"
+      ],
+      "locale": "en"
+    }
+  }
+]

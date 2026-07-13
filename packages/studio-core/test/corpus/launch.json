@@ -1,0 +1,228 @@
+[
+  {
+    "label": "standard-kit-with-live-url",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "brand_kit",
+        "og_image",
+        "launch_thread"
+      ],
+      "minArtifacts": 4
+    },
+    "contract": {
+      "id": "l_c1",
+      "studio": "launch",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "productName": "Tidepool",
+      "url": "https://tidepool.test",
+      "description": "A calm inbox for people who work in focus blocks.",
+      "audience": "indie makers",
+      "deliverables": [
+        "brand_kit",
+        "og_image",
+        "brand_mark",
+        "launch_thread",
+        "demo_script"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "no-url-genome-must-disclose",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "brand_kit"
+      ],
+      "gapsInclude": [
+        "site"
+      ]
+    },
+    "contract": {
+      "id": "l_c2",
+      "studio": "launch",
+      "styleId": "atlas_ink",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "productName": "Fieldnote",
+      "description": "A pocket ledger for market traders, offline-first.",
+      "audience": "market traders in Lagos",
+      "deliverables": [
+        "brand_kit",
+        "launch_thread"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "site-unreachable-degrades-honestly",
+    "expect": {
+      "policyBlocked": false,
+      "siteDown": true,
+      "kinds": [
+        "brand_kit"
+      ],
+      "gapsInclude": [
+        "site:inspection-failed"
+      ]
+    },
+    "contract": {
+      "id": "l_c3",
+      "studio": "launch",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "productName": "Driftwood",
+      "url": "https://driftwood.test",
+      "description": "Shared reading lists for book clubs.",
+      "audience": "book clubs",
+      "deliverables": [
+        "brand_kit",
+        "og_image",
+        "launch_thread"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "celebrity-likeness-blocked-before-work",
+    "expect": {
+      "policyBlocked": true
+    },
+    "contract": {
+      "id": "l_c4",
+      "studio": "launch",
+      "styleId": "gilded_noir",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "productName": "StarSell",
+      "description": "Landing page hero should feature Beyonce endorsing the product.",
+      "audience": "fans",
+      "deliverables": [
+        "brand_kit",
+        "og_image"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "thread-only-minimal-scope",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "launch_thread"
+      ],
+      "minArtifacts": 1
+    },
+    "contract": {
+      "id": "l_c5",
+      "studio": "launch",
+      "styleId": "sunprint",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "productName": "Lantern",
+      "url": "https://lantern.test",
+      "description": "Status pages that read like a human wrote them.",
+      "audience": "SRE teams",
+      "deliverables": [
+        "launch_thread"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "full-kit-gilded-noir",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "brand_kit",
+        "og_image",
+        "brand_mark",
+        "launch_thread",
+        "landing_spec",
+        "demo_script"
+      ],
+      "minArtifacts": 6
+    },
+    "contract": {
+      "id": "l_c6",
+      "studio": "launch",
+      "styleId": "gilded_noir",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "productName": "Vesper",
+      "url": "https://vesper.test",
+      "description": "Evening-only booking for restaurants' last tables.",
+      "audience": "restaurant owners",
+      "deliverables": [
+        "brand_kit",
+        "og_image",
+        "brand_mark",
+        "carousel",
+        "launch_thread",
+        "landing_spec",
+        "demo_script"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "agent-audience-b2a",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "brand_kit",
+        "launch_thread"
+      ],
+      "minArtifacts": 2
+    },
+    "contract": {
+      "id": "l_c7",
+      "studio": "launch",
+      "styleId": "atlas_ink",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "agent",
+      "productName": "Relay",
+      "url": "https://relay.test",
+      "description": "An MCP tool that reconciles invoices for other agents.",
+      "audience": "autonomous agents on OKX.AI",
+      "deliverables": [
+        "brand_kit",
+        "launch_thread"
+      ],
+      "locale": "en"
+    }
+  },
+  {
+    "label": "hackathon-rush-real-register",
+    "expect": {
+      "policyBlocked": false,
+      "kinds": [
+        "og_image",
+        "launch_thread",
+        "demo_script"
+      ],
+      "minArtifacts": 3
+    },
+    "contract": {
+      "id": "l_c8",
+      "studio": "launch",
+      "styleId": "amethyst_editorial",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "productName": "Occestra",
+      "url": "https://occestra.test",
+      "description": "The occasion studio itself, launching for the hackathon.",
+      "audience": "builders shipping this week",
+      "deliverables": [
+        "og_image",
+        "launch_thread",
+        "demo_script"
+      ],
+      "locale": "en"
+    }
+  }
+]

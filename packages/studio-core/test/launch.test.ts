@@ -546,3 +546,52 @@ describe("the kit", () => {
     expect(image.calls).toHaveLength(0); // nothing was generated, nothing was charged
   });
 });
+
+/* ---------------------------------------------------------------- corpus */
+
+import launchCorpus from "./corpus/launch.json" with { type: "json" };
+
+interface LaunchCorpusEntry {
+  label: string;
+  contract: LaunchContract;
+  expect: {
+    policyBlocked?: boolean;
+    siteDown?: boolean;
+    kinds?: string[];
+    minArtifacts?: number;
+    gapsInclude?: string[];
+  };
+}
+
+const launchEntries = launchCorpus as unknown as LaunchCorpusEntry[];
+
+describe("LAUNCH corpus", () => {
+  it("covers at least 8 labelled briefs", () => {
+    expect(launchEntries.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(launchEntries.map((e) => e.label)).size).toBe(launchEntries.length);
+  });
+
+  for (const entry of launchEntries) {
+    it(`${entry.label}`, async () => {
+      const deps = makeDeps(
+        entry.expect.siteDown ? { site: new FakeSite(new Error("net::ERR_CONNECTION_REFUSED")) } : {},
+      );
+
+      if (entry.expect.policyBlocked) {
+        await expect(runLaunch(entry.contract, deps)).rejects.toBeInstanceOf(PolicyRefusal);
+        return;
+      }
+
+      const { pack } = await runLaunch(entry.contract, deps);
+      const kinds = pack.artifacts.map((a) => a.kind);
+
+      for (const kind of entry.expect.kinds ?? []) expect(kinds).toContain(kind);
+      if (entry.expect.minArtifacts) expect(pack.artifacts.length).toBeGreaterThanOrEqual(entry.expect.minArtifacts);
+      for (const needle of entry.expect.gapsInclude ?? []) {
+        expect(pack.coverageGaps.some((gap) => gap.includes(needle))).toBe(true);
+      }
+      // every artifact in every corpus pack carries its report
+      for (const artifact of pack.artifacts) expect(artifact.tribunal).toBeDefined();
+    });
+  }
+});

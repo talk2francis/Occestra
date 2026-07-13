@@ -107,7 +107,7 @@ export function Hero() {
           <div className="max-w-3xl">
             <motion.p {...enter(0)} className="text-kicker flex items-center gap-3 text-amethyst">
               <span aria-hidden className="h-px w-8 bg-amethyst/50" />
-              The Occasion Studio · live on OKX.AI, X Layer
+              The Occasion Studio · Agent #5213 on X Layer
             </motion.p>
             <motion.h1 {...enter(0.08)} className="text-display mt-6 text-balance">
               Every moment, made&nbsp;monumental.

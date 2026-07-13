@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" viewBox="0 0 1600 1040">
+  <defs>
+    <marker id="a" markerHeight="9" markerWidth="9" orient="auto" refX="7.5" refY="4.5">
+      <path fill="none" stroke="#6b3fa0" stroke-linecap="round" stroke-width="1.5" d="m1 1 7 3.5L1 8"/>
+    </marker>
+    <marker id="b" markerHeight="9" markerWidth="9" orient="auto" refX="7.5" refY="4.5">
+      <path fill="none" stroke="#8e8a94" stroke-linecap="round" stroke-width="1.4" d="m1 1 7 3.5L1 8"/>
+    </marker>
+  </defs>
+  <rect width="1596" height="1036" x="2" y="2" fill="#faf7f2" stroke="#e5ded2" stroke-width="3" rx="24"/>
+  <text x="48" y="64" fill="#17141a" font-size="26" font-weight="700" letter-spacing="1">OCCESTRA</text>
+  <text x="48" y="88" fill="#8e8a94" font-size="13">Every moment, made monumental.</text>
+  <g fill="#8e8a94" font-size="11">
+    <path stroke="#6b3fa0" stroke-width="1.75" d="M1230 52h38"/>
+    <text x="1276" y="56">call flow</text>
+    <rect width="38" height="10" x="1230" y="66" fill="#c8b4ff" opacity=".55" rx="5"/>
+    <text x="1276" y="75">payment / settlement</text>
+    <path stroke="#8e8a94" stroke-dasharray="5 4" stroke-width="1.4" d="M1230 90h38"/>
+    <text x="1276" y="94">public verification</text>
+  </g>
+  <text x="48" y="130" fill="#8e8a94" font-size="11" font-weight="600" letter-spacing="3">CALLERS</text>
+  <rect width="380" height="64" x="48" y="142" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="238" y="169" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">Humans · occestra.xyz</text>
+  <text x="238" y="190" fill="#8e8a94" font-size="11.5" text-anchor="middle">the Studio workspace, live over SSE</text>
+  <rect width="400" height="64" x="470" y="142" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="670" y="169" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">Agents · OKX.AI marketplace (A2MCP)</text>
+  <text x="670" y="190" fill="#8e8a94" font-size="11.5" text-anchor="middle">8 tools, 0.01–0.25 USDT per call</text>
+  <rect width="380" height="64" x="912" y="142" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="1102" y="169" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">Agents · A2A negotiation</text>
+  <text x="1102" y="190" fill="#8e8a94" font-size="11.5" text-anchor="middle">packages 2–15 USDT, escrowed</text>
+  <rect width="280" height="26" x="530" y="216" fill="#faf7f2" stroke="#c8b4ff" stroke-width="1.5" rx="13"/>
+  <text x="670" y="233" fill="#8e8a94" font-size="11" text-anchor="middle">USDT on X Layer · x402 · EIP-3009</text>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M238 206c0 44 92 62 192 74"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M670 246v26"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M1102 206c0 44-92 62-190 74"/>
+  <text x="48" y="300" fill="#8e8a94" font-size="11" font-weight="600" letter-spacing="3">THE ASP</text>
+  <rect width="1244" height="128" x="48" y="312" fill="#2d1b4e" fill-opacity=".05" stroke="#2d1b4e" stroke-width="1.5" rx="16"/>
+  <text x="70" y="338" fill="#2d1b4e" font-size="13" font-weight="600">mcp-server — api.occestra.xyz</text>
+  <rect width="280" height="68" x="72" y="352" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="212" y="380" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">Payment Gate</text>
+  <text x="212" y="401" fill="#8e8a94" font-size="11.5" text-anchor="middle">x402 v2 · eip155:196 · no facilitator</text>
+  <rect width="260" height="68" x="384" y="352" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="514" y="380" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">8 MCP Tools</text>
+  <text x="514" y="401" fill="#8e8a94" font-size="11.5" text-anchor="middle">stateless · PolicyGate first</text>
+  <rect width="300" height="68" x="676" y="352" fill="#f1ece4" stroke="rgba(23,20,26,0.18)" stroke-width="1.5" rx="14"/>
+  <text x="826" y="380" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">Store</text>
+  <text x="826" y="401" fill="#8e8a94" font-size="11.5" text-anchor="middle">SQLite · private artifacts · signed URLs</text>
+  <rect width="260" height="68" x="1008" y="352" fill="#f1ece4" stroke="rgba(23,20,26,0.18)" stroke-width="1.5" rx="14"/>
+  <text x="1138" y="380" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">Anchor Worker</text>
+  <text x="1138" y="401" fill="#8e8a94" font-size="11.5" text-anchor="middle">sealBatch every 30 min, with retry</text>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M352 386h24"/>
+  <rect width="242" height="84" x="1310" y="336" fill="#c8b4ff" fill-opacity=".18" stroke="#c8b4ff" stroke-width="1.5" rx="14"/>
+  <text x="1431" y="364" fill="#2d1b4e" font-size="12.5" font-weight="600" text-anchor="middle">settlement</text>
+  <text x="1431" y="383" fill="#8e8a94" font-size="11" text-anchor="middle">verify EIP-712 · claim nonce ·</text>
+  <text x="1431" y="399" fill="#8e8a94" font-size="11" text-anchor="middle">transferWithAuthorization on-chain</text>
+  <path fill="none" stroke="#c8b4ff" stroke-width="2.5" d="M1292 386h10"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M514 420v66"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M470 420c-110 30-190 42-230 66"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M560 420c120 30 200 42 240 66"/>
+  <text x="48" y="478" fill="#8e8a94" font-size="11" font-weight="600" letter-spacing="3">THE STUDIOS</text>
+  <rect width="380" height="66" x="48" y="492" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="238" y="519" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">CELEBRATE</text>
+  <text x="238" y="540" fill="#8e8a94" font-size="11.5" text-anchor="middle">grounded plans + invitation suites</text>
+  <rect width="380" height="66" x="470" y="492" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="660" y="519" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">REMEMBER</text>
+  <text x="660" y="540" fill="#8e8a94" font-size="11.5" text-anchor="middle">private keepsakes + story pages</text>
+  <rect width="380" height="66" x="892" y="492" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="1082" y="519" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">LAUNCH</text>
+  <text x="1082" y="540" fill="#8e8a94" font-size="11.5" text-anchor="middle">brand genomes + launch kits</text>
+  <rect width="242" height="90" x="1310" y="480" fill="#f1ece4" stroke="rgba(23,20,26,0.18)" stroke-width="1.5" rx="14"/>
+  <text x="1431" y="508" fill="#17141a" font-size="13" font-weight="600" text-anchor="middle">the grounded world</text>
+  <text x="1431" y="527" fill="#8e8a94" font-size="11" text-anchor="middle">OpenStreetMap · Open-Meteo</text>
+  <text x="1431" y="543" fill="#8e8a94" font-size="11" text-anchor="middle">headless browser · OKX market</text>
+  <path fill="none" stroke="#8e8a94" stroke-dasharray="5 4" stroke-width="1.4" marker-end="url(#b)" d="M1310 525h-30"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M238 558v78"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M660 558c-30 42-180 50-310 82"/>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M940 558c-140 42-320 58-460 84"/>
+  <text x="48" y="632" fill="#8e8a94" font-size="11" font-weight="600" letter-spacing="3">QUALITY &amp; PROVENANCE</text>
+  <rect width="560" height="112" x="48" y="644" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="76" y="678" fill="#17141a" font-size="15" font-weight="600">TRIBUNAL — OQS v1.0.0</text>
+  <text x="76" y="700" fill="#8e8a94" font-size="11.5">12 deterministic checks first · versioned critic · 5 axes ≥ 70</text>
+  <text x="76" y="732" fill="#8e8a94" font-size="11.5">the report ships in every pack — pass or fail</text>
+  <path fill="none" stroke="#c24141" stroke-width="1.6" marker-end="url(#a)" d="M520 676c40 4 46 36 2 44"/>
+  <text x="470" y="672" fill="#c24141" font-size="11" text-anchor="middle">fail → repair</text>
+  <text x="470" y="736" fill="#2fa96b" font-size="11" text-anchor="middle">regraded (max 2)</text>
+  <rect width="592" height="112" x="700" y="644" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="728" y="678" fill="#17141a" font-size="15" font-weight="600">RECEIPTS — EIP-712 seal + canonical manifest hash</text>
+  <text x="728" y="700" fill="#8e8a94" font-size="11.5">canonicalJson → keccak256 · domain &quot;Occestra/1&quot;</text>
+  <text x="728" y="732" fill="#8e8a94" font-size="11.5">leaf = keccak256(abi.encode(idHash, manifestHash, kind, ts))</text>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M608 700h84"/>
+  <path fill="none" stroke="#d9822b" stroke-width="1.4" marker-end="url(#b)" d="M84 644c-14-34-14-48 12-82"/>
+  <rect width="88" height="20" x="96" y="592" fill="#faf7f2" rx="10"/>
+  <text x="140" y="606" fill="#d9822b" font-size="11" text-anchor="middle">repair brief</text>
+  <text x="48" y="828" fill="#8e8a94" font-size="11" font-weight="600" letter-spacing="3">FOUNDATIONS</text>
+  <rect width="520" height="90" x="48" y="842" fill="#f1ece4" stroke="rgba(23,20,26,0.18)" stroke-width="1.5" rx="14"/>
+  <text x="308" y="872" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">providers</text>
+  <text x="308" y="893" fill="#8e8a94" font-size="11.5" text-anchor="middle">model router (OpenAI live · Claude/Grok wired) · images</text>
+  <text x="308" y="911" fill="#8e8a94" font-size="11.5" text-anchor="middle">weather · places · site · market — graceful degradation</text>
+  <rect width="330" height="90" x="610" y="842" fill="#f1ece4" stroke="rgba(23,20,26,0.18)" stroke-width="1.5" rx="14"/>
+  <text x="775" y="877" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">studio-core</text>
+  <text x="775" y="899" fill="#8e8a94" font-size="11.5" text-anchor="middle">contracts · schemas · policy gate (pure)</text>
+  <rect width="310" height="90" x="982" y="842" fill="#f1ece4" stroke="#6b3fa0" stroke-width="1.5" rx="14"/>
+  <text x="1137" y="877" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">KeepsakeRegistry.sol</text>
+  <text x="1137" y="899" fill="#8e8a94" font-size="11.5" text-anchor="middle">X Layer mainnet (196) · 0x1653…1f08</text>
+  <rect width="218" height="90" x="1334" y="842" fill="#f1ece4" stroke="rgba(23,20,26,0.18)" stroke-width="1.5" rx="14"/>
+  <text x="1443" y="877" fill="#17141a" font-size="15" font-weight="600" text-anchor="middle">apps</text>
+  <text x="1443" y="899" fill="#8e8a94" font-size="11.5" text-anchor="middle">web · docs — Amethyst Daylight</text>
+  <path fill="none" stroke="#6b3fa0" stroke-width="1.75" marker-end="url(#a)" d="M1050 756c40 34 70 54 85 78"/>
+  <rect width="112" height="20" x="1128" y="782" fill="#faf7f2" rx="10"/>
+  <text x="1184" y="796" fill="#8e8a94" font-size="11" text-anchor="middle">sealBatch(leaf)</text>
+  <path fill="none" stroke="#8e8a94" stroke-dasharray="5 4" stroke-width="1.4" marker-end="url(#b)" d="M1443 842c7-46-63-72-143-86"/>
+  <rect width="196" height="20" x="1300" y="788" fill="#faf7f2" rx="10"/>
+  <text x="1398" y="802" fill="#8e8a94" font-size="11" text-anchor="middle">anchoredAt(leaf) — public verify</text>
+  <text x="48" y="988" fill="#8e8a94" font-size="11.5">Every pack: graded against the published standard, repaired when it fails, sealed on X Layer — verifiable by anyone, forever, without trusting the server.</text>
+</svg>

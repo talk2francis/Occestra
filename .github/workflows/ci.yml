@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm 11 gates postinstall scripts; the approvals live in root
+      # package.json "allowScripts", so a plain ci works on a cold runner.
+      - run: npm ci
+
+      - name: typecheck
+        run: npm run typecheck
+
+      - name: build (dependency order)
+        run: npm run build
+
+      - name: test — all packages (fake providers, no network, no secrets)
+        run: npm test
+
+      - name: corpus floor — the briefs the studios must always survive
+        run: |
+          node -e "
+            const fs = require('fs');
+            const count = (p) => JSON.parse(fs.readFileSync(p, 'utf8')).length;
+            const c = count('packages/studio-core/test/corpus/celebrate.json');
+            const l = count('packages/studio-core/test/corpus/launch.json');
+            const r = count('packages/studio-core/test/corpus/remember.json');
+            console.log('corpus:', { celebrate: c, launch: l, remember: r });
+            if (c < 12 || l < 8 || r < 8) { console.error('corpus below floor'); process.exit(1); }
+          "

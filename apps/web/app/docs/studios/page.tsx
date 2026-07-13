@@ -57,7 +57,7 @@ export default function StudiosDoc() {
           rows={[
             { name: "keepsake_art", type: "png", desc: "Original artwork; the repair loop rendered our own first one twice before it passed legibility." },
             { name: "story_page", type: "html", desc: "The fact/prose-separated editorial page." },
-            { name: "carousel", type: "png[]", desc: "Shareable social cards, when requested." },
+            
           ]}
         />
         <p><strong>The privacy model, all enforced in code:</strong></p>

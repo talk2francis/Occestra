@@ -337,3 +337,47 @@ describe("policy", () => {
     expect(image.calls).toHaveLength(0); // nothing generated, nothing charged
   });
 });
+
+/* ---------------------------------------------------------------- corpus */
+
+import rememberCorpus from "./corpus/remember.json" with { type: "json" };
+
+interface RememberCorpusEntry {
+  label: string;
+  contract: RememberContract;
+  expect: {
+    policyBlocked?: boolean;
+    kinds?: string[];
+    minArtifacts?: number;
+  };
+}
+
+const rememberEntries = rememberCorpus as unknown as RememberCorpusEntry[];
+
+describe("REMEMBER corpus", () => {
+  it("covers at least 8 labelled briefs", () => {
+    expect(rememberEntries.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(rememberEntries.map((e) => e.label)).size).toBe(rememberEntries.length);
+  });
+
+  for (const entry of rememberEntries) {
+    it(`${entry.label}`, async () => {
+      const deps = makeDeps();
+
+      if (entry.expect.policyBlocked) {
+        await expect(runRemember(entry.contract, deps)).rejects.toBeInstanceOf(PolicyRefusal);
+        return;
+      }
+
+      const { pack } = await runRemember(entry.contract, deps);
+      const kinds = pack.artifacts.map((a) => a.kind);
+
+      for (const kind of entry.expect.kinds ?? []) expect(kinds).toContain(kind);
+      if (entry.expect.minArtifacts) expect(pack.artifacts.length).toBeGreaterThanOrEqual(entry.expect.minArtifacts);
+      // the story never identifies anyone — the guard words never leak through
+      const story = pack.artifacts.find((a) => a.kind === "story_page");
+      if (story?.data) expect(story.data).not.toMatch(/\b(mother|father|wife|husband) of\b/i);
+      for (const artifact of pack.artifacts) expect(artifact.tribunal).toBeDefined();
+    });
+  }
+});

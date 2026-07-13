@@ -61,7 +61,7 @@ export const TASK_TYPES: TaskTypeSpec[] = [
       { name: "description", required: true, ask: "What happened, in your words? Names you use are treated as your own facts." },
       { name: "tone", required: false, ask: "What register — nostalgic, celebratory, quiet?" },
     ],
-    deliverables: ["keepsake_art", "story_page", "carousel"],
+    deliverables: ["keepsake_art", "story_page"],
   },
 ];
 
