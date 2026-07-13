@@ -29,6 +29,7 @@ export function Footer() {
                 Quality standard (OQS v{OQS_VERSION})
               </Link>
               <Link href="/gallery" className="block text-ink/60 hover:text-ink">Gallery</Link>
+              <Link href="/journal" className="block text-ink/60 hover:text-ink">The Journal</Link>
               <Link href="/stats" className="block text-ink/60 hover:text-ink">Live stats</Link>
               <a href="/#tribunal" className="block text-ink/60 hover:text-ink">The Tribunal</a>
               <a href={EXPLORER_REGISTRY} target="_blank" rel="noopener noreferrer" className="block text-ink/60 hover:text-ink">

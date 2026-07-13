@@ -91,3 +91,32 @@ Occestra runs its own LAUNCH studio on its own site, live, as part of the pitch.
 `artifacts-out/` is that run — coverage gaps included, nothing removed. If the product is
 good, the honest artifact is the best advertisement it has. If it isn't, no amount of copy
 would have saved it.
+
+## The finalized offer (intro window, tracked)
+
+**The wedge stays `oce_critique` at 0.01 USDT** — "find out if your launch copy clears a
+published standard, for a cent" is the easiest yes in the ecosystem. The kit is the upsell.
+
+**Intro offer (hackathon window only):** we run the *first pass* of your launch kit on our
+demo credits — you watch it happen live in the Studio, keep nothing until you pay, and see
+your own Tribunal report before spending anything. If you want the pack, the paid call is
+0.25 USDT and yours arrives sealed. No discount games; the price is the price, the taster
+is the taster, and the taster is labeled "demo credits" in the product itself.
+
+**The DM (one per person, then silence):**
+
+> Saw [project] under #OKXAI — you'll need launch assets before the deadline like the rest
+> of us. I built the only creative agent here with a published quality standard and
+> on-chain provenance. Run your current launch thread through its Tribunal for 0.01 USDT
+> and it will tell you, deterministically, what's filler: https://occestra.xyz/for-agents?src=hn-dm
+> If it's useful, the full kit (hero, genome from your live site, thread, beat sheet) is
+> 0.25. If it's not, that cost you a cent to find out.
+
+**Tracking (no analytics service, no cookies):** every outreach link carries `?src=` —
+`hn-dm`, `tg-group`, `x-reply`, `x-thread`. Caddy access logs are grep-able per source;
+conversions are visible in the store's real orders. Log each send in the ledger below by
+hand — memory lies, ledgers don't.
+
+| date | who (handle) | src tag | replied? | critique call? | kit call? |
+|---|---|---|---|---|---|
+| — | — | — | — | — | — |
