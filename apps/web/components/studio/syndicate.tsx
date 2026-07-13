@@ -26,16 +26,24 @@ export function Syndicate({ status, events }: { status: RunStatus; events: DemoE
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* roster */}
-      <ul className="flex flex-wrap gap-x-5 gap-y-1.5 border-b border-ink/10 px-4 py-3 sm:px-5">
+      {/* roster — the lilac glow physically travels from role to role */}
+      <ul className="relative flex flex-wrap gap-x-5 gap-y-1.5 border-b border-ink/10 px-4 py-3 sm:px-5">
         {ROLES.map((role) => {
           const active = activeRole === role;
           const touched = doneRoles.has(role);
           return (
-            <li key={role} className="flex items-center gap-2 text-[0.8rem]">
+            <li key={role} className="relative flex items-center gap-2 px-1.5 py-0.5 text-[0.8rem]">
+              {active && (
+                <motion.span
+                  layoutId="role-glow"
+                  aria-hidden
+                  className="absolute inset-0 -z-10 rounded-full bg-lilac/30"
+                  transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }}
+                />
+              )}
               <span
                 className={`size-1.5 rounded-full transition-all duration-300 ${
-                  active ? "bg-lilac ring-3 ring-lilac/40" : touched ? "bg-ink/70" : "bg-ink/15"
+                  active ? "bg-plum" : touched ? "bg-ink/70" : "bg-ink/15"
                 }`}
               />
               <span className={active ? "font-medium text-plum" : touched ? "text-ink/80" : "text-ink/65"}>{role}</span>

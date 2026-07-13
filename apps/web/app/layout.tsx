@@ -62,7 +62,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <GrainOverlay />
-        <Toaster position="bottom-right" richColors />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "#FAF7F2",
+              color: "#17141A",
+              border: "1px solid rgb(23 20 26 / 0.14)",
+              boxShadow: "0 8px 24px -8px rgb(23 20 26 / 0.16)",
+              fontFamily: "var(--font-grotesk)",
+            },
+          }}
+        />
       </body>
     </html>
   );

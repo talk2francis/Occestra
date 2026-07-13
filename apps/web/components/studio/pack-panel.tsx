@@ -38,6 +38,16 @@ export function PackPanel({
           </p>
         )}
 
+        {/* composing… */}
+        {status === "running" && gradedSoFar.length === 0 && !pack && (
+          <div className="shimmer rounded-xl border border-ink/10 bg-panel/50 p-4">
+            <p className="text-[0.8rem] font-medium text-ink/60">composing…</p>
+            <p className="mt-1 text-[0.72rem] text-ink/45">
+              the first artifact lands here once the Tribunal has seen it
+            </p>
+          </div>
+        )}
+
         {/* streaming assembly */}
         {!pack && (
           <AnimatePresence initial={false}>
@@ -45,9 +55,13 @@ export function PackPanel({
               event.type === "graded" ? (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, y: reduced ? 0 : 14, scale: reduced ? 1 : 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.5, ease: EASE }}
+                  initial={{ opacity: 0, y: reduced ? 0 : 22, scale: reduced ? 1 : 0.96, rotate: reduced ? 0 : -1.2 }}
+                  animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+                  transition={
+                    reduced
+                      ? { duration: 0.3 }
+                      : { type: "spring", stiffness: 300, damping: 26, mass: 0.9 }
+                  }
                   className="rounded-xl border border-ink/10 bg-ground p-3.5 shadow-lift"
                 >
                   <p className="text-[0.82rem] font-medium text-ink/85">{event.title}</p>
@@ -94,9 +108,17 @@ export function PackPanel({
                 )}
               </p>
               {pack.coverageGaps.length > 0 && (
-                <p className="mt-3 text-[0.72rem] leading-relaxed text-ink/60">
-                  Disclosed gaps: {pack.coverageGaps.join(" · ")}
-                </p>
+                <div className="mt-3 text-[0.72rem] leading-relaxed text-ink/60">
+                  <p className="text-kicker text-[0.55rem] text-info">disclosed gaps</p>
+                  <ul className="mt-1 space-y-0.5">
+                    {/* headline only — the full text ships in the manifest */}
+                    {pack.coverageGaps.map((gap) => (
+                      <li key={gap.slice(0, 40)} className="truncate">
+                        · {gap.split("—")[0]?.split(":").slice(0, 2).join(":").trim() ?? gap}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
 

@@ -159,7 +159,12 @@ export function Composer({
 
       {/* run */}
       <div className="border-t border-ink/10 pt-4">
-        <Button size="md" className="w-full" onClick={submit} disabled={running || missingRequired || remaining <= 0}>
+        <Button
+          size="md"
+          className={`w-full ${running ? "shimmer" : ""}`}
+          onClick={submit}
+          disabled={running || missingRequired || remaining <= 0}
+        >
           {running ? "The syndicate is working…" : "Run the syndicate"}
         </Button>
         <p className="mt-3 text-[0.72rem] leading-relaxed text-ink/60">

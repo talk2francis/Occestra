@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +33,18 @@ export function Workspace({
 
   const run = useStudioRun(refreshQuota);
   const [moment, setMoment] = useState<SealMomentData>();
+  const [folding, setFolding] = useState<string>();
+  const reduced = useReducedMotion();
+
+  // The brief physically leaves the composer and folds into the syndicate.
+  const handleRun = (tool: string, args: Record<string, unknown>) => {
+    const summary = String(args["occasion"] ?? args["title"] ?? args["productName"] ?? "the brief");
+    if (!reduced) {
+      setFolding(summary);
+      setTimeout(() => setFolding(undefined), 1000);
+    }
+    void run.start(tool, args);
+  };
 
   useEffect(() => {
     // Policy refusals render as a dignified notice in the feed — no toast.
@@ -50,6 +63,29 @@ export function Workspace({
   return (
     <div className="flex min-h-screen flex-col">
       {moment && <SealMoment data={moment} onDone={() => setMoment(undefined)} />}
+
+      {/* the brief folding into the room — desktop only, where the geometry reads */}
+      <AnimatePresence>
+        {folding && (
+          <motion.div
+            key="fold"
+            aria-hidden
+            className="pointer-events-none fixed top-1/2 left-[10rem] z-40 hidden max-w-56 rounded-xl border border-ink/15 bg-ground p-3 shadow-keepsake lg:block"
+            initial={{ opacity: 0, scale: 1, x: 0, y: 0, rotate: 0 }}
+            animate={{
+              opacity: [0, 1, 1, 0],
+              x: ["0%", "10%", "160%"],
+              y: ["0%", "-8%", "-30%"],
+              scale: [1, 1, 0.55],
+              rotate: [0, -1.5, 2],
+            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.95, times: [0, 0.25, 0.8, 1], ease: [0.22, 1, 0.36, 1] }}
+          >
+            <p className="font-serif text-[0.9rem] leading-snug text-ink/85">“{folding}”</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <header className="flex items-center justify-between gap-4 border-b border-ink/10 bg-panel/60 px-5 py-3 sm:px-8">
         <div className="flex items-baseline gap-4">
           <Link
@@ -73,7 +109,7 @@ export function Workspace({
             running={run.status === "running"}
             remaining={remaining}
             cap={cap}
-            onRun={(tool, args) => void run.start(tool, args)}
+            onRun={handleRun}
           />
         </aside>
 
