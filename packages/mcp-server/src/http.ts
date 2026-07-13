@@ -10,6 +10,7 @@ import express, { type Express, type Request, type Response } from "express";
 import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
 import { PRICES, OkxGate, isFree, type PaymentGate } from "./gate.js";
+import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { handleDemoRun } from "./demo.js";
 import { handleDelete, handleUpload } from "./uploads.js";
 import { VERSION, buildServer, packResult, type ServerContext } from "./server.js";
@@ -138,6 +139,14 @@ export function buildApp(ctx: AppContext): Express {
       return;
     }
     res.type("text/markdown").send(rubricAsMarkdown());
+  });
+
+  /* ------------------------------------------------------ a2a capabilities */
+
+  // Public: what Occestra takes on as negotiated work, priced and specified.
+  // The same declaration the negotiation skill enforces — no drift possible.
+  app.get("/a2a/capabilities", (_req, res) => {
+    res.json(a2aCapabilities());
   });
 
   /* ---------------------------------------------------------- live counters */

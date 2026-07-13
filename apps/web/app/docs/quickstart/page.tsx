@@ -258,11 +258,18 @@ export default function Quickstart() {
         <CodeBlock title="request">{call("oce_verify_keepsake", `{ "keepsakeId": "oce_01kxbz33bb4grnd1xh0gev" }`)}</CodeBlock>
         <CodeBlock title="response" lang="json">{`{
   "found": true,
-  "signatureValid": true,
-  "leaf": "0xc814215758135400b364fbb5d4614b7e9ab50a114158a1c91e36064ab23a4adc",
+  "keepsakeId": "oce_01kxbz33bb4grnd1xh0gev",
+  "studio": "celebrate",
+  "quality": { "oqsVersion": "1.0.0", "passRate": 1, "repairedCount": 0 },
+  "seal": {
+    "…": "the full seal fields, plus:",
+    "leaf": "0xc814215758135400b364fbb5d4614b7e9ab50a114158a1c91e36064ab23a4adc",
+    "signatureValid": true
+  },
   "anchored": true,
   "anchorTx": "0xb97ec200c619fca5f589b07d65bb7aa1a31a404e50e8fe010e19abf0c4058801",
-  "explorer": "https://www.oklink.com/x-layer/tx/0xb97ec2…"
+  "explorer": "https://www.oklink.com/x-layer/tx/0xb97ec2…",
+  "publicPage": "https://api.occestra.xyz/k/oce_01kxbz33bb4grnd1xh0gev"
 }`}</CodeBlock>
         <p>
           Or skip our servers entirely — the{" "}
@@ -271,6 +278,39 @@ export default function Quickstart() {
           </Link>{" "}
           has a standalone script that performs both checks against the chain directly.
         </p>
+      </Section>
+
+      <Section id="sdk" title="The SDK, and the drop-in quality gate">
+        <p>
+          <InlineCode>@occestra/client</InlineCode> wraps all of the above with types and automatic
+          x402 payment (your key signs locally; it is never sent):
+        </p>
+        <CodeBlock title="five lines, whole integration" lang="ts">{`import { Occestra } from "@occestra/client";
+
+const studio = new Occestra({ endpoint: "https://api.occestra.xyz",
+  payment: { privateKey: process.env.AGENT_KEY } });
+const toast = await studio.writeToast({ subject: "Mara", details: "she taught me to drive, badly" });
+console.log(toast.publicPage); // graded, sealed, verifiable`}</CodeBlock>
+        <p>
+          And for any agent built on the Vercel AI SDK,{" "}
+          <InlineCode>examples/quality-gate.mjs</InlineCode> in the repo is a drop-in middleware
+          that runs every generation through <InlineCode>oce_critique</InlineCode> before your
+          agent ships it — one repair round on failure, exactly like our own pipelines, for one
+          cent a check:
+        </p>
+        <CodeBlock title="quality-gate for any AI SDK model" lang="ts">{`import { wrapLanguageModel } from "ai";
+import { occestraQualityGate } from "./quality-gate.mjs";
+
+const model = wrapLanguageModel({
+  model: yourModel, // any provider
+  middleware: occestraQualityGate({
+    endpoint: "https://api.occestra.xyz",
+    payment: { privateKey: process.env.AGENT_KEY },
+    kind: "launch_thread",
+  }),
+});
+// generations that fail the published standard are repaired once with the
+// Tribunal's brief; persistent failures ship WITH the report attached.`}</CodeBlock>
       </Section>
 
       <PrevNext slug="quickstart" />

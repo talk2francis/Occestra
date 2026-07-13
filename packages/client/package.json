@@ -1,0 +1,33 @@
+{
+  "name": "@occestra/client",
+  "version": "0.1.0",
+  "description": "Typed client for Occestra, the Occasion Studio on OKX.AI — call the tools, pay x402 challenges automatically, verify seals.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "files": ["dist", "README.md"],
+  "keywords": ["occestra", "okx", "x-layer", "x402", "mcp", "agent", "a2a"],
+  "repository": { "type": "git", "url": "https://github.com/talk2francis/Occestra", "directory": "packages/client" },
+  "publishConfig": { "access": "public" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "viem": "^2.21.0"
+  },
+  "peerDependenciesMeta": {
+    "viem": { "optional": true }
+  },
+  "devDependencies": {
+    "@occestra/mcp-server": "*",
+    "@occestra/providers": "*",
+    "@occestra/receipts": "*",
+    "viem": "^2.21.0"
+  }
+}
