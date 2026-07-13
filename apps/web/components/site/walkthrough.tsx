@@ -163,10 +163,10 @@ export function Walkthrough() {
                   <motion.span
                     key={venue.name}
                     {...rise}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-panel/70 px-2.5 py-1 text-[0.75rem] text-ink/80"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-panel/70 px-2.5 py-1 text-[0.75rem] text-ink/90"
                   >
                     {venue.name}
-                    <span className="text-data text-ink/60">osm</span>
+                    <span className="text-data text-ink/70">osm</span>
                   </motion.span>
                 ))}
               </AnimatePresence>

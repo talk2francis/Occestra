@@ -49,14 +49,39 @@ function supportsWebgl(): boolean {
   }
 }
 
-/** The real stone when the machine can afford it; the drawing when it can't. */
+/**
+ * The real stone when the machine can afford it; the drawing when it can't.
+ * The three.js chunk waits for post-load idle — eagerly evaluating it during
+ * hydration cost 1.4s of main-thread time on a throttled phone.
+ */
 function HeroPrism() {
   const reduced = useReducedMotion();
-  const [webgl, setWebgl] = useState<boolean>();
-  useEffect(() => setWebgl(supportsWebgl()), []);
-  if (reduced || webgl === false) return <Prism />;
-  if (webgl === undefined) return <Prism />;
-  return <PrismCanvas />;
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (reduced) return;
+    // Arm on the first real user input (or a long fallback) — the chunk is
+    // heavy enough to dent a throttled phone's main thread if it evaluates
+    // during load, and nobody misses the stone before they've even moved.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const arm = () => {
+      if (supportsWebgl()) setReady(true);
+      cleanup();
+    };
+    const cleanup = () => {
+      for (const type of ["pointermove", "scroll", "touchstart", "keydown"]) {
+        window.removeEventListener(type, arm);
+      }
+      if (timer) clearTimeout(timer);
+    };
+    for (const type of ["pointermove", "scroll", "touchstart", "keydown"]) {
+      window.addEventListener(type, arm, { once: true, passive: true });
+    }
+    timer = setTimeout(arm, 8000);
+    return cleanup;
+  }, [reduced]);
+
+  return ready && !reduced ? <PrismCanvas /> : <Prism />;
 }
 
 export function Hero() {

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- the seal mark's inner glyph: concentric squares + the check, in amethyst on warm ground -->
+  <rect width="64" height="64" rx="14" fill="#FAF7F2"/>
+  <g transform="translate(32 32)" stroke="#6B3FA0" fill="none">
+    <rect x="-19" y="-19" width="38" height="38" stroke-width="4"/>
+    <rect x="-11.5" y="-11.5" width="23" height="23" stroke-width="3"/>
+    <path d="M -6 0.5 L -1.5 5 L 7 -5" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
