@@ -39,6 +39,15 @@ export const HouseStyleSchema = z.object({
   typeDirection: z.string().min(1),
   negativePrompt: z.string(),
   seedStrategy: z.enum(["fixed", "contract_hash", "random"]),
+  /**
+   * What this style is FOR, and what it is wrong for.
+   *
+   * It lives on the style rather than in the tool that lists them, because it is part of the
+   * style's definition and is versioned with it. A buyer choosing blind pays for a render they
+   * did not want — and a wrong style is not a refund, it is just a bad invitation.
+   */
+  bestFor: z.string().min(1),
+  wrongFor: z.string().min(1),
 });
 export type HouseStyle = z.infer<typeof HouseStyleSchema>;
 

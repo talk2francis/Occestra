@@ -12,6 +12,7 @@ import { verifySeal, leafOfSeal, chainFor } from "@occestra/receipts";
 import { rubricAsJson } from "@occestra/tribunal";
 import { sanitizeGaps, sanitizeTribunal, type Pack } from "@occestra/studio-core";
 import { PACK_TOOLS, PRICES, type PackToolName, type ToolName } from "./gate.js";
+import { HOUSE_STYLES } from "@occestra/providers";
 import type { JobQueue } from "./jobs.js";
 import {
   PolicyRefusal,
@@ -30,7 +31,7 @@ export const VERSION = "1.0.0";
 
 const STYLE_IDS = ["amethyst_editorial", "gilded_noir", "sunprint", "atlas_ink"] as const;
 const StyleId = z.enum(STYLE_IDS).describe(
-  "House Style. amethyst_editorial = warm ivory editorial collage. gilded_noir = near-black + champagne gold, formal. sunprint = cyanotype blues, nostalgic (best for memories). atlas_ink = map-and-ledger, best for itineraries.",
+  "House Style. Call oce_style_catalog (FREE) to see the real palette of each one, what it is for, and a real passing example. Short version: amethyst_editorial = warm ivory editorial collage, the safe default. gilded_noir = near-black + champagne gold, black-tie. sunprint = cyanotype blues, the right register for a MEMORY. atlas_ink = map-and-ledger, for anything a person has to read and act on.",
 );
 
 /** JSON with bigints rendered as decimal strings — a seal carries them. */
@@ -272,7 +273,13 @@ export function buildServer(ctx: ServerContext): McpServer {
         "1. THE TRIBUNAL. Every artifact is graded against a published, versioned rubric (the Occestra Quality Standard) before you get it — five scored axes plus deterministic checks that no model can talk its way past: budgets must sum, schedules must be physically possible, images must match their spec, grounded claims must carry a source. Failures are repaired, up to twice. The full report ships with your result, pass or fail.",
         "2. THE SEAL. Any result can be hash-anchored on X Layer with an EIP-712 provenance certificate. Nothing personal goes on chain — only a hash. Anyone can verify it without trusting us.",
         "",
+        "3. THE JOB QUEUE. Anything long — a launch kit especially — should be run with oce_create_pack_job: same price as the tool it runs, no timeout, and polling, collecting and cancelling are free. Send an Idempotency-Key on any paid call and a retry can never charge you twice; if you send none, the nonce inside your x402 payment is used as the key, so a plain retry is already safe.",
+        "",
+        "START WITH oce_style_catalog. It is free, it shows you the real palette of every House Style with a real passing example, and choosing one blind means paying for a render you did not want.",
+        "",
         "Occestra never claims a booking is confirmed, never invents a fact about a real person, and records every gap in its own coverage rather than hiding it.",
+        "",
+        "AND WHEN IT FAILS: x402 settles before the work runs, so a call that delivers nothing has taken your money and given you nothing. Occestra books that as a refund against your address, publishes the total at /stats, and returns it on chain. We would rather show you the number than hide it.",
       ].join("\n"),
     },
   );
@@ -402,6 +409,8 @@ export function buildServer(ctx: ServerContext): McpServer {
         "",
         "HONESTY: it uses only what is on your page and what you tell it. It invents no features, no metrics, no users, no funding. If your site cannot be reached, that is recorded as a coverage gap and the kit says, in writing, that it was built from the description alone. The genome even shows which of your colours it adopted and which it rejected, and why.",
         "",
+        "RUN THIS AS A JOB. It is the longest thing Occestra does — a real browser render, four images, seven pieces of copy, and a Tribunal pass over every one of them. Call oce_create_pack_job with tool='oce_launch_kit' instead of calling this directly: same price, no timeout, and you can watch the run. If you do call it synchronously and your client times out, send an Idempotency-Key so your retry cannot be charged twice.",
+        "",
         "BUILDERS: if you are shipping something this week, this is the tool. The result is sealed on X Layer, so 'made by Occestra, graded, verifiable' is checkable by anyone.",
       ].join("\n"),
       inputSchema: TOOL_INPUTS.oce_launch_kit,
@@ -418,7 +427,9 @@ export function buildServer(ctx: ServerContext): McpServer {
       description: [
         `Run your own work — not just ours — through the Occestra Tribunal. ${price("oce_critique")}`,
         "",
-        "FOR OTHER BUILDERS: you made an image, a plan, or a piece of copy with your own agent. Is it actually any good? This grades it against the Occestra Quality Standard (OQS v1.0.0), a rubric published in full at /standard — the same code that runs here.",
+        `FOR OTHER BUILDERS: you made an image, a plan, or a piece of copy with your own agent. Is it actually any good? This grades it against the Occestra Quality Standard (OQS v${rubricAsJson().oqsVersion}), a rubric published in full at /standard — the same code that runs here.`,
+        "",
+        "THE GRADE IS REPRODUCIBLE. The critic runs at temperature 0 against anchored scoring bands, and a correctness axis may only fall below its floor if the critic can QUOTE the exact defect — an uncited correctness failure is discarded and the score restored. Run it twice on the same artifact and you get the same verdict. A standard that scores the identical thing 62 one day and 72 the next is not a standard, it is a mood.",
         "",
         "YOU GET: five scored axes (composition, legibility, style fidelity, grounding, platform fit — 70 is the passing floor), every deterministic check with its evidence (does the budget sum? is the schedule physically possible? does the image match its declared size? does body text clear 4.5:1 contrast? do the links resolve?), and an ACTIONABLE repair brief written to your generator, not to you.",
         "",
@@ -693,6 +704,65 @@ export function buildServer(ctx: ServerContext): McpServer {
           ? { note: "It will stop at its next provider call. It is not refunded — the money is already spent." }
           : {}),
         ...(outcome === "not_cancellable" ? { note: "This job has already finished." } : {}),
+      });
+    },
+  );
+
+  /* ------------------------------------------------------ oce_style_catalog */
+
+  server.registerTool(
+    "oce_style_catalog",
+    {
+      title: "The House Styles, in full (free)",
+      description: [
+        "Every House Style Occestra can render in, with the actual palette, the type direction, what each one is FOR, what it is WRONG for — and a link to a real, finished, Tribunal-PASSED artifact made in it. FREE.",
+        "",
+        "CALL THIS FIRST. A styleId is an argument on almost every paid tool, and choosing one blind means paying for a render you did not want. A wrong style is not a refund — it is just a bad invitation.",
+        "",
+        "YOU GET, per style: the exact hex palette (which is not a suggestion — PALETTE_DRIFT is a deterministic Tribunal check, and an image that wanders out of its palette fails on arithmetic, not on taste), the type direction, the version (styles are versioned; a palette change bumps it), what the style refuses to draw, and a signed link to the most recent artifact that actually passed in it. If a style has never produced a passing artifact, it shows you nothing rather than borrowing one from a style that did.",
+        "",
+        "THE SHORT VERSION: sunprint for a memory. atlas_ink for anything anyone has to read and act on. gilded_noir for black-tie. amethyst_editorial when you are not sure.",
+        "",
+        "EXAMPLE: (no arguments) -> four styles, four palettes, four real examples, and the rule that enforces them.",
+      ].join("\n"),
+      inputSchema: {},
+    },
+    async () => {
+      const examples = ctx.store.styleExamples();
+
+      return ok({
+        styles: Object.values(HOUSE_STYLES).map((style) => {
+          const example = examples[style.id];
+
+          return {
+            id: style.id,
+            name: style.name,
+            version: style.version,
+            bestFor: style.bestFor,
+            wrongFor: style.wrongFor,
+            palette: style.palette,
+            typeDirection: style.typeDirection,
+            refuses: style.negativePrompt,
+            example: example
+              ? {
+                  kind: example.kind,
+                  image: ctx.store.signedUrlFor(example.uri, 86_400),
+                  keepsake: `${ctx.publicBaseUrl}/k/${example.keepsakeId}`,
+                  note: "A real artifact that passed the Tribunal in this style. Not a mock-up.",
+                }
+              : { note: "Nothing has been rendered in this style yet, so there is nothing honest to show you." },
+          };
+        }),
+        enforcement:
+          "The palette is checked, not trusted: PALETTE_DRIFT is a deterministic check in the Occestra Quality Standard. An image that wanders out of its declared palette fails on arithmetic — no model can talk its way past it.",
+        rubric: `${ctx.publicBaseUrl}/standard`,
+        defaults: {
+          oce_plan_occasion: "atlas_ink",
+          oce_make_keepsake: "sunprint",
+          oce_design_invite: "amethyst_editorial",
+          oce_moodboard: "amethyst_editorial",
+          oce_launch_kit: "amethyst_editorial",
+        },
       });
     },
   );

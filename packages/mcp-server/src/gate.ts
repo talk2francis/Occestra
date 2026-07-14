@@ -65,6 +65,9 @@ export const PRICES = {
   oce_job_status: 0,
   oce_job_result: 0,
   oce_cancel_job: 0,
+  // Free, and it has to be. A buyer choosing a House Style blind pays for a render they did
+  // not want, and a wrong style is not a refund — it is just a bad invitation.
+  oce_style_catalog: 0,
 } as const satisfies Record<string, number>;
 
 export type ToolName = keyof typeof PRICES;
@@ -268,6 +271,25 @@ export class OkxGate implements PaymentGate {
 
   get network(): string {
     return `eip155:${this.config.chainId}`;
+  }
+
+  /** What we take, and where it goes. The manifest advertises this so nobody has to guess. */
+  get terms(): {
+    asset: string;
+    assetName: string;
+    assetVersion: string;
+    decimals: number;
+    payTo: string;
+    maxTimeoutSeconds: number;
+  } {
+    return {
+      asset: this.config.asset,
+      assetName: this.config.assetName,
+      assetVersion: this.config.assetVersion,
+      decimals: ASSET_DECIMALS,
+      payTo: this.config.treasury,
+      maxTimeoutSeconds: this.config.maxTimeoutSeconds,
+    };
   }
 
   challenge(tool: string, priceUsdt: number): PaymentChallenge {

@@ -7,6 +7,32 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-1.3/1.4/1.5: the storefront
+
+**`oce_style_catalog` — free, and the tool to call first.** A `styleId` is an argument on almost
+every paid tool, and until now the only guidance was a one-line hint buried in a schema
+description. Choosing blind means paying for a render you did not want, and a wrong style is not
+a refund — it is just a bad invitation. The catalog gives every House Style's **actual hex
+palette** (which is not a suggestion: `PALETTE_DRIFT` is a deterministic check, and an image that
+wanders out of its palette fails on arithmetic, not on taste), the type direction, what each style
+is **for** and **wrong for**, and a link to **a real artifact that actually passed the Tribunal in
+it**. If a style has never produced a passing artifact, it shows nothing and says so — a catalog
+illustrated with work that failed is an advert.
+
+**The manifest never told anyone what token we take.** The field read
+`asset: ctx.gate instanceof OkxGate ? undefined : undefined` — a ternary with the same answer on
+both branches — so the one thing a buying agent needs *before* it can sign anything was the one
+thing we never said, and it had to provoke a 402 to find out. The manifest now carries the asset,
+its name and version, the decimals, the treasury, the settlement mechanism, the standard's axes
+and checks, the House Styles with what each is for, the async job protocol, the idempotency
+contract, the rate limits, **and the refund policy including the amount currently owed**.
+
+**Descriptions.** `oce_critique` was advertising **OQS v1.0.0** — a hardcoded string, two versions
+stale. It now reads the version from the constant, and says the thing that is actually new: the
+grade is **reproducible**, because the critic runs at temperature 0 against anchored bands and a
+correctness failure must be quotable. `oce_launch_kit` now tells you to run it as a job rather
+than waiting on a socket that will time out.
+
 ## [Unreleased] — V2-1.2: all six tools sold below cost, and the measurement that said "three" was wrong too
 
 The last release measured the cost of every tool and found **three of six selling below cost**.

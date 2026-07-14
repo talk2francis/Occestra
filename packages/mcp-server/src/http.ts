@@ -180,6 +180,12 @@ export function buildApp(ctx: AppContext): Express {
   /* -------------------------------------------------------------- manifest */
 
   app.get("/.well-known/occestra.json", (_req, res) => {
+    // Everything a buying agent needs to decide, in one document, with no round-trip: what we
+    // sell, what it costs, what token in what network, how to run the long jobs, how not to be
+    // charged twice, what the standard is, what we promise, and what we do when we break it.
+    const terms = ctx.gate instanceof OkxGate ? ctx.gate.terms : undefined;
+    const owed = ctx.store.refundsOwed();
+
     res.json({
       name: "Occestra",
       tagline: "Every moment, made monumental.",
@@ -195,8 +201,22 @@ export function buildApp(ctx: AppContext): Express {
         challengeHeader: "PAYMENT-REQUIRED",
         proofHeader: "PAYMENT-SIGNATURE",
         responseHeader: "PAYMENT-RESPONSE",
-        asset: ctx.gate instanceof OkxGate ? undefined : undefined,
         currency: "USDT",
+        // THE ASSET, ACTUALLY STATED. This field used to read
+        // `ctx.gate instanceof OkxGate ? undefined : undefined` — both branches undefined —
+        // so the one thing a buyer needs before they can sign anything was never advertised,
+        // and they had to provoke a 402 to find out what token we take.
+        ...(terms
+          ? {
+              asset: terms.asset,
+              assetName: terms.assetName,
+              assetVersion: terms.assetVersion,
+              decimals: terms.decimals,
+              payTo: terms.payTo,
+              maxTimeoutSeconds: terms.maxTimeoutSeconds,
+              settlement: "EIP-3009 transferWithAuthorization, redeemed by us — you pay USDT, we pay the gas",
+            }
+          : { mode: ctx.gate.mode, note: "Not in okx payment mode: every tool is currently free." }),
       },
       tools: [
         ...Object.entries(PRICES).map(([name, priceUsdt]) => ({
@@ -225,23 +245,46 @@ export function buildApp(ctx: AppContext): Express {
         replayHeader: "Idempotency-Replayed",
         note: "A retry of an identical paid request returns the original response and is never charged twice.",
       },
+      // What we do when we take money and deliver nothing. Published, including the number.
+      refunds: {
+        policy:
+          "x402 settles before the work runs. Any paid call that delivers nothing books a refund against the payer's address, and it is returned on chain.",
+        cancelledQueued: "refunded in full — nothing had been spent",
+        cancelledRunning: "not refunded — the money is already with the providers doing the work",
+        owedNow: owed.length,
+        owedUsdt: Number(owed.reduce((sum, refund) => sum + refund.amountUsdt, 0).toFixed(6)),
+      },
       quality: {
         standard: "Occestra Quality Standard",
         version: rubricAsJson().oqsVersion,
         published: `${ctx.publicBaseUrl}/standard`,
+        axes: rubricAsJson().axes.map((axis) => axis.id),
+        checks: rubricAsJson().checks.map((check) => check.id),
+        maxRepairs: rubricAsJson().maxRepairs,
+        note: "Every artifact is graded before you get it, and the report ships with it — pass or fail.",
       },
       provenance: {
         chainId: ctx.chainId,
         registry: ctx.registry,
         sealer: ctx.sealerAddress,
         domain: { name: "Occestra", version: "1" },
+        verify: "oce_verify_keepsake — free, forever",
       },
       styles: Object.values(HOUSE_STYLES).map((style) => ({
         id: style.id,
         name: style.name,
         version: style.version,
         palette: style.palette,
+        bestFor: style.bestFor,
       })),
+      limits: {
+        rateLimit: "60 requests per minute per IP",
+        uploads: "8 images per request, 10MB each, EXIF stripped on ingest",
+        jobConcurrency: "the queue runs a bounded number of packs at once; the rest wait, they are not dropped",
+      },
+      a2a: `${ctx.publicBaseUrl}/a2a/capabilities`,
+      docs: "https://occestra.xyz/docs",
+      liveCounters: `${ctx.publicBaseUrl}/stats`,
     });
   });
 

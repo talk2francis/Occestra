@@ -37,6 +37,10 @@ export const AMETHYST_EDITORIAL: HouseStyle = {
     "no drop shadows on text",
     "no watermarks, no signatures, no gibberish lettering",
   ].join(", "),
+  bestFor:
+    "Invitations and launch work that should look commissioned rather than generated. The default, and the safest choice when you are not sure: it is warm without being sweet, and it carries small type well.",
+  wrongFor:
+    "Anything that needs to feel nocturnal or black-tie — reach for Gilded Noir. It will not give you drama.",
   seedStrategy: "contract_hash",
 };
 
@@ -65,6 +69,10 @@ export const GILDED_NOIR: HouseStyle = {
     "no stock-photo champagne splash",
     "no watermarks, no gibberish lettering",
   ].join(", "),
+  bestFor:
+    "Black-tie, evening, and anything with weight: galas, awards, milestone birthdays, a launch that wants to feel expensive. Champagne gold on near-black is the most formal register we have.",
+  wrongFor:
+    "Daytime, children's parties, or anything tender. It is a beautiful style with no warmth in it at all.",
   seedStrategy: "contract_hash",
 };
 
@@ -92,6 +100,10 @@ export const SUNPRINT: HouseStyle = {
     "no 3D render look",
     "no watermarks, no gibberish lettering",
   ].join(", "),
+  bestFor:
+    "MEMORY. A moment that already happened. The cyanotype blues read as a photograph that has been kept, and it is the right register for a keepsake — which is why oce_make_keepsake defaults to it.",
+  wrongFor:
+    "Anything forward-looking. A product launch in Sunprint looks like a eulogy for the product.",
   seedStrategy: "contract_hash",
 };
 
@@ -119,6 +131,10 @@ export const ATLAS_INK: HouseStyle = {
     "no photographic elements",
     "no watermarks, no gibberish lettering",
   ].join(", "),
+  bestFor:
+    "Itineraries, schedules, guest guides, anything a person has to READ and act on. Map-and-ledger: it makes a plan look like a plan, and it is why oce_plan_occasion defaults to it.",
+  wrongFor:
+    "Emotional work. It is a beautiful instrument and a cold one — do not send a wedding invitation in it.",
   seedStrategy: "contract_hash",
 };
 

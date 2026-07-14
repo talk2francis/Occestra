@@ -517,6 +517,14 @@ describe("http surface", () => {
     expect(manifest.tools).toHaveLength(TOOL_NAMES.length + 1);
     expect(manifest.async.create).toBe("oce_create_pack_job");
     expect(manifest.idempotency.header).toBe("Idempotency-Key");
+
+    // The manifest is what a buying agent reads BEFORE it can sign anything, and the standard,
+    // the styles and the refund policy are the three things it cannot get anywhere else.
+    expect(manifest.quality.axes).toHaveLength(5);
+    expect(manifest.quality.checks.length).toBeGreaterThanOrEqual(13);
+    expect(manifest.styles[0].bestFor).toBeTruthy();
+    expect(manifest.refunds.policy).toContain("settles before the work runs");
+    expect(manifest.provenance.verify).toContain("free");
     expect(manifest.tools.find((t: { name: string }) => t.name === "oce_verify_keepsake").free).toBe(true);
     expect(manifest.styles).toHaveLength(4);
     expect(manifest.quality.version).toBe(OQS_VERSION);
@@ -543,6 +551,15 @@ describe("http surface", () => {
 
     const decoded = JSON.parse(Buffer.from(header!, "base64").toString());
     expect(decoded.x402Version).toBe(2);
+
+    // And the manifest advertises the SAME asset, so a buyer never has to provoke a 402 to
+    // find out what token we take. This field used to be `undefined : undefined` — a ternary
+    // with the same answer on both branches — so the one thing needed before signing anything
+    // was the one thing we never said.
+    const manifest = await (await fetch(`${base}/.well-known/occestra.json`)).json();
+    expect(manifest.payment.asset).toBe(decoded.accepts[0].asset);
+    expect(manifest.payment.payTo).toBe(decoded.accepts[0].payTo);
+    expect(manifest.payment.decimals).toBe(6);
     // Priced from the table, never from a number typed into a test — a repricing must not
     // need this file edited, or the test is asserting history rather than behaviour.
     expect(decoded.accepts[0].amount).toBe(toAtomic(PRICES.oce_design_invite).toString());

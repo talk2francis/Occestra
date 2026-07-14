@@ -406,6 +406,50 @@ export class Store {
     return true;
   }
 
+  /* ---------------------------------------------------------------- styles */
+
+  /**
+   * A real, finished, PASSING example of each House Style — for the style catalog.
+   *
+   * Real work only. A catalog illustrated with the prettiest thing we ever made, cherry-picked
+   * and unlabelled, is a portfolio; a catalog that shows you the most recent artifact that
+   * actually passed the Tribunal is evidence. If a style has never produced a passing artifact,
+   * it shows nothing — and says so — rather than borrowing one from a style that did.
+   */
+  styleExamples(): Record<string, { keepsakeId: string; kind: string; uri: string }> {
+    const rows = this.db
+      .prepare("SELECT body FROM packs ORDER BY created_at DESC LIMIT 200")
+      .all() as Array<{ body: string }>;
+
+    const found: Record<string, { keepsakeId: string; kind: string; uri: string }> = {};
+
+    for (const row of rows) {
+      let pack: Pack;
+      try {
+        pack = JSON.parse(row.body) as Pack;
+      } catch {
+        continue; // one unreadable row must never take the catalog down
+      }
+
+      for (const artifact of pack.artifacts) {
+        if (!artifact.styleId || !artifact.uri || artifact.format !== "png") continue;
+        if (found[artifact.styleId]) continue;
+        if (artifact.undelivered) continue; // never illustrate a style with a failure
+        // The pack's own tribunal report, as it was written. `pass` is the only field we need.
+        const report = artifact.tribunal as { pass?: boolean } | undefined;
+        if (report && report.pass === false) continue; // nor with a fail
+
+        found[artifact.styleId] = {
+          keepsakeId: pack.id,
+          kind: artifact.kind,
+          uri: artifact.uri,
+        };
+      }
+    }
+
+    return found;
+  }
+
   /* ----------------------------------------------------------------- orders */
 
   recordOrder(order: OrderRow): void {
