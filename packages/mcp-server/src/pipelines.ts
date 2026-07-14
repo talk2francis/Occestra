@@ -35,6 +35,8 @@ import {
   runRemember,
   type RememberDeps,
   type StoryGraph,
+  ensureStored,
+  isUndelivered,
 } from "@occestra/studio-core";
 import { OQS_VERSION, runTribunal, type TribunalReport } from "@occestra/tribunal";
 import { HOUSE_STYLES, styleSystemPrompt, type CostGovernor } from "@occestra/providers";
@@ -123,6 +125,7 @@ async function assemble(
       oqsVersion: OQS_VERSION,
       passRate: reports.length > 0 ? passed / reports.length : 1,
       repairedCount: repaired,
+      undeliveredCount: artifacts.filter(isUndelivered).length,
     },
     createdAt: nowIso(ctx),
   };
@@ -154,6 +157,9 @@ async function makeImage(
   const png = await sharp(Buffer.from(result.pngBase64, "base64")).png().toBuffer();
   const bytes = new Uint8Array(png);
   await ctx.deps.storage.put(args.key, bytes, "image/png");
+  // A resolved put is not proof. If the bytes can't be read back, this artifact does
+  // not exist, and it must never reach a pack wearing a PASS.
+  await ensureStored(ctx.deps.storage, args.key);
 
   return { uri: args.key, bytes };
 }
@@ -207,6 +213,7 @@ export async function planOccasion(ctx: PipelineContext, input: PlanOccasionInpu
     storage: ctx.deps.storage,
     clock: ctx.deps.clock,
     styleFor: (id) => HOUSE_STYLES[id],
+    ...(ctx.deps.log ? { log: ctx.deps.log } : {}),
     ...(ctx.deps.places ? { places: ctx.deps.places } : {}),
     ...(ctx.deps.weather ? { weather: ctx.deps.weather } : {}),
     ...(ctx.grader ? { grader: ctx.grader } : {}),
@@ -553,6 +560,7 @@ export async function makeKeepsake(ctx: PipelineContext, input: MakeKeepsakeInpu
     storage: ctx.deps.storage,
     clock: ctx.deps.clock,
     styleFor: (id) => HOUSE_STYLES[id],
+    ...(ctx.deps.log ? { log: ctx.deps.log } : {}),
     ...(ctx.deps.vision ? { vision: ctx.deps.vision } : {}),
     ...(ctx.grader ? { grader: ctx.grader } : {}),
   };
@@ -626,6 +634,7 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
     storage: ctx.deps.storage,
     clock: ctx.deps.clock,
     styleFor: (id) => HOUSE_STYLES[id],
+    ...(ctx.deps.log ? { log: ctx.deps.log } : {}),
     ...(ctx.deps.site ? { site: ctx.deps.site } : {}),
     ...(ctx.deps.market ? { market: ctx.deps.market } : {}),
     ...(ctx.grader ? { grader: ctx.grader } : {}),

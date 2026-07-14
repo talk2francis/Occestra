@@ -44,7 +44,21 @@ export interface ProviderEnv {
   OCE_XAI_MODEL?: string;
   /** Set false in CI: skips launching a browser we know isn't installed. */
   OCE_ENABLE_BROWSER?: string;
+  /**
+   * "1" wires the deterministic fakes for EVERY provider — no key is read, no
+   * paid call is ever made. This is how the server, the Studio and the Playwright
+   * suite are exercised for free. A pack built this way is loudly marked as such
+   * in coverageGaps so it can never be mistaken for real work.
+   */
+  OCE_FAKE_PROVIDERS?: string;
+  OCE_PAYMENT_MODE?: string;
 }
+
+const FAKE_GAP =
+  "FAKE_PROVIDERS: every provider is a deterministic fake — this pack is a rehearsal, not real work";
+
+const isFake = (env: ProviderEnv): boolean =>
+  env.OCE_FAKE_PROVIDERS === "1" || env.OCE_FAKE_PROVIDERS === "true";
 
 export interface BuildDepsOptions {
   storage?: StoragePort;
@@ -69,12 +83,71 @@ const numberOr = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+/**
+ * Every port, faked. Deterministic, instant, free — and honest about it: `live`
+ * is false across the board and the pack carries FAKE_PROVIDERS in its gaps.
+ */
+function buildFakeDeps(o: {
+  cache: TtlCache;
+  now: () => number;
+  fetchImpl: typeof fetch;
+  storage?: StoragePort | undefined;
+}): BuiltDeps {
+  const storage: StoragePort = o.storage ?? new MemoryStorage();
+  const router = new ModelRouter({}, { governor: new CostGovernor(DEFAULT_LIMITS, o.now) });
+  const governor = new CostGovernor(DEFAULT_LIMITS, o.now);
+
+  const deps: EngineDeps = {
+    text: new FakeTextModel(),
+    image: new FakeImageModel(),
+    critique: new FakeCritique(),
+    storage,
+    clock: new SystemClock(),
+    weather: new FakeWeather(),
+    places: new FakePlaces(),
+    site: new FakeSite(),
+    market: new FakeMarket(),
+    caps: { dailyImageCap: DEFAULT_LIMITS.dailyImageCap, dailyLlmUsdCap: DEFAULT_LIMITS.dailyLlmUsdCap },
+  };
+
+  return {
+    deps,
+    live: {
+      text: false,
+      image: false,
+      critique: false,
+      vision: false,
+      weather: false,
+      places: false,
+      site: false,
+      market_okx: false,
+      fake_providers: true,
+    },
+    coverageGaps: [FAKE_GAP],
+    router,
+    governor,
+    cache: o.cache,
+    linkChecker: async () => true,
+  };
+}
+
 export function buildDeps(env: ProviderEnv, options: BuildDepsOptions = {}): BuiltDeps {
   const coverageGaps: string[] = [];
   const live: Record<string, boolean> = {};
   const cache = new TtlCache(options.now);
   const fetchImpl = options.fetchImpl ?? fetch;
   const now = options.now ?? Date.now;
+
+  if (isFake(env)) {
+    // A paid customer must never be served a rehearsal. Fake mode is for local
+    // iteration, CI and Playwright; if the real payment rail is on, refuse to boot.
+    if (env.OCE_PAYMENT_MODE === "okx") {
+      throw new Error(
+        "OCE_FAKE_PROVIDERS is set while OCE_PAYMENT_MODE=okx — refusing to take real money for fake work.",
+      );
+    }
+    return buildFakeDeps({ cache, now, fetchImpl, storage: options.storage });
+  }
 
   const governor = new CostGovernor(
     {

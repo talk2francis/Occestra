@@ -132,6 +132,19 @@ export const ArtifactSpecSchema = z.object({
 });
 export type ArtifactSpec = z.infer<typeof ArtifactSpecSchema>;
 
+/**
+ * Why an artifact isn't here.
+ *
+ * `code` is a stable, public identifier (e.g. "image_provider:quota"); `reason` is
+ * one plain sentence a buyer can read. The raw provider error never appears in
+ * either — it goes to the server log. See sanitizeGap().
+ */
+export const UndeliveredSchema = z.object({
+  code: z.string().min(1),
+  reason: z.string().min(1),
+});
+export type Undelivered = z.infer<typeof UndeliveredSchema>;
+
 export const ArtifactSchema = z.object({
   id: z.string().min(1),
   kind: ArtifactKindSchema,
@@ -146,6 +159,14 @@ export const ArtifactSchema = z.object({
   sources: z.array(SourceTagSchema).default([]),
   /** TribunalReport — typed in @occestra/tribunal, opaque here to keep this package pure. */
   tribunal: z.unknown().optional(),
+  /**
+   * Set when the artifact could not be produced (provider quota, unwritable bytes).
+   *
+   * It stays IN the pack — vanishing would shrink the pass-rate denominator and let
+   * the pack report a score it never earned. It is never graded, never counted in
+   * passRate, and renders as an honest "not delivered" card.
+   */
+  undelivered: UndeliveredSchema.optional(),
   version: z.literal(1),
 });
 export type Artifact = z.infer<typeof ArtifactSchema>;
@@ -291,9 +312,17 @@ export type Seal = z.infer<typeof SealSchema>;
 
 export const PackQualitySchema = z.object({
   oqsVersion: z.string().min(1),
-  /** Fraction of artifacts whose final TribunalReport passed, 0..1. */
+  /**
+   * Fraction of DELIVERED artifacts whose final TribunalReport passed, 0..1.
+   *
+   * Undelivered artifacts are excluded from both sides of this fraction — grading
+   * something that does not exist is meaningless. They are counted separately in
+   * `undeliveredCount` precisely so a high pass rate can never hide a thin pack.
+   */
   passRate: z.number().min(0).max(1),
   repairedCount: z.number().int().nonnegative(),
+  /** Artifacts the studio owed you and could not produce. Read this next to passRate. */
+  undeliveredCount: z.number().int().nonnegative().default(0),
 });
 export type PackQuality = z.infer<typeof PackQualitySchema>;
 
@@ -538,4 +567,10 @@ export interface EngineDeps {
   site?: SitePort;
   market?: MarketDataPort;
   caps?: EngineCaps;
+  /**
+   * Where the RAW truth of a failure goes: provider error strings, URLs, stack
+   * detail. None of it may reach a pack — buyers get a stable code and one plain
+   * sentence. Optional so this package stays pure; mcp-server passes console.error.
+   */
+  log?: (message: string, detail?: unknown) => void;
 }

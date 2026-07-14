@@ -1,3 +1,4 @@
+import { ArtifactImage } from "@/components/keepsake/artifact-image";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { SourceChip } from "@/components/ui/source-chip";
 import type { PublicArtifact } from "@/lib/pack";
@@ -17,21 +18,33 @@ export function ArtifactView({ artifact }: { artifact: PublicArtifact }) {
             {artifact.kind} · {artifact.format}
           </p>
         </div>
-        {artifact.tribunal && (
-          <GradeChip verdict={artifact.tribunal.pass ? "pass" : "fail"}>
-            {artifact.tribunal.pass ? "pass" : "fail"}
-            {artifact.tribunal.repairs > 0 ? ` · repaired ×${artifact.tribunal.repairs}` : ""}
-          </GradeChip>
+        {artifact.undelivered ? (
+          <GradeChip verdict="fail">not delivered</GradeChip>
+        ) : (
+          artifact.tribunal && (
+            <GradeChip verdict={artifact.tribunal.pass ? "pass" : "fail"}>
+              {artifact.tribunal.pass ? "pass" : "fail"}
+              {artifact.tribunal.repairs > 0 ? ` · repaired ×${artifact.tribunal.repairs}` : ""}
+            </GradeChip>
+          )
         )}
       </header>
 
-      {artifact.url && (
-        /* eslint-disable-next-line @next/next/no-img-element -- signed expiring URL, remote host */
-        <img
-          src={artifact.url}
-          alt={artifact.title}
-          className="mt-4 w-full rounded-xl border border-ink/10 shadow-lift"
-        />
+      {/*
+        An artifact we owed and could not make. It is shown rather than dropped: a pack
+        that quietly omits its failures reports a pass rate it never earned.
+      */}
+      {artifact.undelivered && (
+        <div className="mt-4 rounded-xl border border-dashed border-ink/15 bg-panel/50 p-6">
+          <p className="font-serif text-[1.05rem] leading-relaxed text-ink/75">
+            {artifact.undelivered.reason}
+          </p>
+          <p className="text-data mt-3 text-ink/50">{artifact.undelivered.code}</p>
+        </div>
+      )}
+
+      {artifact.url && !artifact.undelivered && (
+        <ArtifactImage src={artifact.url} alt={artifact.title} />
       )}
 
       {artifact.data && artifact.format === "md" && (

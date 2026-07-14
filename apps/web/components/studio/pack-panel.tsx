@@ -124,22 +124,37 @@ export function PackPanel({
 
             {pack.artifacts.map((artifact) => (
               <div key={artifact.id} className="rounded-xl border border-ink/10 bg-ground p-3.5">
-                {artifact.url && artifact.format === "png" && (
+                {artifact.undelivered && (
+                  <div className="mb-2.5 rounded-lg border border-dashed border-ink/15 bg-panel/50 p-3">
+                    <p className="text-[0.82rem] leading-relaxed text-ink/70">
+                      {artifact.undelivered.reason}
+                    </p>
+                  </div>
+                )}
+                {artifact.url && artifact.format === "png" && !artifact.undelivered && (
                   /* eslint-disable-next-line @next/next/no-img-element -- signed, expiring URL */
                   <img
                     src={artifact.url}
                     alt={artifact.title}
+                    onError={(event) => {
+                      // Never leave the browser's torn-page glyph on screen.
+                      event.currentTarget.style.display = "none";
+                    }}
                     className="mb-2.5 w-full rounded-lg border border-ink/10"
                   />
                 )}
                 <p className="text-[0.82rem] font-medium text-ink/85">{artifact.title}</p>
                 <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <span className="text-data text-ink/60">{artifact.kind}</span>
-                  {artifact.tribunal && (
-                    <GradeChip verdict={artifact.tribunal.pass ? "pass" : "fail"}>
-                      {artifact.tribunal.pass ? "pass" : "fail"}
-                      {artifact.tribunal.repairs > 0 ? ` ·×${artifact.tribunal.repairs}` : ""}
-                    </GradeChip>
+                  {artifact.undelivered ? (
+                    <GradeChip verdict="fail">not delivered</GradeChip>
+                  ) : (
+                    artifact.tribunal && (
+                      <GradeChip verdict={artifact.tribunal.pass ? "pass" : "fail"}>
+                        {artifact.tribunal.pass ? "pass" : "fail"}
+                        {artifact.tribunal.repairs > 0 ? ` ·×${artifact.tribunal.repairs}` : ""}
+                      </GradeChip>
+                    )
                   )}
                   {artifact.url && (
                     <a

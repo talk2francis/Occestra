@@ -66,6 +66,9 @@ export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
       ...(artifact.uri ? { url: ctx.store.signedUrlFor(artifact.uri, 86_400) } : {}),
       sources: artifact.sources,
       tribunal: artifact.tribunal,
+      // The buyer is told what we owed and did not deliver — in the tool response,
+      // not just on the web page.
+      ...(artifact.undelivered ? { undelivered: artifact.undelivered } : {}),
     })),
     seal: pack.seal
       ? {

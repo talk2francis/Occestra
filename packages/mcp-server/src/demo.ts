@@ -184,7 +184,11 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
     closed = true;
   });
 
+  // Kept so an operator can read back what happened without paying to re-run it.
+  const log: { at: number; body: unknown }[] = [];
+
   const emit = (event: DemoEvent): void => {
+    log.push({ at: Date.now(), body: event });
     if (closed) return;
     res.write(`data: ${JSON.stringify(event)}\n\n`);
   };
@@ -218,6 +222,7 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
 
     if (ctx.sealer && pack.seal) emit({ type: "sealing" });
     emit({ type: "run_complete", pack: ctx.packForClient(pack) });
+    ctx.store.saveEvents(pack.id, log);
   } catch (error) {
     const policy = error instanceof PolicyRefusal;
     const message = policy

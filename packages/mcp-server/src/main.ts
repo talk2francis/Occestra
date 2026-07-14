@@ -27,6 +27,14 @@ const store = new Store({
 
 const built = buildDeps(env, { storage: store.storage });
 
+if (built.live["fake_providers"]) {
+  console.warn(
+    "\n⚠  OCE_FAKE_PROVIDERS=1 — every provider is a deterministic fake.\n" +
+      "   No key is read, no paid call is made, and every pack carries FAKE_PROVIDERS\n" +
+      "   in its coverage gaps. This is a rehearsal server.\n",
+  );
+}
+
 const sealerKey = env["OCE_SEALER_KEY"] as Hex | undefined;
 const registryAddress = env["OCE_REGISTRY"] as Address | undefined;
 
@@ -69,6 +77,12 @@ if (PAYMENT_MODE === "okx") {
 }
 
 /* ------------------------------------------------------------------- app */
+
+// The raw truth of a failure lands here — provider errors, URLs, stack detail —
+// and NOWHERE else. Packs carry a stable code and one plain sentence instead.
+built.deps.log = (message, detail) => {
+  console.error(`[occestra] ${message}:`, detail instanceof Error ? detail.message : detail);
+};
 
 const ctx: AppContext = {
   deps: built.deps,

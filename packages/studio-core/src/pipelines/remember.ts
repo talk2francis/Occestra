@@ -33,6 +33,13 @@ import {
   type VisionPort,
 } from "../types.js";
 import { PolicyRefusal } from "./celebrate.js";
+import {
+  classifyImageFailure,
+  ensureStored,
+  isUndelivered,
+  qualityOf,
+  undeliveredArtifact,
+} from "./delivery.js";
 
 export interface RememberDeps {
   text: TextModelPort;
@@ -42,6 +49,8 @@ export interface RememberDeps {
   vision?: VisionPort;
   grader?: GradePort;
   styleFor?: (id: HouseStyleId) => HouseStyle;
+  /** Raw provider errors go here — never into a pack. See delivery.ts. */
+  log?: ((message: string, detail?: unknown) => void) | undefined;
 }
 
 /* ---------------------------------------------------------------- story graph */
@@ -379,6 +388,7 @@ export async function runRemember(
         size,
       });
       await deps.storage.put(artKey, Buffer.from(generated.pngBase64, "base64"), "image/png");
+      await ensureStored(deps.storage, artKey);
 
       regenerators.set("keepsake_art", async (brief, previous) => {
         const redone = await deps.image.generate({
@@ -403,7 +413,15 @@ export async function runRemember(
         }),
       );
     } catch (error) {
-      gaps.push(`keepsake_art:failed — ${error instanceof Error ? error.message : String(error)}`);
+      deps.log?.("keepsake_art failed", error);
+      const undelivered = classifyImageFailure(error);
+      artifacts.push(
+        undeliveredArtifact(
+          { id: "keepsake_art", kind: "keepsake_art", title: contract.title, format: "png" },
+          undelivered,
+        ),
+      );
+      gaps.push(`${undelivered.code} — ${undelivered.reason}`);
     }
   }
 
@@ -540,9 +558,11 @@ ${graph.uncertainties.map((u) => `    <li>${escapeHtml(u)}</li>`).join("\n")}
   const graded: Artifact[] = [];
   let passed = 0;
   let repairs = 0;
+  let gradedCount = 0;
 
   for (const artifact of artifacts) {
-    if (!deps.grader) {
+    // Absent, not failing: never graded, never counted, always visible.
+    if (isUndelivered(artifact) || !deps.grader) {
       graded.push(artifact);
       continue;
     }
@@ -556,6 +576,7 @@ ${graph.uncertainties.map((u) => `    <li>${escapeHtml(u)}</li>`).join("\n")}
     });
 
     graded.push(result.artifact);
+    gradedCount += 1;
     if (result.pass) passed += 1;
     repairs += result.repairs;
     gaps.push(...result.coverageGaps);
@@ -569,11 +590,14 @@ ${graph.uncertainties.map((u) => `    <li>${escapeHtml(u)}</li>`).join("\n")}
     studio: "remember",
     artifacts: graded,
     coverageGaps: [...new Set(gaps)],
-    quality: {
+    quality: qualityOf({
+      artifacts: graded,
+      passed,
+      graded: gradedCount,
+      repairs,
       oqsVersion: "1.0.0",
-      passRate: deps.grader && graded.length > 0 ? passed / graded.length : 0,
-      repairedCount: repairs,
-    },
+      graderWired: Boolean(deps.grader),
+    }),
     createdAt: new Date(deps.clock.now()).toISOString(),
   };
 

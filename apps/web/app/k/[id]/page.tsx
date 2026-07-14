@@ -65,6 +65,16 @@ export default async function KeepsakePage({ params }: { params: Promise<{ id: s
               {pack.quality.repairedCount > 0 && (
                 <GradeChip verdict="repair">repairs {pack.quality.repairedCount}</GradeChip>
               )}
+              {/*
+                Sits deliberately NEXT TO the pass rate. Undelivered work is excluded
+                from that percentage, so the percentage alone could otherwise flatter a
+                pack that is missing half of what it promised.
+              */}
+              {(pack.quality.undeliveredCount ?? 0) > 0 && (
+                <GradeChip verdict="fail">
+                  not delivered {pack.quality.undeliveredCount}
+                </GradeChip>
+              )}
               <GradeChip verdict="info">OQS v{pack.quality.oqsVersion}</GradeChip>
             </div>
           </div>

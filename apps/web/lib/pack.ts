@@ -34,13 +34,20 @@ export interface PublicArtifact {
     coverageGaps: string[];
     deterministic: Array<{ id: string; hard: boolean; passed: boolean; detail: string }>;
   };
+  /** Set when the studio could not produce this. Never graded, never counted. */
+  undelivered?: { code: string; reason: string };
 }
 
 export interface PublicPack {
   id: string;
   studio: "celebrate" | "remember" | "launch";
   createdAt: string;
-  quality: { oqsVersion: string; passRate: number; repairedCount: number };
+  quality: {
+    oqsVersion: string;
+    passRate: number;
+    repairedCount: number;
+    undeliveredCount?: number;
+  };
   coverageGaps: string[];
   artifacts: PublicArtifact[];
   seal?: PublicSeal;

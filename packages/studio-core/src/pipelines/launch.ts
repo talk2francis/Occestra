@@ -29,6 +29,13 @@ import {
   type TextModelPort,
 } from "../types.js";
 import { PolicyRefusal } from "./celebrate.js";
+import {
+  classifyImageFailure,
+  ensureStored,
+  isUndelivered,
+  qualityOf,
+  undeliveredArtifact,
+} from "./delivery.js";
 
 export interface LaunchDeps {
   text: TextModelPort;
@@ -39,6 +46,8 @@ export interface LaunchDeps {
   market?: MarketDataPort;
   grader?: GradePort;
   styleFor?: (id: HouseStyleId) => HouseStyle;
+  /** Raw provider errors go here — never into a pack. See delivery.ts. */
+  log?: ((message: string, detail?: unknown) => void) | undefined;
 }
 
 /* ------------------------------------------------------- palette harmonizing */
@@ -299,6 +308,9 @@ async function makeImage(
   });
 
   await deps.storage.put(args.key, Buffer.from(result.pngBase64, "base64"), "image/png");
+  // A resolved put is not proof the bytes are there. Read them back before this
+  // artifact is allowed to call itself delivered.
+  await ensureStored(deps.storage, args.key);
   return args.key;
 }
 
@@ -907,7 +919,15 @@ export async function runLaunch(
         }),
       );
     } catch (error) {
-      gaps.push(`og_image:failed — ${error instanceof Error ? error.message : String(error)}`);
+      deps.log?.("og_image failed", error);
+      const undelivered = classifyImageFailure(error);
+      artifacts.push(
+        undeliveredArtifact(
+          { id: "og_image", kind: "og_image", title: `${contract.productName} — hero`, format: "png" },
+          undelivered,
+        ),
+      );
+      gaps.push(`${undelivered.code} — ${undelivered.reason}`);
     }
   }
 
@@ -952,7 +972,20 @@ export async function runLaunch(
         }),
       );
     } catch (error) {
-      gaps.push(`brand_mark:failed — ${error instanceof Error ? error.message : String(error)}`);
+      deps.log?.("brand_mark failed", error);
+      const undelivered = classifyImageFailure(error);
+      artifacts.push(
+        undeliveredArtifact(
+          {
+            id: "brand_mark",
+            kind: "brand_mark",
+            title: `${contract.productName} — mark concept`,
+            format: "png",
+          },
+          undelivered,
+        ),
+      );
+      gaps.push(`${undelivered.code} — ${undelivered.reason}`);
     }
   }
 
@@ -982,7 +1015,20 @@ export async function runLaunch(
           }),
         );
       } catch (error) {
-        gaps.push(`carousel:card-${index + 1}-failed — ${error instanceof Error ? error.message : String(error)}`);
+        deps.log?.(`carousel card ${index + 1} failed`, error);
+        const undelivered = classifyImageFailure(error);
+        artifacts.push(
+          undeliveredArtifact(
+            {
+              id: `social_${index + 1}`,
+              kind: "carousel",
+              title: `${contract.productName} — social card ${index + 1}`,
+              format: "png",
+            },
+            undelivered,
+          ),
+        );
+        gaps.push(`${undelivered.code} — ${undelivered.reason}`);
       }
     }
   }
@@ -1311,8 +1357,15 @@ export async function runLaunch(
   const graded: Artifact[] = [];
   let passed = 0;
   let repairs = 0;
+  let gradedCount = 0;
 
   for (const artifact of artifacts) {
+    // An artifact that was never produced cannot be judged. It travels with the
+    // pack so the shortfall is visible, and it is counted nowhere in the score.
+    if (isUndelivered(artifact)) {
+      graded.push(artifact);
+      continue;
+    }
     if (!deps.grader) {
       graded.push(artifact);
       continue;
@@ -1327,6 +1380,7 @@ export async function runLaunch(
     });
 
     graded.push(result.artifact);
+    gradedCount += 1;
     if (result.pass) passed += 1;
     repairs += result.repairs;
     gaps.push(...result.coverageGaps);
@@ -1340,11 +1394,14 @@ export async function runLaunch(
     studio: "launch",
     artifacts: graded,
     coverageGaps: [...new Set(gaps)],
-    quality: {
+    quality: qualityOf({
+      artifacts: graded,
+      passed,
+      graded: gradedCount,
+      repairs,
       oqsVersion: "1.0.0",
-      passRate: deps.grader && graded.length > 0 ? passed / graded.length : 0,
-      repairedCount: repairs,
-    },
+      graderWired: Boolean(deps.grader),
+    }),
     createdAt: new Date(deps.clock.now()).toISOString(),
   };
 

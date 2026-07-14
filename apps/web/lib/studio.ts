@@ -51,12 +51,19 @@ export interface FinishedArtifact {
     issues?: string[];
     coverageGaps?: string[];
   };
+  /** Set when the studio could not produce it. Never graded, never counted. */
+  undelivered?: { code: string; reason: string };
 }
 
 export interface FinishedPack {
   keepsakeId: string;
   studio: StudioId;
-  quality: { oqsVersion: string; passRate: number; repairedCount: number };
+  quality: {
+    oqsVersion: string;
+    passRate: number;
+    repairedCount: number;
+    undeliveredCount?: number;
+  };
   coverageGaps: string[];
   artifacts: FinishedArtifact[];
   seal?: {

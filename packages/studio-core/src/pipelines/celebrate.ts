@@ -37,6 +37,13 @@ import {
   type WeatherPort,
 } from "../types.js";
 import { estimateTravel, layOutSchedule, type Block, type TimedBlock } from "./travel.js";
+import {
+  classifyImageFailure,
+  ensureStored,
+  isUndelivered,
+  qualityOf,
+  undeliveredArtifact,
+} from "./delivery.js";
 
 /* --------------------------------------------------------------------- deps */
 
@@ -51,6 +58,8 @@ export interface CelebrateDeps {
   grader?: GradePort;
   /** Resolves a House Style id to its definition (lives in @occestra/providers). */
   styleFor?: (id: HouseStyleId) => HouseStyle;
+  /** Raw provider errors go here — never into a pack. See delivery.ts. */
+  log?: ((message: string, detail?: unknown) => void) | undefined;
 }
 
 export class PolicyRefusal extends Error {
@@ -748,6 +757,7 @@ export async function runCelebrate(
 
       const uri = `invites/${keepsakeId}.png`;
       await deps.storage.put(uri, Buffer.from(generated.pngBase64, "base64"), "image/png");
+      await ensureStored(deps.storage, uri);
 
       regenerators.set("invitation", async (brief, previous) => {
         const redone = await deps.image.generate({
@@ -781,9 +791,20 @@ export async function runCelebrate(
         }),
       );
     } catch (error) {
-      gaps.push(
-        `invitation:image-failed — ${error instanceof Error ? error.message : String(error)}; the copy below ships without artwork`,
+      deps.log?.("invitation image failed", error);
+      const undelivered = classifyImageFailure(error);
+      artifacts.push(
+        undeliveredArtifact(
+          {
+            id: "invitation",
+            kind: "invitation",
+            title: `${contract.occasion} — invitation`,
+            format: "png",
+          },
+          undelivered,
+        ),
       );
+      gaps.push(`${undelivered.code} — ${undelivered.reason} The copy below ships without artwork.`);
     }
 
     /* --- three copy variants + a plain-text version that survives any email client --- */
@@ -892,6 +913,7 @@ export async function runCelebrate(
 
       const uri = `moodboards/${keepsakeId}.png`;
       await deps.storage.put(uri, Buffer.from(generated.pngBase64, "base64"), "image/png");
+      await ensureStored(deps.storage, uri);
 
       artifacts.push(
         artifactOf({
@@ -905,7 +927,20 @@ export async function runCelebrate(
         }),
       );
     } catch (error) {
-      gaps.push(`moodboard:image-failed — ${error instanceof Error ? error.message : String(error)}`);
+      deps.log?.("moodboard image failed", error);
+      const undelivered = classifyImageFailure(error);
+      artifacts.push(
+        undeliveredArtifact(
+          {
+            id: "moodboard",
+            kind: "moodboard",
+            title: `${contract.occasion} — moodboard`,
+            format: "png",
+          },
+          undelivered,
+        ),
+      );
+      gaps.push(`${undelivered.code} — ${undelivered.reason}`);
     }
   }
 
@@ -914,9 +949,12 @@ export async function runCelebrate(
   const graded: Artifact[] = [];
   let passed = 0;
   let repairs = 0;
+  let gradedCount = 0;
 
   for (const artifact of artifacts) {
-    if (!deps.grader) {
+    // Undelivered work is absent, not failing. It rides along so the shortfall is
+    // visible, and it is counted on neither side of the pass rate.
+    if (isUndelivered(artifact) || !deps.grader) {
       graded.push(artifact);
       continue;
     }
@@ -933,6 +971,7 @@ export async function runCelebrate(
     });
 
     graded.push(result.artifact);
+    gradedCount += 1;
     if (result.pass) passed += 1;
     repairs += result.repairs;
     gaps.push(...result.coverageGaps);
@@ -950,11 +989,14 @@ export async function runCelebrate(
     studio: "celebrate",
     artifacts: graded,
     coverageGaps: [...new Set(gaps)],
-    quality: {
+    quality: qualityOf({
+      artifacts: graded,
+      passed,
+      graded: gradedCount,
+      repairs,
       oqsVersion: "1.0.0",
-      passRate: deps.grader && graded.length > 0 ? passed / graded.length : 0,
-      repairedCount: repairs,
-    },
+      graderWired: Boolean(deps.grader),
+    }),
     createdAt: new Date(deps.clock.now()).toISOString(),
   };
 

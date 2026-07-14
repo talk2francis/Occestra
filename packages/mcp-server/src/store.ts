@@ -106,6 +106,16 @@ export class Store {
         PRIMARY KEY (pack_id, key)
       );
 
+      -- The event log of a run, kept so an operator can INSPECT what happened
+      -- instead of paying to reproduce it. Written once, at the end of a run.
+      CREATE TABLE IF NOT EXISTS pack_events (
+        pack_id TEXT NOT NULL,
+        seq     INTEGER NOT NULL,
+        at      INTEGER NOT NULL,
+        body    TEXT NOT NULL,
+        PRIMARY KEY (pack_id, seq)
+      );
+
       -- Replay protection for x402: an EIP-3009 nonce is single-use, forever.
       CREATE TABLE IF NOT EXISTS payment_nonces (
         nonce      TEXT PRIMARY KEY,
@@ -145,6 +155,27 @@ export class Store {
     })();
   }
 
+  /* ----------------------------------------------------------------- events */
+
+  /** The run's event log, written once when the run ends. */
+  saveEvents(packId: string, events: { at: number; body: unknown }[]): void {
+    const insert = this.db.prepare(
+      "INSERT OR REPLACE INTO pack_events (pack_id, seq, at, body) VALUES (?, ?, ?, ?)",
+    );
+    this.db.transaction(() => {
+      events.forEach((event, seq) => {
+        insert.run(packId, seq, event.at, JSON.stringify(event.body));
+      });
+    })();
+  }
+
+  eventsFor(packId: string): { seq: number; at: number; body: unknown }[] {
+    const rows = this.db
+      .prepare("SELECT seq, at, body FROM pack_events WHERE pack_id = ? ORDER BY seq")
+      .all(packId) as { seq: number; at: number; body: string }[];
+    return rows.map((row) => ({ seq: row.seq, at: row.at, body: JSON.parse(row.body) as unknown }));
+  }
+
   getPack(id: string): Pack | undefined {
     const row = this.db.prepare("SELECT body FROM packs WHERE id = ?").get(id) as
       | { body: string }
@@ -175,6 +206,8 @@ export class Store {
           : { data: artifact.data }),
         sources: artifact.sources,
         tribunal: artifact.tribunal,
+        // Shown, never hidden: the buyer is told what we owed them and did not deliver.
+        ...(artifact.undelivered ? { undelivered: artifact.undelivered } : {}),
       })),
       seal: pack.seal,
     };
