@@ -7,12 +7,32 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "files": ["dist", "README.md"],
-  "keywords": ["occestra", "okx", "x-layer", "x402", "mcp", "agent", "a2a"],
-  "repository": { "type": "git", "url": "https://github.com/talk2francis/Occestra", "directory": "packages/client" },
-  "publishConfig": { "access": "public" },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "occestra",
+    "okx",
+    "x-layer",
+    "x402",
+    "mcp",
+    "agent",
+    "a2a"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/talk2francis/Occestra.git",
+    "directory": "packages/client"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -22,7 +42,9 @@
     "viem": "^2.21.0"
   },
   "peerDependenciesMeta": {
-    "viem": { "optional": true }
+    "viem": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@occestra/mcp-server": "*",
