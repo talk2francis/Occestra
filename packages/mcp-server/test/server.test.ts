@@ -586,12 +586,27 @@ describe("http surface", () => {
   it("rate-limits a burst from one IP", async () => {
     await start(new DevGate());
 
+    // A caller off the internet. Caddy stamps x-forwarded-for on everything it proxies, so
+    // a request that carries one is public traffic and is limited exactly as before.
     const responses = await Promise.all(
-      Array.from({ length: 70 }, () => fetch(`${base}/health`)),
+      Array.from({ length: 70 }, () =>
+        fetch(`${base}/health`, { headers: { "x-forwarded-for": "203.0.113.7" } }),
+      ),
     );
     const limited = responses.filter((response) => response.status === 429);
 
     expect(limited.length).toBeGreaterThan(0);
     expect(responses.filter((r) => r.status === 200).length).toBeLessThanOrEqual(60);
+  });
+
+  it("does NOT rate-limit our own server-side renders", async () => {
+    await start(new DevGate());
+
+    // The web app fetches packs over loopback while rendering a page, and the gallery needs
+    // seventeen of them for ONE view. Counting those against a 60/min ceiling took the site
+    // down: the ASP 429'd, /k pages 404'd, and the gallery emptied — for everyone at once.
+    const responses = await Promise.all(Array.from({ length: 90 }, () => fetch(`${base}/health`)));
+
+    expect(responses.every((response) => response.status === 200)).toBe(true);
   });
 });

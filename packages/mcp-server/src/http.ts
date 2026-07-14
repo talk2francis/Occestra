@@ -65,8 +65,27 @@ export function buildApp(ctx: AppContext): Express {
   const allow = rateLimiter();
 
   app.use((req, res, next) => {
-    const ip = req.ip ?? "unknown";
-    if (!allow(ip)) {
+    // OUR OWN SERVER-SIDE RENDERS ARE NOT ABUSE, AND THIS LIMIT WAS TREATING THEM AS SUCH.
+    //
+    // The web app fetches packs from here over loopback while rendering a page. Every
+    // visitor therefore arrives at this limiter as 127.0.0.1 — and the gallery fetches
+    // SEVENTEEN packs to draw one page. Three gallery views in a minute is 51 requests
+    // from "one IP"; a fourth tips past 60 and the ASP starts 429ing, at which point /k
+    // pages 404 and the gallery empties — for everybody, at once.
+    //
+    // A loopback caller with no forwarded chain is our own renderer, not the public. The
+    // limiter still guards every request that actually came in off the internet, because
+    // Caddy stamps those with x-forwarded-for.
+    const forwarded = req.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const peer = req.ip ?? "unknown";
+    const internal = !forwarded && (peer === "127.0.0.1" || peer === "::1" || peer === "::ffff:127.0.0.1");
+
+    if (internal) {
+      next();
+      return;
+    }
+
+    if (!allow(forwarded ?? peer)) {
       res.status(429).json({ error: "too many requests — 60 per minute per IP" });
       return;
     }

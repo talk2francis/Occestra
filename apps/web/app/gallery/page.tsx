@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { SealMark } from "@/components/ui/seal-mark";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { GALLERY_IDS } from "@/lib/gallery";
+import { BUILD_DIARY_IDS, GALLERY_IDS } from "@/lib/gallery";
 import { STYLE_NAMES, fetchPack, type PublicPack } from "@/lib/pack";
 
 export const metadata: Metadata = {
@@ -32,9 +32,12 @@ function excerpt(pack: PublicPack): string | undefined {
 }
 
 export default async function GalleryPage() {
-  const packs = (await Promise.all(GALLERY_IDS.map((id) => fetchPack(id)))).filter(
-    (pack): pack is PublicPack => Boolean(pack),
-  );
+  const load = async (ids: string[]): Promise<PublicPack[]> =>
+    (await Promise.all(ids.map((id) => fetchPack(id)))).filter(
+      (pack): pack is PublicPack => Boolean(pack),
+    );
+
+  const [packs, diary] = await Promise.all([load(GALLERY_IDS), load(BUILD_DIARY_IDS)]);
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
@@ -99,6 +102,45 @@ export default async function GalleryPage() {
             );
           })}
         </div>
+      )}
+
+      {/*
+        The same brief, on earlier nights of the build. Demoted, not deleted: quietly
+        removing the weak runs to flatter the average is the fake-portfolio move this
+        product exists to argue against.
+      */}
+      {diary.length > 0 && (
+        <details className="mt-14 rounded-2xl border border-ink/10 bg-panel/40 p-5">
+          <summary className="cursor-pointer text-[0.9rem] font-medium text-ink/75 hover:text-ink">
+            The build diary — {diary.length} earlier runs of the same brief, kept as they came out
+          </summary>
+          <p className="mt-3 max-w-2xl text-[0.85rem] leading-relaxed text-ink/60">
+            Occestra running its LAUNCH studio on Occestra, on three earlier nights. They are
+            thinner than the featured run and one of them is still marked <em>fail</em> after two
+            repairs. They stay because deleting the runs that went badly, to make the average look
+            better, is precisely the thing this product exists to argue against.
+          </p>
+          <ul className="mt-4 grid gap-2 sm:grid-cols-3">
+            {diary.map((pack) => (
+              <li key={pack.id}>
+                <Link
+                  href={`/k/${pack.id}`}
+                  className="block rounded-xl border border-ink/10 bg-ground p-3.5 transition-shadow hover:shadow-lift"
+                >
+                  <p className="text-data text-ink/55">{pack.id}</p>
+                  <p className="mt-2 flex flex-wrap gap-1.5">
+                    <GradeChip verdict={pack.quality.passRate === 1 ? "pass" : "repair"}>
+                      pass rate {Math.round(pack.quality.passRate * 100)}%
+                    </GradeChip>
+                    {pack.quality.repairedCount > 0 && (
+                      <GradeChip verdict="repair">repaired ×{pack.quality.repairedCount}</GradeChip>
+                    )}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       <p className="mt-10 text-[0.85rem] text-ink/65">
