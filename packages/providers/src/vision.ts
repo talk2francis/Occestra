@@ -9,7 +9,7 @@
  */
 import { z } from "zod";
 import type { MediaDescription, SourceTag, StoragePort, VisionPort } from "@occestra/studio-core";
-import type { ChatCompletionsText, ChatContent } from "./router.js";
+import type { ChatContent, VisionCapable } from "./router.js";
 import { strictJson } from "./json.js";
 
 const DescriptionSchema = z.object({
@@ -44,7 +44,7 @@ const SYSTEM = [
 ].join("\n");
 
 export interface VisionDescriberDeps {
-  vision: ChatCompletionsText;
+  vision: VisionCapable;
   storage: StoragePort;
   now?: () => number;
 }

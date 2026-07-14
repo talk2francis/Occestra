@@ -12,7 +12,7 @@ import type {
   CritiqueResult,
   ImageModelPort,
 } from "@occestra/studio-core";
-import type { ChatCompletionsText, ChatContent } from "./router.js";
+import type { ChatContent, VisionCapable } from "./router.js";
 import { strictJson } from "./json.js";
 import { styleSystemPrompt } from "./styles.js";
 
@@ -55,7 +55,7 @@ const SYSTEM = [
 
 export interface ModelCritiqueDeps {
   /** A vision-capable chat model. Images are sent inline as base64 data URLs. */
-  vision: ChatCompletionsText;
+  vision: VisionCapable;
   /** Resolves an image artifact to bytes so the critic can actually look at it. */
   imageBytes?: (artifact: CritiqueRequest["artifact"]) => Promise<Uint8Array | undefined>;
 }

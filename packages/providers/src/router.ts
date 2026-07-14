@@ -50,24 +50,66 @@ const shared = (config: ProviderConfig): FetchOptions => ({
 
 /* ---------------------------------------------------------------- anthropic */
 
+/**
+ * What the Tribunal's critic needs: a model that can be handed an image alongside
+ * the prompt. Both adapters implement it, so the critic is no longer pinned to one
+ * vendor — the router picks, and the pack records which one actually graded it.
+ */
+export interface VisionCapable {
+  completeWithContent(
+    request: Omit<TextCompletionRequest, "prompt">,
+    content: ChatContent[],
+  ): Promise<TextCompletionResult>;
+}
+
 interface AnthropicResponse {
   content: Array<{ type: string; text?: string }>;
   model: string;
   usage: { input_tokens: number; output_tokens: number };
 }
 
-export class AnthropicText implements TextModelPort {
+export class AnthropicText implements TextModelPort, VisionCapable {
   constructor(private readonly config: ProviderConfig) {}
 
   async complete(request: TextCompletionRequest): Promise<TextCompletionResult> {
+    return this.completeWithContent(request, [{ type: "text", text: request.prompt }]);
+  }
+
+  /**
+   * The same call, with images allowed in the user turn — this is what lets the
+   * Tribunal's critic run on Claude rather than being pinned to OpenAI.
+   *
+   * The critic speaks in OpenAI's `ChatContent` shape (data-URI `image_url`), so
+   * translate it: Anthropic wants `{type:"image", source:{type:"base64", media_type, data}}`.
+   */
+  async completeWithContent(
+    request: Omit<TextCompletionRequest, "prompt">,
+    content: ChatContent[],
+  ): Promise<TextCompletionResult> {
+    const blocks = content.map((part) => {
+      if (part.type === "text") return { type: "text" as const, text: part.text ?? "" };
+
+      const url = part.image_url?.url ?? "";
+      const match = /^data:([^;]+);base64,(.+)$/.exec(url);
+      if (!match) {
+        throw new Error("Anthropic vision needs a base64 data URI, not a remote image URL");
+      }
+      return {
+        type: "image" as const,
+        source: { type: "base64" as const, media_type: match[1]!, data: match[2]! },
+      };
+    });
+
     const body = {
       model: this.config.model,
       max_tokens: request.maxTokens ?? 2048,
       temperature: request.temperature ?? 0.7,
+      // Anthropic has no response_format switch — JSON is asked for, then parsed
+      // defensively by parseJson(). Saying it twice is cheaper than a failed pack.
       system: request.json
         ? `${request.system}\n\nRespond with ONLY valid JSON. No prose, no code fence.`
         : request.system,
-      messages: [{ role: "user", content: request.prompt }],
+      messages: [{ role: "user", content: blocks }],
     };
 
     const response = await fetchJson<AnthropicResponse>(
@@ -346,9 +388,16 @@ export class ModelRouter implements TextModelPort {
     return result;
   }
 
-  /** The vision-capable model the Tribunal's critic runs on. */
-  get visionModel(): ChatCompletionsText | undefined {
-    return this.openai;
+  /**
+   * The vision-capable model the Tribunal's critic runs on.
+   *
+   * Claude first, per the router's design — it was previously hard-wired to OpenAI
+   * because the Anthropic adapter could not see images, so wiring ANTHROPIC_API_KEY
+   * moved the writer to Claude but left the CRITIC on gpt-4o regardless. Both
+   * adapters take images now, so the preference is real.
+   */
+  get visionModel(): VisionCapable | undefined {
+    return this.anthropic ?? this.openai;
   }
 
   get costGovernor(): CostGovernor {
