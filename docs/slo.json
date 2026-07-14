@@ -1,0 +1,130 @@
+{
+  "measuredAt": "2026-07-14T22:48:13.381Z",
+  "totalRuns": 14,
+  "totalSpentUsd": 3.2538,
+  "reproducibleExact": {
+    "everyArtifactCarriesItsReport": false,
+    "noHardCheckFailsInsideAPassingPack": false,
+    "undeliveredDeclaredNeverDropped": true,
+    "hardChecks": [
+      "SCHEMA_INVALID",
+      "POLICY_VIOLATION",
+      "SOURCE_MISSING",
+      "BUDGET_SUM_MISMATCH",
+      "SCHEDULE_OVERLAP",
+      "DATE_INVALID",
+      "DIM_ASPECT_MISMATCH",
+      "PLACEHOLDER_TEXT"
+    ]
+  },
+  "measuredWithVariance": [
+    {
+      "tool": "oce_write_toast",
+      "n": 3,
+      "latencySeconds": {
+        "median": 11.1,
+        "min": 10.2,
+        "max": 11.5
+      },
+      "passRate": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "repairs": {
+        "median": 0
+      },
+      "costUsd": 0.0118
+    },
+    {
+      "tool": "oce_plan_occasion",
+      "n": 3,
+      "latencySeconds": {
+        "median": 100.3,
+        "min": 84.7,
+        "max": 132.8
+      },
+      "passRate": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "repairs": {
+        "median": 0
+      },
+      "costUsd": 0.0991
+    },
+    {
+      "tool": "oce_moodboard",
+      "n": 2,
+      "latencySeconds": {
+        "median": 55.3,
+        "min": 53.1,
+        "max": 57.5
+      },
+      "passRate": {
+        "median": 0.75,
+        "min": 0.5,
+        "max": 1
+      },
+      "repairs": {
+        "median": 0
+      },
+      "costUsd": 0.0771
+    },
+    {
+      "tool": "oce_make_keepsake",
+      "n": 2,
+      "latencySeconds": {
+        "median": 117.1,
+        "min": 66.4,
+        "max": 167.8
+      },
+      "passRate": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      },
+      "repairs": {
+        "median": 1
+      },
+      "costUsd": 0.2776
+    },
+    {
+      "tool": "oce_design_invite",
+      "n": 2,
+      "latencySeconds": {
+        "median": 81.2,
+        "min": 76.4,
+        "max": 86.1
+      },
+      "passRate": {
+        "median": 0.5,
+        "min": 0.5,
+        "max": 0.5
+      },
+      "repairs": {
+        "median": 0
+      },
+      "costUsd": 0.2891
+    },
+    {
+      "tool": "oce_launch_kit",
+      "n": 2,
+      "latencySeconds": {
+        "median": 465.4,
+        "min": 436.9,
+        "max": 493.9
+      },
+      "passRate": {
+        "median": 0.86,
+        "min": 0.71,
+        "max": 1
+      },
+      "repairs": {
+        "median": 2
+      },
+      "costUsd": 0.8137
+    }
+  ]
+}

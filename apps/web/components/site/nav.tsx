@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/#studios", label: "Studios" },
   { href: "/gallery", label: "Gallery" },
   { href: "/standard", label: "The Standard" },
+  { href: "/evaluation", label: "Evaluation" },
   { href: "/pricing", label: "Pricing" },
   { href: "/for-agents", label: "For agents" },
   { href: "/docs", label: "Docs" },

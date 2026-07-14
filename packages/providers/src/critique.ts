@@ -139,6 +139,30 @@ function inapplicableAxes(format: string): string[] {
   return ["style_fidelity"];
 }
 
+/**
+ * EVERY OCCESTRA IMAGE IS AN ART PLATE. IT CARRIES NO LETTERING, BY DESIGN.
+ *
+ * Generated text inside an image is unreliable — misspelt names, invented dates, gibberish
+ * where a word should be — so Occestra refuses to ship it, and every image generator is told
+ * "no text, no lettering, no numerals anywhere in the image; the type is set separately." The
+ * tool descriptions say so to the buyer in as many words.
+ *
+ * The critic did not know this, and it was quietly catastrophic. Measured across real runs,
+ * `oce_design_invite` failed 50–100% of the time — because the critic graded the artwork as a
+ * FINISHED invitation and, finding no names, no date and no city inside the image, scored
+ * legibility 30 and platform_fit 30 every time. It was failing the artifact for obeying its
+ * own brief. That is the exact shape of the `inapplicableAxes` bug, one layer up: an axis
+ * measured against a surface the artifact was deliberately built without.
+ *
+ * So for an image artifact, the critic is told what the image IS — a plate, with the type set
+ * separately — and told plainly not to deduct for the absence of copy. It still judges the
+ * ART: composition, style fidelity, and whether the plate leaves room for the type it will
+ * carry. It simply stops failing a wedding plate for not having "Mara & Sam" printed on it.
+ */
+function isArtPlate(format: string): boolean {
+  return VISUAL_FORMATS.has(format);
+}
+
 export class ModelCritique implements CritiquePort {
   constructor(private readonly deps: ModelCritiqueDeps) {}
 
@@ -163,16 +187,26 @@ export class ModelCritique implements CritiquePort {
       .join("\n");
 
     const blind = inapplicableAxes(artifact.format);
-    const system =
-      blind.length === 0
-        ? SYSTEM
-        : [
-            SYSTEM,
-            "",
-            `THIS ARTIFACT IS ${artifact.format.toUpperCase()}, NOT AN IMAGE. It has no palette, no typography, and no material surface.`,
-            `You therefore CANNOT assess: ${blind.join(", ")}. Score ${blind.join(" and ")} EXACTLY 70 and note in issues that the axis does not apply to a ${artifact.format} artifact. Do not invent a visual judgement about something you cannot see, and do not fail correct work for lacking a surface it was never meant to have.`,
-            "Judge composition as the structure and hierarchy of the DOCUMENT, and legibility as whether a human can read and act on it.",
-          ].join("\n");
+    const augments: string[] = [];
+
+    if (blind.length > 0) {
+      augments.push(
+        `THIS ARTIFACT IS ${artifact.format.toUpperCase()}, NOT AN IMAGE. It has no palette, no typography, and no material surface.`,
+        `You therefore CANNOT assess: ${blind.join(", ")}. Score ${blind.join(" and ")} EXACTLY 70 and note in issues that the axis does not apply to a ${artifact.format} artifact. Do not invent a visual judgement about something you cannot see, and do not fail correct work for lacking a surface it was never meant to have.`,
+        "Judge composition as the structure and hierarchy of the DOCUMENT, and legibility as whether a human can read and act on it.",
+      );
+    }
+
+    if (isArtPlate(artifact.format)) {
+      augments.push(
+        "THIS IMAGE IS AN ART PLATE, AND IT CARRIES NO LETTERING ON PURPOSE.",
+        "Occestra never renders text inside an image — names, dates, cities and copy are set separately in real type, because generated lettering is unreliable and we will not ship it. So this plate is SUPPOSED to have no words on it.",
+        "DO NOT deduct on legibility or platform_fit for the absence of names, dates, a city, an occasion word, or any copy. An invitation plate with no 'Mara & Sam' printed on it is CORRECT, not broken — it is the artwork the type will sit beside, not a finished flyer.",
+        "Legibility here means: is any text that IS present readable? There is none, so legibility is not applicable — score it EXACTLY 70 and say so. Judge the rest as ART: composition (is there a clear focal element, deliberate ordering, room left for type), style_fidelity (is it unmistakably the House Style), platform_fit (is it the right size, shape and register to be the plate for this occasion). Fail those honestly. Just do not fail the plate for obeying its brief.",
+      );
+    }
+
+    const system = augments.length === 0 ? SYSTEM : [SYSTEM, "", ...augments].join("\n");
 
     const content: ChatContent[] = [{ type: "text", text: brief }];
 

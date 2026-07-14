@@ -444,25 +444,50 @@ export async function designInvite(ctx: PipelineContext, input: DesignInviteInpu
     },
   });
 
-  /* --- three copy variants: the same invitation in three registers --- */
+  /* --- three copy variants, WRITTEN rather than stamped out of a template ---
+   *
+   * This copy used to be a static template with the raw occasion string interpolated into it,
+   * and measuring the tool caught what that produced: given occasion="Mara & Sam are getting
+   * married", the "warm" variant read "You're invited to Mara & Sam are getting married" — a
+   * whole clause grafted mid-sentence. Every buyer got broken copy, and the critic failed it
+   * every time, correctly, on legibility. A template cannot resolve a noun phrase from a clause;
+   * only a writer can. So one is used. Prevention at generation beats detection plus repair. */
+
+  const copySystem = [
+    "You write invitation copy that a person could send as-is. Three variants of the SAME invitation, in three registers: warm, formal, and plain.",
+    "",
+    "Rules:",
+    "- Resolve the occasion into natural language. If you are handed a full clause like 'Mara & Sam are getting married', write around it ('Mara and Sam are getting married, and they would love you there') — never graft it into 'invited to Mara & Sam are getting married'. If you are handed a noun phrase like '30th birthday dinner', use it as one.",
+    "- Every variant must carry the date, and the city if one is given. Do not invent a venue, a time, a dress code, or an RSVP address you were not given.",
+    "- Give each variant a shape: an opening line, the essentials, and a closing line — not one flat run-on.",
+    "- No filler. 'Come celebrate this special occasion' says nothing. Cut it.",
+    "",
+    "Return exactly three markdown sections: '### Warm', '### Formal', '### Plain'. Nothing else.",
+  ].join("\n");
+
+  const copyPrompt = [
+    `Occasion: ${input.occasion}`,
+    `Date, exactly as it should read: ${input.date}`,
+    input.city ? `City: ${input.city}` : "No city was given — do not invent one.",
+    input.detail ? `Detail that may shape the tone (not necessarily the words): ${input.detail}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const writtenCopy = await ctx.deps.text.complete({
+    role: "writer",
+    system: copySystem,
+    prompt: copyPrompt,
+    maxTokens: 700,
+    temperature: 0.7,
+  });
 
   const copy = artifact({
     id: "copy",
     kind: "invitation",
     title: "Invitation copy — three variants",
     format: "md",
-    data: [
-      "### Warm",
-      `You're invited to ${input.occasion}.`,
-      `${input.date}${input.city ? `, ${input.city}` : ""}. Come hungry, stay late.`,
-      "",
-      "### Formal",
-      `The pleasure of your company is requested at ${input.occasion}.`,
-      `${input.date}${input.city ? ` — ${input.city}` : ""}.`,
-      "",
-      "### Plain",
-      `${input.occasion}. ${input.date}${input.city ? `, ${input.city}` : ""}. Please let us know if you can make it.`,
-    ].join("\n"),
+    data: writtenCopy.text,
   });
 
   const { artifacts, reports, gaps } = await gradeAll(ctx, contract, [invitation, copy], styleId);
