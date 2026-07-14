@@ -35,7 +35,9 @@ import {
   runRemember,
   type RememberDeps,
   type StoryGraph,
+  type ImageQuality,
   ensureStored,
+  imageQualityFor,
   isUndelivered,
 } from "@occestra/studio-core";
 import { OQS_VERSION, runTribunal, type TribunalReport } from "@occestra/tribunal";
@@ -143,7 +145,13 @@ async function assemble(
 /** Generate one image through the router and store the bytes. Never inlines a provider URL. */
 async function makeImage(
   ctx: PipelineContext,
-  args: { subject: string; styleId: HouseStyleId; size: string; key: string },
+  args: {
+    subject: string;
+    styleId: HouseStyleId;
+    size: string;
+    key: string;
+    quality: ImageQuality;
+  },
 ): Promise<{ uri: string; bytes: Uint8Array }> {
   const style = HOUSE_STYLES[args.styleId];
 
@@ -151,6 +159,7 @@ async function makeImage(
     prompt: `${styleSystemPrompt(style)}\n\nSUBJECT:\n${args.subject}`,
     negative: style.negativePrompt,
     size: args.size,
+    quality: args.quality,
   });
 
   // gotcha #8: base64 in, sharp out.
@@ -169,6 +178,65 @@ const artifact = (over: Partial<Artifact> & Pick<Artifact, "id" | "kind" | "titl
   version: 1,
   ...over,
 });
+
+/** The card social platforms actually crop to: 1.91:1, 1200x630. */
+const OG_WIDTH = 1200;
+const OG_HEIGHT = 630;
+
+/**
+ * Cut the share card OUT of the hero rather than buying a second image.
+ *
+ * Two things were wrong. The artifact we call `og_image` shipped at 1536x1024 (3:2) —
+ * but an Open Graph card is 1.91:1, so every platform was cropping the hero badly and
+ * the buyer's "og image" was not usable as one. And the obvious fix — generate a second
+ * image at the right shape — would pay the provider twice for the same picture.
+ *
+ * So the card is DERIVED: a centre-weighted 1200x630 crop of the hero we already paid
+ * for. It costs nothing, it is guaranteed to match the hero (a second generation would
+ * drift), and it never fails the pack — if the crop can't be made, the hero still ships.
+ */
+async function deriveOgCard(ctx: PipelineContext, pack: Pack): Promise<Pack> {
+  const hero = pack.artifacts.find((a) => a.kind === "og_image" && a.uri && !isUndelivered(a));
+  if (!hero?.uri) return pack;
+
+  try {
+    const source = await ctx.deps.storage.get(hero.uri);
+    if (!source) return pack;
+
+    const cropped = await sharp(Buffer.from(source.bytes))
+      .resize(OG_WIDTH, OG_HEIGHT, { fit: "cover", position: "attention" })
+      .png()
+      .toBuffer();
+
+    const key = `${hero.uri.replace(/\.png$/, "")}-card.png`;
+    await ctx.deps.storage.put(key, new Uint8Array(cropped), "image/png");
+    await ensureStored(ctx.deps.storage, key);
+
+    return {
+      ...pack,
+      artifacts: [
+        ...pack.artifacts,
+        artifact({
+          id: "og_card",
+          kind: "og_image",
+          title: `${hero.title} — share card`,
+          format: "png",
+          uri: key,
+          ...(hero.styleId ? { styleId: hero.styleId } : {}),
+          sources: hero.sources,
+          spec: { size: `${OG_WIDTH}x${OG_HEIGHT}` },
+          // Not graded: it is the hero, recomposed. The hero already carries its verdict,
+          // and grading the same picture twice would double-count it in the pass rate.
+          tribunal: hero.tribunal,
+        }),
+      ],
+    };
+  } catch (error) {
+    ctx.deps.log?.("og card derivation failed", error);
+    // The hero still ships. A missing crop is not worth failing a paid pack over.
+    return pack;
+  }
+}
 
 /* -------------------------------------------------------- oce_plan_occasion */
 
@@ -280,6 +348,7 @@ export async function designInvite(ctx: PipelineContext, input: DesignInviteInpu
     styleId,
     size,
     key: `invites/${keepsakeId}.png`,
+    quality: imageQualityFor("invitation"),
   });
 
   const style = HOUSE_STYLES[styleId];
@@ -443,6 +512,7 @@ export async function moodboard(ctx: PipelineContext, input: MoodboardInput): Pr
     styleId,
     size: "1024x1024",
     key: `moodboards/${keepsakeId}-tiles.png`,
+    quality: imageQualityFor("moodboard"),
   });
 
   /* --- composite: the board, plus a palette strip that is TRUE to the House Style --- */
@@ -642,9 +712,11 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
 
   const { pack } = await runLaunch(contract, launchDeps);
 
+  const withCard = await deriveOgCard(ctx, pack);
+
   let sealed: Pack = {
-    ...pack,
-    coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])],
+    ...withCard,
+    coverageGaps: [...new Set([...ctx.coverageGaps, ...withCard.coverageGaps])],
   };
 
   if (ctx.sealer) {

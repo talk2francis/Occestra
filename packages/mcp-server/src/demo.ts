@@ -139,9 +139,25 @@ export interface DemoContext extends PipelineContext {
   store: Store;
   demoSecret?: string;
   demoDailyCap: number;
+  /** Free runs one caller may take per day, inside the shared daily cap. */
+  demoPerIpCap: number;
   linkChecker?: (url: string) => Promise<boolean>;
   /** Serialise a finished pack for the browser (signed artifact urls etc.). */
   packForClient: (pack: Pack) => unknown;
+}
+
+/**
+ * Who is asking.
+ *
+ * We sit behind Caddy, so `req.ip` is the proxy unless the app trusts the forwarded
+ * header — take the FIRST entry of x-forwarded-for (the client; later entries are the
+ * proxies it passed through). This is a fairness control, not a security boundary: a
+ * determined caller can rotate addresses, and the shared daily cap is what stops them.
+ */
+export function callerIp(req: Request): string {
+  const forwarded = req.get("x-forwarded-for");
+  const first = forwarded?.split(",")[0]?.trim();
+  return first || req.ip || "unknown";
 }
 
 export async function handleDemoRun(ctx: DemoContext, req: Request, res: Response): Promise<void> {
@@ -162,6 +178,22 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
     res.status(429).json({ error: "demo allowance exhausted for today", used, cap: ctx.demoDailyCap });
     return;
   }
+
+  // The daily cap is a SHARED pool. Without a per-caller cap on top of it, one visitor —
+  // or one script — drains the whole day's free allowance in a minute, every real model
+  // call is paid for out of our pocket, and every later visitor finds a dead button. The
+  // owner has already had his own Studio button killed this way once, by our own seeding.
+  const ip = callerIp(req);
+  const mine = ctx.store.demoRunsByIpSince(ip, since);
+  if (mine >= ctx.demoPerIpCap) {
+    res.status(429).json({
+      error: "you have used your free Studio runs for today",
+      used: mine,
+      cap: ctx.demoPerIpCap,
+    });
+    return;
+  }
+  ctx.store.recordDemoHit(ip);
 
   ctx.store.recordOrder({
     id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,

@@ -36,6 +36,7 @@ import { PolicyRefusal } from "./celebrate.js";
 import {
   classifyImageFailure,
   ensureStored,
+  imageQualityFor,
   isUndelivered,
   qualityOf,
   undeliveredArtifact,
@@ -386,6 +387,7 @@ export async function runRemember(
         prompt: artSubject,
         negative: `${style.negativePrompt}, no faces, no portraits, no recognisable people`,
         size,
+        quality: imageQualityFor("keepsake_art"),
       });
       await deps.storage.put(artKey, Buffer.from(generated.pngBase64, "base64"), "image/png");
       await ensureStored(deps.storage, artKey);
@@ -395,6 +397,7 @@ export async function runRemember(
           prompt: artSubject + repairSuffix(brief),
           negative: `${style.negativePrompt}, no faces, no portraits, no recognisable people`,
           size,
+          quality: imageQualityFor("keepsake_art", { repair: true }),
         });
         await deps.storage.put(artKey, Buffer.from(redone.pngBase64, "base64"), "image/png");
         return { ...previous };

@@ -11,7 +11,7 @@ import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
 import { PRICES, OkxGate, isFree, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
-import { handleDemoRun } from "./demo.js";
+import { callerIp as demoCallerIp, handleDemoRun } from "./demo.js";
 import { handleDelete, handleUpload } from "./uploads.js";
 import { VERSION, buildServer, packResult, type ServerContext } from "./server.js";
 
@@ -22,6 +22,8 @@ export interface AppContext extends ServerContext {
   /** Shared secret for the internal Studio demo route; absent = route is off. */
   demoSecret?: string;
   demoDailyCap?: number;
+  /** Free runs one caller may take per day. Default 2 — enough to try it, not to farm it. */
+  demoPerIpCap?: number;
 }
 
 /* -------------------------------------------------------------- rate limit */
@@ -175,9 +177,20 @@ export function buildApp(ctx: AppContext): Express {
       res.status(404).json({ error: "not found" });
       return;
     }
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+
     const cap = ctx.demoDailyCap ?? 8;
-    const used = ctx.store.demoRunsSince(Date.now() - 24 * 60 * 60 * 1000);
-    res.json({ used, cap, remaining: Math.max(0, cap - used) });
+    const used = ctx.store.demoRunsSince(since);
+
+    // Two limits guard the free Studio: a shared daily pool, and a per-caller share of
+    // it. The button must reflect whichever bites FIRST — otherwise someone who has spent
+    // their own runs sees an enabled button, clicks it, and gets a 429 for their trouble.
+    const perIpCap = ctx.demoPerIpCap ?? 2;
+    const perIpUsed = ctx.store.demoRunsByIpSince(demoCallerIp(req), since);
+
+    const remaining = Math.min(Math.max(0, cap - used), Math.max(0, perIpCap - perIpUsed));
+
+    res.json({ used, cap, perIpUsed, perIpCap, remaining });
   });
 
   // Real pipelines, real events, metered. Reached only via the Next server
@@ -187,6 +200,7 @@ export function buildApp(ctx: AppContext): Express {
       {
         ...ctx,
         demoDailyCap: ctx.demoDailyCap ?? 8,
+        demoPerIpCap: ctx.demoPerIpCap ?? 2,
         packForClient: (pack) => packResult(ctx, pack),
       },
       req,

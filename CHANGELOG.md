@@ -37,6 +37,20 @@ product from misleading the person paying for it.
   is broken" rather than "this file is gone". Images now degrade to a plain statement.
 - README claimed both 223 and 205 tests, in two places, and neither was right. It is 243.
 
+### Changed
+
+- **Image quality tiers.** No `quality` was ever sent to the image provider, so it applied
+  its DEFAULT — its most expensive tier — to every image, including moodboard thumbnails
+  and repair drafts that get thrown away. Top tier is now bought only for work a person
+  keeps (`og_image`, `keepsake_art`, `invitation`); everything else, and **every repair**,
+  is mid tier. One of each tool: **$0.92, down from $1.55 — 40% cheaper**; the launch kit
+  alone fell 53%.
+- **The launch kit's share card is derived, not generated.** The artifact called `og_image`
+  shipped at 1536×1024 — not the 1.91:1 an Open Graph card actually is — so every platform
+  cropped it badly. A correctly-shaped 1200×630 card is now cut from the hero with sharp:
+  it costs nothing, and it cannot drift from the hero the way a second generation would.
+- **A per-caller cap on the free Studio**, alongside the shared daily pool.
+
 ### Added
 
 - **`OCE_FAKE_PROVIDERS=1`** — assembles the deterministic fakes for every port, so the
@@ -56,6 +70,12 @@ product from misleading the person paying for it.
   a healthy ASP and drop paid requests mid-flight.
 
 ### Verified
+
+- **Measured unit cost per tool** (`docs/pricing-rationale.md`, reproduce with
+  `node scripts/cost-model.mjs`). **Three of the six paid tools sell below cost**: every
+  `oce_launch_kit` loses ~$0.19, every `oce_design_invite` ~$0.15, every `oce_make_keepsake`
+  ~$0.08. The more the ASP sells, the more it burns. This was invisible because the cost
+  governor priced every image at a flat, invented $0.04. V2-1 reprices against that table.
 
 - All **23** seals in the store confirmed anchored on X Layer mainnet by reading
   `KeepsakeRegistry.anchoredAt()` directly. Zero claiming an anchor the chain does not have.

@@ -116,6 +116,16 @@ export class Store {
         PRIMARY KEY (pack_id, seq)
       );
 
+      -- Who has spent the free Studio allowance. The daily cap alone is a shared pool:
+      -- one visitor (or one script) can drain the whole day's demo budget before anyone
+      -- else arrives, and every subsequent visitor sees a dead button. Capping per caller
+      -- as well means one person can no longer spend everybody's allowance.
+      CREATE TABLE IF NOT EXISTS demo_hits (
+        ip TEXT NOT NULL,
+        at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_demo_hits ON demo_hits(ip, at);
+
       -- Replay protection for x402: an EIP-3009 nonce is single-use, forever.
       CREATE TABLE IF NOT EXISTS payment_nonces (
         nonce      TEXT PRIMARY KEY,
@@ -153,6 +163,21 @@ export class Store {
         );
       }
     })();
+  }
+
+  /* ------------------------------------------------------------ demo credits */
+
+  /** Record that this caller spent one free run. Called only once the run is authorized. */
+  recordDemoHit(ip: string, at = Date.now()): void {
+    this.db.prepare("INSERT INTO demo_hits (ip, at) VALUES (?, ?)").run(ip, at);
+  }
+
+  /** How many free runs this caller has taken in the window. */
+  demoRunsByIpSince(ip: string, sinceMs: number): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS n FROM demo_hits WHERE ip = ? AND at >= ?")
+      .get(ip, sinceMs) as { n: number };
+    return row.n;
   }
 
   /* ----------------------------------------------------------------- events */

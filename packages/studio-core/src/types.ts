@@ -370,12 +370,24 @@ export interface TextModelPort {
   complete(request: TextCompletionRequest): Promise<TextCompletionResult>;
 }
 
+/**
+ * How much to spend on one image.
+ *
+ * The provider's top tier costs roughly 4x its middle tier, and we were paying it for
+ * EVERYTHING — including moodboard tiles the buyer sees at thumbnail size and repair
+ * drafts that may be thrown away on the next pass. "high" is reserved for the pieces
+ * a person actually keeps: the hero, the keepsake, the invitation.
+ */
+export type ImageQuality = "low" | "medium" | "high";
+
 export interface ImageGenerationRequest {
   prompt: string;
   negative?: string;
   /** "WxH" in pixels, e.g. "1024x1536". */
   size: string;
   seed?: number;
+  /** Omitted = the provider's default, which is its most expensive tier. Always set it. */
+  quality?: ImageQuality;
 }
 
 export interface ImageGenerationResult {

@@ -15,7 +15,40 @@
  * The raw provider error goes to the server log and nowhere else. What ships is a
  * stable code and one sentence a buyer can act on.
  */
-import type { Artifact, ArtifactFormat, ArtifactKind, StoragePort, Undelivered } from "../types.js";
+import type {
+  Artifact,
+  ArtifactFormat,
+  ArtifactKind,
+  ImageQuality,
+  StoragePort,
+  Undelivered,
+} from "../types.js";
+
+/**
+ * What each image is worth paying for.
+ *
+ * The provider's top tier costs ~4x its middle tier, and we were buying it for every
+ * image — including moodboard tiles the buyer sees at thumbnail size, and repair drafts
+ * that get thrown away on the next pass. Top tier is now reserved for the pieces a
+ * person actually keeps and looks at closely.
+ *
+ * A REPAIR is always medium, whatever the kind: it is a draft being iterated, and the
+ * Tribunal may reject it again. Paying hero rates for an attempt is how a two-repair
+ * artifact ends up costing three times its own price.
+ */
+const KEEPSAKE_GRADE: ReadonlySet<string> = new Set<ArtifactKind>([
+  "og_image", // the launch hero — the one image that gets shared
+  "keepsake_art", // the thing someone frames
+  "invitation", // the thing someone is sent
+]);
+
+export function imageQualityFor(
+  kind: ArtifactKind,
+  options: { repair?: boolean } = {},
+): ImageQuality {
+  if (options.repair) return "medium";
+  return KEEPSAKE_GRADE.has(kind) ? "high" : "medium";
+}
 
 /** Stable, public failure codes. Never renamed — /k pages and clients key off these. */
 export const UNDELIVERED_CODES = {

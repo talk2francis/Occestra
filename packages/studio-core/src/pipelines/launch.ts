@@ -19,6 +19,7 @@ import {
   type HouseStyle,
   type HouseStyleId,
   type ImageModelPort,
+  type ImageQuality,
   type LaunchContract,
   type MarketDataPort,
   type Pack,
@@ -32,6 +33,7 @@ import { PolicyRefusal } from "./celebrate.js";
 import {
   classifyImageFailure,
   ensureStored,
+  imageQualityFor,
   isUndelivered,
   qualityOf,
   undeliveredArtifact,
@@ -290,9 +292,17 @@ export const NO_LETTERING =
 
 async function makeImage(
   deps: LaunchDeps,
-  args: { subject: string; style: HouseStyle; palette: string[]; size: string; key: string },
+  args: {
+    subject: string;
+    style: HouseStyle;
+    palette: string[];
+    size: string;
+    key: string;
+    quality: ImageQuality;
+  },
 ): Promise<string> {
   const result = await deps.image.generate({
+    quality: args.quality,
     prompt: [
       `HOUSE STYLE: ${args.style.name} (v${args.style.version})`,
       args.style.promptSystem,
@@ -891,6 +901,7 @@ export async function runLaunch(
         palette: harmonized.palette,
         size: "1536x1024",
         key: heroKey,
+        quality: imageQualityFor("og_image"),
       });
 
       regenerators.set("og_image", async (brief, previous) => {
@@ -900,6 +911,7 @@ export async function runLaunch(
           palette: harmonized.palette,
           size: "1536x1024",
           key: heroKey, // same key: the repaired image replaces the failed one
+          quality: imageQualityFor("og_image", { repair: true }),
         });
         return { ...previous };
       });
@@ -948,6 +960,7 @@ export async function runLaunch(
         palette: harmonized.palette,
         size: "1024x1024",
         key: markKey,
+        quality: imageQualityFor("brand_mark"),
       });
 
       regenerators.set("brand_mark", async (brief, previous) => {
@@ -957,6 +970,7 @@ export async function runLaunch(
           palette: harmonized.palette,
           size: "1024x1024",
           key: markKey,
+          quality: imageQualityFor("brand_mark", { repair: true }),
         });
         return { ...previous };
       });
@@ -1002,6 +1016,7 @@ export async function runLaunch(
           palette: harmonized.palette,
           size: "1536x1024",
           key: `launch/${keepsakeId}-social-${index + 1}.png`,
+          quality: imageQualityFor("carousel"),
         });
         artifacts.push(
           artifactOf({

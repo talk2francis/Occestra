@@ -40,6 +40,7 @@ import { estimateTravel, layOutSchedule, type Block, type TimedBlock } from "./t
 import {
   classifyImageFailure,
   ensureStored,
+  imageQualityFor,
   isUndelivered,
   qualityOf,
   undeliveredArtifact,
@@ -753,6 +754,7 @@ export async function runCelebrate(
         prompt: inviteSubject,
         ...(style ? { negative: style.negativePrompt } : {}),
         size,
+        quality: imageQualityFor("invitation"),
       });
 
       const uri = `invites/${keepsakeId}.png`;
@@ -764,6 +766,7 @@ export async function runCelebrate(
           prompt: inviteSubject + repairSuffix(brief),
           ...(style ? { negative: style.negativePrompt } : {}),
           size,
+          quality: imageQualityFor("invitation", { repair: true }),
         });
         await deps.storage.put(uri, Buffer.from(redone.pngBase64, "base64"), "image/png");
         return { ...previous };
@@ -909,6 +912,7 @@ export async function runCelebrate(
         ].join("\n"),
         negative: style.negativePrompt,
         size: "1024x1024",
+        quality: imageQualityFor("moodboard"),
       });
 
       const uri = `moodboards/${keepsakeId}.png`;

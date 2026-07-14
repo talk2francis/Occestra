@@ -7,6 +7,7 @@
  */
 import type {
   ImageGenerationRequest,
+  ImageQuality,
   ImageGenerationResult,
   ImageModelPort,
   StudioRole,
@@ -28,7 +29,30 @@ const PRICING: Record<string, { inUsdPerM: number; outUsdPerM: number }> = {
   "grok-2-latest": { inUsdPerM: 2, outUsdPerM: 10 },
 };
 
-const IMAGE_USD_PER_CALL = 0.04;
+/**
+ * What an image ACTUALLY costs, per gpt-image-1's published rates.
+ *
+ * This used to be a single flat `0.04` for every call, which meant the daily USD cap
+ * was metering a number we had invented: a high-tier landscape really costs ~6x that,
+ * and a medium square costs about the same. A governor that mis-prices its own spend
+ * cannot protect the budget it exists to protect.
+ *
+ * Keyed by quality, then by whether the frame is square or oblong (the provider prices
+ * 1024x1024 below 1024x1536 / 1536x1024).
+ */
+const IMAGE_USD: Record<ImageQuality, { square: number; oblong: number }> = {
+  low: { square: 0.011, oblong: 0.016 },
+  medium: { square: 0.042, oblong: 0.063 },
+  high: { square: 0.167, oblong: 0.25 },
+};
+
+const DEFAULT_IMAGE_QUALITY: ImageQuality = "high";
+
+export function imageCostUsd(size: string, quality: ImageQuality = DEFAULT_IMAGE_QUALITY): number {
+  const [width, height] = size.split("x").map(Number);
+  const row = IMAGE_USD[quality] ?? IMAGE_USD[DEFAULT_IMAGE_QUALITY]!;
+  return width === height ? row.square : row.oblong;
+}
 
 function estimateUsd(model: string, inTokens: number, outTokens: number): number {
   const price = PRICING[model] ?? { inUsdPerM: 3, outUsdPerM: 15 };
@@ -237,6 +261,8 @@ export class OpenAiImage implements ImageModelPort {
       ? `${request.prompt}\n\nAvoid entirely: ${request.negative}`
       : request.prompt;
 
+    const quality = request.quality ?? DEFAULT_IMAGE_QUALITY;
+
     const response = await fetchJson<ImageResponse>(
       `${this.config.baseUrl ?? "https://api.openai.com"}/v1/images/generations`,
       {
@@ -253,6 +279,9 @@ export class OpenAiImage implements ImageModelPort {
           prompt,
           size: request.size,
           n: 1,
+          // Never omit this: the provider's default is its most expensive tier, so a
+          // missing field is a silent 4x on every thumbnail and every repair draft.
+          quality,
         }),
       },
     );
@@ -262,7 +291,11 @@ export class OpenAiImage implements ImageModelPort {
       throw new Error("image provider returned no base64 payload (a URL is not acceptable)");
     }
 
-    return { pngBase64: b64, model: this.config.model, usdCost: IMAGE_USD_PER_CALL };
+    return {
+      pngBase64: b64,
+      model: this.config.model,
+      usdCost: imageCostUsd(request.size, quality),
+    };
   }
 }
 
