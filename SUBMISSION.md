@@ -59,16 +59,23 @@ else that day.
 - [ ] Post the thread per `demo/X-THREAD.md` from **@occestrastudio**; paste the link above.
 - [x] X + Telegram handles filled (2026-07-13).
 - [x] Unfurl cards verified on X + Telegram (2026-07-13).
-- [ ] `npm publish` of `@occestra/client` — needs a 2FA OTP (see below); everything else is ready.
+- [x] **`@occestra/client@0.1.0` published to npm** (2026-07-14) — installs and imports clean
+      from a clean-room `npm i @occestra/client`.
 - [ ] Submit the form; screenshot the confirmation.
 
-### The npm publish, exactly
+### npm, for next time
 
-Logged in as `majesticfranc`; registry rejects publish without a 2FA code:
+Publish with an **access token**, not 2FA — the registry takes a token with no OTP, and the
+account's 2FA is passkey-bound (no authenticator app):
 
 ```bash
-cd /root/occestra/packages/client && npm publish --otp=<6-digit code from your authenticator>
+NPM_TOKEN=<token> npm publish --userconfig <npmrc with //registry.npmjs.org/:_authToken=${NPM_TOKEN}>
 ```
 
-(`dist/` is built and the dry-run passed — the OTP is the only missing piece. If you'd rather
-not hand-type codes, make a granular access token with "bypass 2FA" and `npm set //registry.npmjs.org/:_authToken=…`.)
+Two things that cost time and are worth knowing:
+- A scoped package needs the **org to exist** — `@occestra` returned `404 Scope not found`
+  until the org was created at npmjs.com/org/create. Username scopes (`@majesticfranc`) work
+  without one; org scopes do not.
+- A token can **publish but not delete**. `npm unpublish` still demands an OTP, so a bad
+  publish can only be deprecated from the CLI (`@majesticfranc/client` was published in error
+  and is deprecated, pointing here). Deleting it outright needs the npm website.
