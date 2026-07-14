@@ -7,6 +7,44 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-1.0: make the standard agree with itself
+
+The critic was measured disagreeing with itself — the same schedule graded **F P F F P F**,
+because its grounding score oscillated **62–72** across the floor. A standard that grades the
+identical artifact differently on Tuesday than Wednesday is not a standard, it is a mood, and a
+judge who runs `oce_critique` twice and gets PASS then FAIL will never trust the grade again.
+This is the load-bearing claim of the product, so it was fixed **before** any SLO was measured:
+there is no point publishing a spread you have not first tried to shrink.
+
+**Measured, before → after — 6 runs over 3 real artifacts from the production store:**
+
+| | before | after |
+|---|---|---|
+| artifacts whose verdict flipped run-to-run | **1 / 3** | **0 / 3** |
+| widest spread on any single axis | **10 points** | **0** |
+
+**And the bar did not move.** Verified against known-bad work: pure slop still fails
+(composition 30, grounding 30), and an invented *"$49 per event, 12,000 hosts, 99.4%
+satisfaction"* still fails on grounding 30. Stable **and** discriminating — a critic that never
+fails anything would be worse than one that varies.
+
+- **Temperature 0.** The generator is creative; the judge must not be. It was at 0.2.
+- **Anchored axes.** Each axis is now a band table with checkable anchors, replacing "70 means a
+  discerning person would be happy to receive this" — a vibe the model re-decided on every read.
+  Grounding got explicit guardrails, since it was the axis doing all the drifting: *honesty about
+  a gap IS grounding*; "could be better evidenced" is not a failure, "asserts X with no source" is.
+- **A failing correctness score must be QUOTABLE.** The critic must quote the exact defect; an
+  uncited correctness failure is discarded and the score restored to the floor. This raises what
+  it takes to fail something. Craft is exempt — nobody re-litigates a composition of 68.
+- **The varying judgment moved OUT of the LLM.** `SOURCE_MISSING` now covers schedules: one that
+  names a venue must carry its source. That is a yes/no question, and every judgment moved from
+  the critic into arithmetic stops varying forever.
+- **The cost governor could not see the critic.** Critiques reached the adapter directly, so every
+  critique — one per artifact, plus one per repair — was invisible to the daily USD cap.
+
+On the same Lisbon brief, across this and the pre-V2-1 generator fixes: **passRate 0 → 1.0, stable.**
+Earned by fixing the generator, not by loosening the grader.
+
 ## [Unreleased] — pre-V2-1: raise the work to the bar
 
 Keep Claude. Keep the bar. Make the work worthy of it — so every fix here is in the

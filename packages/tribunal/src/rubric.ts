@@ -310,6 +310,18 @@ export function rubricAsMarkdown(): string {
     );
   }
   lines.push("");
+  lines.push("## A failing correctness score must be QUOTABLE");
+  lines.push("");
+  lines.push(
+    "A correctness axis may only fall below its floor if the critic can **quote the exact thing that is wrong** — the unsourced claim, the ambiguous time, the number that does not add up. A correctness failure with no citable cause is discarded and the score is restored to the floor.",
+  );
+  lines.push("");
+  lines.push(
+    "This does not lower the bar; it raises what it takes to fail something. It exists because the critic was measured disagreeing with itself: the same schedule scored grounding 62 on one run and 72 on the next, straddling the floor, so the identical artifact both passed and failed. The low runs never named a defect — they said things like *\"could be better evidenced\"*. That is a mood, not a finding. A citable cause is reproducible even when the number attached to it is not, and reproducible causes are what a standard is made of.",
+  );
+  lines.push("");
+  lines.push("Craft axes are exempt. Nobody is going to re-litigate a composition of 68, and taste is allowed to be taste.");
+  lines.push("");
   lines.push("## Deterministic checks");
   lines.push("");
   lines.push(
