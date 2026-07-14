@@ -6,6 +6,7 @@
  *
  * State machine: intake -> quoted -> agreed -> delivered -> revising -> closed
  */
+import { PRICES } from "../gate.js";
 import { PolicyGate } from "@occestra/studio-core";
 import {
   A2A_VERSION,
@@ -188,7 +189,7 @@ export function negotiate(state: NegotiationState, message: string): Negotiation
             `${budget} USDT is below our floor of ${PRICING.floor} — the floor exists because the Tribunal grading, repairs and on-chain sealing ` +
             `cost real work on every job, and we would rather decline than cut them. Two honest options: the essential tier at ` +
             `${PRICING.tiers.essential.range[0]}–${PRICING.tiers.essential.range[1]} USDT, or the per-call tools at api.occestra.xyz ` +
-            `(a full grounded plan is 0.05 USDT; a Tribunal critique of your own work is 0.01). Either is an honest place to start.`,
+            `(a full grounded plan is ${PRICES.oce_plan_occasion} USDT; a Tribunal critique of your own work is ${PRICES.oce_critique}). Either is an honest place to start.`,
           state: { ...state, taskType: spec.id, params: harvest },
         };
       }

@@ -100,15 +100,26 @@ export const TRIBUNAL_CASE = {
 
 /* ----------------------------------------------------------------- pricing */
 
+/**
+ * The price list, mirrored from the ASP's own PRICES table.
+ *
+ * A mirror can drift, and a website quoting a price the server will not honour is worse than
+ * no price at all — so `node scripts/check-prices.mjs` (run by `pretest`) fails the build if
+ * this list and the ASP's manifest ever disagree.
+ */
 export const TOOLS = [
-  { name: "oce_plan_occasion", price: 0.05, gives: "A grounded plan: real venues, real forecast, schedule, budget, contingencies" },
-  { name: "oce_design_invite", price: 0.1, gives: "An invitation suite in a curated House Style" },
-  { name: "oce_make_keepsake", price: 0.1, gives: "Keepsake artwork + a story page from a moment that already happened" },
-  { name: "oce_write_toast", price: 0.02, gives: "A toast written for the room, not for the internet" },
-  { name: "oce_moodboard", price: 0.05, gives: "A directed moodboard on a versioned style system" },
-  { name: "oce_launch_kit", price: 0.25, gives: "Hero visual, brand genome, launch thread, demo beat sheet, OG image" },
+  { name: "oce_plan_occasion", price: 0.3, gives: "A grounded plan: real venues, real forecast, schedule, budget, contingencies" },
+  { name: "oce_design_invite", price: 0.75, gives: "An invitation suite in a curated House Style" },
+  { name: "oce_make_keepsake", price: 0.75, gives: "Keepsake artwork + a story page from a moment that already happened" },
+  { name: "oce_write_toast", price: 0.1, gives: "A toast written for the room, not for the internet" },
+  { name: "oce_moodboard", price: 0.3, gives: "A directed moodboard on a versioned style system" },
+  { name: "oce_launch_kit", price: 1.5, gives: "Hero visual, brand genome, launch thread, demo beat sheet, OG image" },
   { name: "oce_critique", price: 0.01, gives: "Your artifact, graded against the published OQS — repair brief included" },
   { name: "oce_verify_keepsake", price: 0, gives: "Verify any seal against X Layer. Free forever" },
+  { name: "oce_create_pack_job", price: null, gives: "Run any of the above as a background job — costs exactly what that tool costs" },
+  { name: "oce_job_status", price: 0, gives: "Where your job has got to, with the real event feed. Free" },
+  { name: "oce_job_result", price: 0, gives: "Collect the finished pack. Free — you already paid" },
+  { name: "oce_cancel_job", price: 0, gives: "Stop a job. Free. Queued cancels refund in full" },
 ] as const;
 
 export const OQS_AXES = ["composition", "legibility", "style_fidelity", "grounding", "platform_fit"] as const;

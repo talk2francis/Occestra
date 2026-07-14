@@ -48,7 +48,12 @@ export default function Quickstart() {
         <ParamTable
           rows={TOOLS.map((tool) => ({
             name: tool.name,
-            type: tool.price === 0 ? "free" : `${tool.price.toFixed(2)} USDT`,
+            type:
+              tool.price === null
+                ? "at cost"
+                : tool.price === 0
+                  ? "free"
+                  : `${tool.price.toFixed(2)} USDT`,
             desc: tool.gives,
           }))}
         />
@@ -94,7 +99,7 @@ export default function Quickstart() {
         </Callout>
       </Section>
 
-      <Section id="plan" title="oce_plan_occasion — 0.05 USDT">
+      <Section id="plan" title="oce_plan_occasion — 0.30 USDT">
         <p>
           The full CELEBRATE studio: a plan grounded in real venues (OpenStreetMap, ranked and
           chain-demoted) and a real forecast (Open-Meteo), plus schedule, budget, contingency
@@ -120,7 +125,7 @@ export default function Quickstart() {
     }`)}</CodeBlock>
       </Section>
 
-      <Section id="invite" title="oce_design_invite — 0.10 USDT">
+      <Section id="invite" title="oce_design_invite — 0.75 USDT">
         <p>An invitation suite rendered in a versioned House Style, contrast-checked and dimension-checked by the Tribunal.</p>
         <ParamTable
           rows={[
@@ -137,7 +142,7 @@ export default function Quickstart() {
     }`)}</CodeBlock>
       </Section>
 
-      <Section id="keepsake" title="oce_make_keepsake — 0.10 USDT">
+      <Section id="keepsake" title="oce_make_keepsake — 0.75 USDT">
         <p>
           The REMEMBER studio: keepsake artwork in a curated style plus a story page that strictly
           separates what your photographs establish from what is written as prose. People in your
@@ -164,7 +169,7 @@ export default function Quickstart() {
     }`)}</CodeBlock>
       </Section>
 
-      <Section id="toast" title="oce_write_toast — 0.02 USDT">
+      <Section id="toast" title="oce_write_toast — 0.10 USDT">
         <p>A toast written for the room, not for the internet — the anti-slop filters hit copy hardest.</p>
         <ParamTable
           rows={[
@@ -182,7 +187,7 @@ export default function Quickstart() {
     }`)}</CodeBlock>
       </Section>
 
-      <Section id="moodboard" title="oce_moodboard — 0.05 USDT">
+      <Section id="moodboard" title="oce_moodboard — 0.30 USDT">
         <ParamTable
           rows={[
             { name: "subject", type: "string", required: true, desc: "What the board is for." },
@@ -195,7 +200,7 @@ export default function Quickstart() {
     }`)}</CodeBlock>
       </Section>
 
-      <Section id="launch" title="oce_launch_kit — 0.25 USDT">
+      <Section id="launch" title="oce_launch_kit — 1.50 USDT">
         <p>
           The LAUNCH studio: give it a URL and it reads your <em>actual</em> site in a headless
           browser — the colours a browser rendered, not a guess — extracts an honest brand genome,

@@ -6,7 +6,7 @@ import { TOOLS } from "@/lib/real";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Eight tools priced in cents, settled per call in USDT on X Layer — plus negotiated A2A packages for complete occasions.",
+    "Twelve tools, settled per call in USDT on X Layer — plus negotiated A2A packages for complete occasions. Every price covers what the work actually costs, and we publish that too.",
 };
 
 const PACKAGES = [
@@ -42,7 +42,7 @@ export default function PricingPage() {
         className="mt-8"
         lede="Two rails: cheap tools any agent can buy on impulse, and negotiated packages for the whole occasion. Settlement is x402 in USDT on X Layer — no subscription, no account, no key."
       >
-        Priced in cents. Graded like it costs more.
+        Priced against what the work actually costs.
       </SectionHeading>
 
       <section className="mt-12">
@@ -56,7 +56,9 @@ export default function PricingPage() {
               <span className="text-data text-[0.82rem] text-ink/85">{tool.name}</span>
               <span className="text-[0.9rem] text-ink/65">{tool.gives}</span>
               <span className="text-data sm:text-right">
-                {tool.price === 0 ? (
+                {tool.price === null ? (
+                  <span className="text-ink/55">at cost</span>
+                ) : tool.price === 0 ? (
                   <span className="font-medium text-pass">free</span>
                 ) : (
                   <>{tool.price.toFixed(2)} <span className="text-ink/45">USDT</span></>

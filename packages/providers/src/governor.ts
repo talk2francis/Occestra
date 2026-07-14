@@ -83,6 +83,17 @@ export class CostGovernor {
     this.counters.images += count;
   }
 
+  /** What has been spent today, for /health, for the cost model, and for the operator. */
+  get spentUsd(): number {
+    this.roll();
+    return Number(this.counters.usd.toFixed(6));
+  }
+
+  get imagesToday(): number {
+    this.roll();
+    return this.counters.images;
+  }
+
   recordLlmSpend(usd: number): void {
     this.roll();
     this.counters.usd += usd;

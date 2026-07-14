@@ -7,6 +7,54 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-1.2: all six tools sold below cost, and the measurement that said "three" was wrong too
+
+The last release measured the cost of every tool and found **three of six selling below cost**.
+That measurement was itself wrong, and it was wrong for exactly the reason the cost governor was
+wrong the week before: **it never counted the critic.**
+
+The critic does not go through the text port — it reaches the model adapter directly. So nothing
+watching the text port could see it. `scripts/cost-model.mjs` counted "beats" (generator calls)
+and priced them at one blended rate; every critique — **one per artifact, plus one per repair
+pass** — cost nothing at all as far as it knew. A plan makes five artifacts, therefore five
+critique calls, and was modelled as making none.
+
+**`oce_plan_occasion` was believed to cost $0.0066. It costs $0.1253. Wrong by nineteen times, in
+the direction that loses money.** With the critic counted, **all six paid tools were under water.**
+
+`scripts/cost-live.mjs` now measures the two rates for real, and they are not the same number:
+
+| role | $/call | why |
+|---|---|---|
+| writer | $0.0118 | a system prompt, a brief, a few hundred tokens back |
+| **critic** | **$0.0168** | the **whole artifact** goes in, plus the anchored rubric, ~1100 tokens back |
+
+The critic is the **dearer** of the two, and it runs once per artifact rather than once per run.
+
+**The new prices**, each holding ~60% gross margin on measured cost:
+
+| tool | cost | was | **now** |
+|---|---|---|---|
+| `oce_write_toast` | $0.029 | 0.02 | **0.10** |
+| `oce_plan_occasion` | $0.125 | 0.05 | **0.30** |
+| `oce_moodboard` | $0.076 | 0.05 | **0.30** |
+| `oce_make_keepsake` | $0.236 | 0.10 | **0.75** |
+| `oce_design_invite` | $0.284 | 0.10 | **0.75** |
+| `oce_launch_kit` | $0.596 | 0.25 | **1.50** |
+
+**`oce_critique` stays at 0.01 and stays below cost — deliberately.** It costs about seventeen
+cents in the making and sells for one. A marketplace where output is checkable is a better
+marketplace for everyone in it, including us, and a grading tool priced to protect its own margin
+would never get used. `oce_verify_keepsake` remains free forever: trust that costs money is not
+trust.
+
+`node scripts/check-prices.mjs` runs in `pretest` and **fails the build** if the website and the
+ASP ever disagree about money — a page quoting a price the gate will not honour is worse than a
+page with no prices on it, because the buyer finds out at the till.
+
+**The rule this leaves behind:** any time you measure spend, ask what talks to a model *without*
+going through the port you are watching. Twice now, the answer has been the critic.
+
 ## [Unreleased] — V2-1.1: async jobs, idempotency, and the money we owe
 
 Three ways an ASP can take money it did not earn, all of them invisible unless you go looking.

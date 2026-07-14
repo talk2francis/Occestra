@@ -18,13 +18,13 @@
  * The paying key is OCE_REFUND_KEY, or OCE_SEALER_KEY if that is unset. It must control the
  * treasury address — the script checks, and refuses if it does not.
  */
-import { config } from "dotenv";
+
 import Database from "better-sqlite3";
 import { createPublicClient, createWalletClient, formatUnits, http, parseUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { chainFor } from "../packages/receipts/dist/index.js";
 
-config();
+
 
 const PAY = process.argv.includes("--pay");
 const DATA_DIR = process.env.OCE_DATA_DIR ?? "data";

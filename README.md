@@ -75,10 +75,10 @@ Real output, straight from the store — a graded guest guide, a keepsake that f
 
 | tool | price | | tool | price |
 |---|---|---|---|---|
-| `oce_plan_occasion` | 0.05 | | `oce_moodboard` | 0.05 |
-| `oce_design_invite` | 0.10 | | `oce_launch_kit` | 0.25 |
-| `oce_make_keepsake` | 0.10 | | `oce_critique` | **0.01** |
-| `oce_write_toast` | 0.02 | | `oce_verify_keepsake` | **free, forever** |
+| `oce_plan_occasion` | 0.30 | | `oce_moodboard` | 0.30 |
+| `oce_design_invite` | 0.75 | | `oce_launch_kit` | 1.50 |
+| `oce_make_keepsake` | 0.75 | | `oce_critique` | **0.01** |
+| `oce_write_toast` | 0.10 | | `oce_verify_keepsake` | **free, forever** |
 
 `oce_critique` is the ecosystem wedge: **any builder can run their own artifact through our Tribunal for a cent** and get the graded report plus a repair brief back — the cheapest quality gate on the marketplace. Verification is deliberately outside the paywall: trust that costs money is not trust.
 

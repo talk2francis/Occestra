@@ -38,13 +38,17 @@ Settlement uses the OKX Payment SDK / current x402 revision (v2 era, CAIP-2 netw
 
 ## A2MCP tools + prices (USDT per call)
 NOTE (V2-0, measured): THREE OF THESE SELL BELOW COST — launch_kit costs $0.44, design_invite
-$0.25, make_keepsake $0.18. See docs/pricing-rationale.md. V2-1 reprices against that table.
-- oce_plan_occasion   : 0.05
-- oce_design_invite   : 0.10
-- oce_make_keepsake   : 0.10
-- oce_write_toast     : 0.02
-- oce_moodboard       : 0.05
-- oce_launch_kit      : 0.25
+$0.25, make_keepsake $0.18 — and that measurement was ITSELF wrong, because it never counted the
+critic (see the V2-1.2 deviation). Repriced 2026-07-14 against measured cost; every price now
+holds ~60% gross margin, EXCEPT oce_critique, which is a deliberate loss-leader at 0.01.
+Regenerate the table free with `node scripts/cost-model.mjs`; `node scripts/check-prices.mjs`
+(run by pretest) fails the build if the website and the ASP ever disagree about money.
+- oce_plan_occasion   : 0.30
+- oce_design_invite   : 0.75
+- oce_make_keepsake   : 0.75
+- oce_write_toast     : 0.10
+- oce_moodboard       : 0.30
+- oce_launch_kit      : 1.50
 - oce_critique        : 0.01
 - oce_verify_keepsake : 0 (free forever)
 Default server port: 8402.
@@ -152,6 +156,7 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
 
+- 2026-07-14 (V2-1.2) — **ALL SIX PAID TOOLS SOLD BELOW COST, NOT THREE — AND THE MEASUREMENT THAT SAID "THREE" HAD THE SAME BLIND SPOT THE GOVERNOR DID.** `scripts/cost-model.mjs` counted "beats" (generator calls) and never counted the CRITIC, because the critic does not go through the text port. A plan makes five artifacts, therefore five critique calls, and was modelled as making none: it was believed to cost $0.0066 and truly costs **$0.1253** — wrong by **19×**, in the direction that loses money. Every tool was under water. `scripts/cost-live.mjs` now measures the two rates for real (WRITER $0.0118/call, CRITIC $0.0168/call — the critic is the DEARER one: the whole artifact goes in and the anchored rubric goes in) and `cost-model.mjs` counts both ports. **Any time you measure spend, ask what talks to a model WITHOUT going through the port you are watching.**
 - 2026-07-14 (V2-1.1) — **THE POLICY SCREEN RAN AFTER THE PAYMENT, AND THREE TOOLS NEVER RAN IT.** `plan_occasion`, `launch_kit` and `make_keepsake` (the one that ingests photographs of real people) never called PolicyGate at all; the three that did called it INSIDE the pipeline, which x402 reaches only after settling on chain. The listing's "the PolicyGate refuses those briefs before any money is spent" was therefore false twice over. FIX: `screenToolInput()` now runs in the HTTP paywall over the raw tool arguments, BEFORE `gate.check`. No tool calls it — the door does — so a new tool cannot forget it. `packages/mcp-server/test/paywall.test.ts` generates a refusal test for EVERY tool in `PACK_TOOLS`, and asserts zero orders recorded. **Never move a check into a pipeline that belongs at the door.**
 - 2026-07-14 (V2-1.1) — **x402 SETTLES BEFORE THE WORK RUNS, SO A FAILURE IS A DEBT.** Any paid call that delivers nothing books a row in `refunds` (payer, amount, tool, reason), published at /health and /stats. `node scripts/refunds.mjs [--pay]` is the ONLY thing that moves money out of the treasury, and it is human-run on purpose: an ASP that can autonomously spend from its own treasury is one bug away from having no treasury. Cancelling a QUEUED job refunds in full; cancelling a RUNNING one does not (the providers were already paid) — and the tool description says so before the call, not after.
 - 2026-07-14 (V2-1.1) — **IDEMPOTENCY IS FREE IF YOU LOOK AT WHAT x402 ALREADY CARRIES.** `Idempotency-Key` is honoured, but when it is absent the payment NONCE is used as the key — unique per call, single-use by construction. So a plain retry of an identical paid request is safe with no client change. Replays are rebuilt from the stored PAYLOAD, not the raw bytes: the MCP transport writes through Hono's web-standard bridge (below `res.write`, so byte capture silently returns empty), and a byte replay would carry the ORIGINAL JSON-RPC id, which the retrying client is no longer waiting on.

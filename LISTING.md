@@ -56,12 +56,12 @@ its own coverage rather than hiding it.
 
 | Tool | Price | What it returns |
 | --- | --- | --- |
-| `oce_plan_occasion` | 0.05 | A grounded plan: real candidate venues (each with its OpenStreetMap source and retrieval time), a live weather forecast, a physically-possible running order, a budget whose line items sum, and honest contingencies. Nothing is claimed as booked. |
-| `oce_design_invite` | 0.10 | An original invitation artwork in a named House Style (1024x1536), Tribunal-checked for dimensions, contrast and palette fidelity, plus three copy variants (warm, formal, plain). |
-| `oce_make_keepsake` | 0.10 | An original keepsake artwork from a written memory, in a curated style, plus a short written page that separates what you told us from what it meant. No recognisable faces; nothing personal on chain. |
-| `oce_write_toast` | 0.02 | A toast written to be said out loud: the toast, a short version for a loud room, and a line to fall back on. Uses only the details you give it — it invents no memories. |
-| `oce_moodboard` | 0.05 | A four-tile moodboard with a true House Style palette strip, plus a written art-direction sheet you could hand to a human designer. |
-| `oce_launch_kit` | 0.25 | Opens your real URL in a headless browser, reads the colours and fonts actually rendered, and returns a hero image, a three-post launch thread, and an honest brand genome. Invents no features, no metrics, no users. |
+| `oce_plan_occasion` | 0.30 | A grounded plan: real candidate venues (each with its OpenStreetMap source and retrieval time), a live weather forecast, a physically-possible running order, a budget whose line items sum, and honest contingencies. Nothing is claimed as booked. |
+| `oce_design_invite` | 0.75 | An original invitation artwork in a named House Style (1024x1536), Tribunal-checked for dimensions, contrast and palette fidelity, plus three copy variants (warm, formal, plain). |
+| `oce_make_keepsake` | 0.75 | An original keepsake artwork from a written memory, in a curated style, plus a short written page that separates what you told us from what it meant. No recognisable faces; nothing personal on chain. |
+| `oce_write_toast` | 0.10 | A toast written to be said out loud: the toast, a short version for a loud room, and a line to fall back on. Uses only the details you give it — it invents no memories. |
+| `oce_moodboard` | 0.30 | A four-tile moodboard with a true House Style palette strip, plus a written art-direction sheet you could hand to a human designer. |
+| `oce_launch_kit` | 1.50 | Opens your real URL in a headless browser, reads the colours and fonts actually rendered, and returns a hero image, a three-post launch thread, and an honest brand genome. Invents no features, no metrics, no users. |
 | `oce_critique` | 0.01 | Runs ANY artifact — yours, not just ours — through the Tribunal against the published standard. Five axes, every deterministic check with its evidence, and an actionable repair brief written to your generator. Priced at a cent because we want you to use it on everything. |
 | `oce_verify_keepsake` | **free** | Verify any Occestra keepsake: the seal, whether the signature recovers, the anchored leaf, the transaction, an explorer link. Free forever — trust that costs money is not trust. |
 

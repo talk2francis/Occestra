@@ -543,7 +543,9 @@ describe("http surface", () => {
 
     const decoded = JSON.parse(Buffer.from(header!, "base64").toString());
     expect(decoded.x402Version).toBe(2);
-    expect(decoded.accepts[0].amount).toBe("100000");
+    // Priced from the table, never from a number typed into a test — a repricing must not
+    // need this file edited, or the test is asserting history rather than behaviour.
+    expect(decoded.accepts[0].amount).toBe(toAtomic(PRICES.oce_design_invite).toString());
     expect(decoded.accepts[0].network).toBe("eip155:196");
 
     const body = await response.json();

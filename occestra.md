@@ -111,8 +111,8 @@ and come back repaired, finished pieces settle into the pack with weight. One de
 ## How it makes money / sells
 
 **A2MCP tools** (USDT per call via the OKX Payment SDK, current x402/CAIP-2 standard):
-`oce_plan_occasion` (0.05), `oce_design_invite` (0.10), `oce_make_keepsake` (0.10),
-`oce_write_toast` (0.02), `oce_moodboard` (0.05), `oce_launch_kit` (0.25), `oce_critique`
+`oce_plan_occasion` (0.30), `oce_design_invite` (0.75), `oce_make_keepsake` (0.75),
+`oce_write_toast` (0.10), `oce_moodboard` (0.30), `oce_launch_kit` (1.50), `oce_critique`
 (0.01), `oce_verify_keepsake` (free forever). Cheap tools drive order count; the launch
 kit drives revenue amount; the critique tool drives agent-to-agent volume (any builder
 can run their own output through Occestra's Tribunal); free verification drives trust.

@@ -4,6 +4,7 @@
  * pin the behaviours that matter (floors hold, scope gates quotes, refusals
  * stay dignified, agreements produce runnable pipeline actions).
  */
+import { PRICES } from "../src/gate.js";
 import { describe, expect, it } from "vitest";
 import { capabilities } from "../src/a2a/capability.js";
 import { delivered, freshState, negotiate, type NegotiationState } from "../src/a2a/negotiate.js";
@@ -72,7 +73,7 @@ describe("the 12 negotiation scenarios", () => {
     ]);
     expect(state.stage).toBe("intake"); // no quote issued below floor
     expect(replies[0]).toContain("floor");
-    expect(replies[0]).toContain("0.05"); // the honest per-call alternative
+    expect(replies[0]).toContain(String(PRICES.oce_plan_occasion)); // the honest per-call alternative
     expect(replies[0]).not.toMatch(/fine|okay,? deal/i);
   });
 

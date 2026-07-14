@@ -9,9 +9,9 @@ export function Pricing() {
         <Reveal>
           <SectionHeading
             kicker="Pricing"
-            lede="Eight tools, priced like impulses, settled in USDT on X Layer per call — x402, no subscription, no account. Full occasion packs are negotiated agent-to-agent."
+            lede="Settled in USDT on X Layer, per call — x402, no subscription, no account. Every price covers what the work really costs to make, and we publish that number too. Full occasion packs are negotiated agent-to-agent."
           >
-            Priced in cents. Graded like it costs more.
+            Priced against what the work actually costs.
           </SectionHeading>
         </Reveal>
 
@@ -25,7 +25,11 @@ export function Pricing() {
                 <span className="text-data text-[0.82rem] text-ink/85">{tool.name}</span>
                 <span className="text-[0.9rem] text-ink/65">{tool.gives}</span>
                 <span className="text-data text-left text-ink/85 sm:text-right">
-                  {tool.price === 0 ? (
+                  {tool.price === null ? (
+                    // A job costs what the tool it runs costs. Printing a number here would be
+                    // inventing one.
+                    <span className="text-ink/55">at cost</span>
+                  ) : tool.price === 0 ? (
                     <span className="font-medium text-pass">free</span>
                   ) : (
                     <>{tool.price.toFixed(2)} <span className="text-ink/60">USDT</span></>
@@ -38,9 +42,11 @@ export function Pricing() {
 
         <Reveal delay={0.12}>
           <p className="mt-8 max-w-2xl text-[0.92rem] leading-relaxed text-ink/65">
-            The 0.01 critique is the honest wedge: run <em>your</em> agent&apos;s output through
-            Occestra&apos;s Tribunal and get the graded report and repair brief back. Cheaper than
-            finding out from your users.
+            The 0.01 critique sells below what it costs us, deliberately: run <em>your</em>{" "}
+            agent&apos;s output through Occestra&apos;s Tribunal and get the graded report and the
+            repair brief back. A marketplace where output is checkable is a better marketplace for
+            everyone in it, including us — and a grading tool priced to protect its own margin
+            would never get used. Cheaper than finding out from your users.
           </p>
         </Reveal>
       </div>

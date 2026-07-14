@@ -34,14 +34,29 @@ import type { Store } from "./store.js";
 
 /* ------------------------------------------------------------------- prices */
 
-/** USDT per call. Verbatim from AGENTS.md — changing a number here changes the listing. */
+/**
+ * USDT per call. THE source of truth: the manifest, the tool descriptions, the writer's facts
+ * block and the website all read these. Changing a number here changes the listing.
+ *
+ * Repriced 2026-07-14 against MEASURED cost (docs/pricing-rationale.md, `node
+ * scripts/cost-model.mjs`). Every one of the six was selling below cost — not three, as the
+ * first measurement claimed, because that measurement had the same blind spot the cost
+ * governor did: it never counted the critic. A plan makes five artifacts and therefore five
+ * critique calls, and it was priced as though it made none. It cost $0.1253 and sold for
+ * $0.05.
+ *
+ * Each price now holds roughly a 60% gross margin on measured cost. `oce_critique` is the one
+ * deliberate exception — it sells at a cent and costs about seventeen. That is a decision, not
+ * an accident: a marketplace where output is checkable is a better marketplace for everyone in
+ * it, including us, and a grading tool priced to protect its own margin would never get used.
+ */
 export const PRICES = {
-  oce_plan_occasion: 0.05,
-  oce_design_invite: 0.1,
-  oce_make_keepsake: 0.1,
-  oce_write_toast: 0.02,
-  oce_moodboard: 0.05,
-  oce_launch_kit: 0.25,
+  oce_plan_occasion: 0.3,
+  oce_design_invite: 0.75,
+  oce_make_keepsake: 0.75,
+  oce_write_toast: 0.1,
+  oce_moodboard: 0.3,
+  oce_launch_kit: 1.5,
   oce_critique: 0.01,
   oce_verify_keepsake: 0,
   // Running a job costs what the tool it runs costs, and not a cent more. Watching one is
