@@ -435,6 +435,25 @@ export class Store {
     })();
   }
 
+  /**
+   * How far behind the anchor worker is.
+   *
+   * A seal that sits in the queue is a promise we have made and not kept: the pack says
+   * "anchoring queued" and the buyer is waiting for a chain record that may never land.
+   * Silence is the failure mode, so the age of the OLDEST unanchored leaf is surfaced at
+   * /health and alerted on.
+   */
+  anchorQueueHealth(now = Date.now()): { queued: number; oldestAgeMinutes: number } {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM seals_pending WHERE anchored_at IS NULL")
+      .get() as { n: number; oldest: number | null };
+
+    return {
+      queued: row.n,
+      oldestAgeMinutes: row.oldest ? Math.round((now - row.oldest) / 60_000) : 0,
+    };
+  }
+
   anchorOf(keepsakeId: string): PendingSeal | undefined {
     const row = this.db
       .prepare("SELECT * FROM seals_pending WHERE keepsake_id = ?")

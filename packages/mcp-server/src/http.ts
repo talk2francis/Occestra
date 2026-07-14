@@ -74,6 +74,18 @@ export function buildApp(ctx: AppContext): Express {
   /* ---------------------------------------------------------------- health */
 
   app.get("/health", (_req, res) => {
+    const anchor = ctx.store.anchorQueueHealth();
+
+    // A seal stuck in the queue is a promise made and not kept, and it must be loud.
+    // Two anchor cycles (30min each) is generous; past that, something is wrong.
+    //
+    // But it does NOT flip `ok`. The watchdog restarts the service on !ok, and a
+    // restart cannot un-stick a queue that is stuck for want of gas — it would just
+    // bounce a perfectly healthy ASP every ten minutes, dropping paid requests
+    // mid-flight. The service is fine; the queue is not. Those are different facts,
+    // and the alerter reads them separately.
+    const anchorStalled = anchor.queued > 0 && anchor.oldestAgeMinutes > 90;
+
     res.json({
       ok: true,
       service: "occestra",
@@ -82,6 +94,7 @@ export function buildApp(ctx: AppContext): Express {
       paymentMode: ctx.gate.mode,
       live: ctx.live ?? {},
       coverageGaps: ctx.coverageGaps,
+      anchorQueue: { ...anchor, stalled: anchorStalled },
     });
   });
 

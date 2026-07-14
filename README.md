@@ -118,7 +118,7 @@ These are enforced in code, with tests, not stated in a policy page:
                     /k/:id · /standard · /stats · oce_verify_keepsake — all public, all free
 ```
 
-**Monorepo** (npm workspaces, Node 22, TypeScript strict + `exactOptionalPropertyTypes`, **223 tests**):
+**Monorepo** (npm workspaces, Node 22, TypeScript strict + `exactOptionalPropertyTypes`, **243 tests**):
 
 | package | what it owns |
 |---|---|
@@ -144,7 +144,7 @@ Self-hosted: Node + systemd + Caddy on a VPS. Health checks every 5 minutes with
 - A gallery of 16 real runs across all studios and styles — kept exactly as graded, imperfections included.
 - A published, versioned quality standard generated from the same code that enforces it.
 - A live workspace where the real pipelines stream real events — and a repair loop you can watch happen.
-- A monorepo with 205 passing tests, a cross-language EVM proof, and an `AGENTS.md` deviations log that records every expensive lesson honestly.
+- A monorepo with 243 passing tests, a cross-language EVM proof, and an `AGENTS.md` deviations log that records every expensive lesson honestly.
 
 Everything in this README is checkable, and most of it in under a minute. Start with `examples/verify-seal.mjs`.
 
