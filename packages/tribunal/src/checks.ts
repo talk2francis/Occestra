@@ -499,9 +499,60 @@ export function sortFindings(results: CheckResult[]): CheckResult[] {
   return [...results].sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id));
 }
 
+/**
+ * A placeholder that survived into finished copy.
+ *
+ * Two real failures put this here. The model invented "Starting at $49 per event" for a
+ * product whose tools cost cents, and the fabrication filter swapped the number for
+ * [YOUR PRICE HERE] — so the *pack* then shipped carrying a bracket. And once, told to
+ * write that placeholder where a price belongs, the model dropped it into a call to
+ * action: "Visit us at [YOUR PRICE HERE]".
+ *
+ * Both are the same defect: unfinished text, delivered. It reads as deliberate, which is
+ * why it is worse than simply saying less. HARD — no critic score can argue it away.
+ */
+const PLACEHOLDER_PATTERNS: ReadonlyArray<{ re: RegExp; what: string }> = [
+  // [ANYTHING IN SHOUTING BRACKETS] — [YOUR PRICE HERE], [INSERT NAME], [TBD]
+  { re: /\[[^\]\n]*(?:[A-Z]{2,}|your|insert|todo|tbd|placeholder)[^\]\n]*\]/g, what: "a bracketed placeholder" },
+  // YOUR ___ HERE, without brackets
+  { re: /\byour\s+\w+(?:\s+\w+)?\s+here\b/gi, what: "a 'your … here' placeholder" },
+  { re: /\b(?:TBD|TBC|TODO|FIXME|XXX+|TK+)\b/g, what: "an editing marker" },
+  { re: /\blorem\s+ipsum\b/i, what: "lorem ipsum" },
+  { re: /\b(?:coming soon|placeholder text)\b/i, what: "filler standing in for real copy" },
+];
+
+/** Markdown links legitimately use brackets; so does JSON. Only the SHOUTING kind is a defect. */
+export async function checkPlaceholderText(ctx: CheckContext): Promise<CheckResult> {
+  const id: CheckId = "PLACEHOLDER_TEXT";
+  const hard = true;
+
+  const text = ctx.artifact.data;
+  if (text === undefined || text.length === 0) {
+    return skip(id, hard, "Not a copy artifact; there is no text to check.");
+  }
+
+  const found: string[] = [];
+  for (const { re, what } of PLACEHOLDER_PATTERNS) {
+    for (const match of text.matchAll(new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`))) {
+      found.push(`${what}: “${match[0].trim().slice(0, 60)}”`);
+    }
+  }
+
+  if (found.length === 0) {
+    return pass(id, hard, "No placeholder text survives in the finished copy.");
+  }
+
+  return fail(
+    id,
+    hard,
+    `Finished copy still contains ${found.length} placeholder(s). Remove them — if the fact is unknown, drop the claim rather than standing something in for it.`,
+    [...new Set(found)].slice(0, 5),
+  );
+}
+
 /** Run every deterministic check that applies to this artifact. */
 export async function runChecks(ctx: CheckContext): Promise<CheckResult[]> {
-  const [schema, policy, date, schedule, budget, source, contrast, overflow, links, images] =
+  const [schema, policy, date, schedule, budget, source, contrast, overflow, links, images, placeholder] =
     await Promise.all([
       checkSchemaInvalid(ctx),
       checkPolicyViolation(ctx),
@@ -513,6 +564,7 @@ export async function runChecks(ctx: CheckContext): Promise<CheckResult[]> {
       checkTextOverflow(ctx),
       checkLinks(ctx),
       checkImage(ctx),
+      checkPlaceholderText(ctx),
     ]);
 
   return sortFindings([
@@ -525,6 +577,7 @@ export async function runChecks(ctx: CheckContext): Promise<CheckResult[]> {
     contrast,
     overflow,
     links,
+    placeholder,
     ...images,
   ]);
 }

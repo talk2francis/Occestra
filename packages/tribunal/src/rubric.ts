@@ -8,7 +8,7 @@
  */
 import type { CritiqueAxis } from "@occestra/studio-core";
 
-export const OQS_VERSION = "1.0.0";
+export const OQS_VERSION = "1.0.1";
 
 /** Every axis must clear this for an artifact to pass. */
 export const AXIS_PASS_THRESHOLD = 70;
@@ -69,6 +69,7 @@ export type CheckId =
   | "SCHEDULE_OVERLAP"
   | "DATE_INVALID"
   | "DIM_ASPECT_MISMATCH"
+  | "PLACEHOLDER_TEXT"
   | "CONTRAST_LOW"
   | "PALETTE_DRIFT"
   | "LINK_DEAD"
@@ -129,6 +130,13 @@ export const CHECKS: readonly CheckSpec[] = [
     scope: "images",
     hard: true,
     description: "Rendered pixel dimensions do not match the dimensions the artifact was specified at.",
+  },
+  {
+    id: "PLACEHOLDER_TEXT",
+    scope: "all copy (md, html, json)",
+    hard: true,
+    description:
+      "Finished copy still contains a placeholder — [BRACKETS], YOUR X HERE, TBD, TK, XXX, or lorem ipsum. A placeholder that reaches a buyer ships looking deliberate, which is worse than an omission.",
   },
   {
     id: "CONTRAST_LOW",

@@ -161,7 +161,7 @@ describe("the published rubric IS the shipped rubric", () => {
     const json = rubricAsJson();
     expect(json.oqsVersion).toBe(OQS_VERSION);
     expect(json.maxRepairs).toBe(MAX_REPAIRS);
-    expect(json.checks).toHaveLength(12);
+    expect(json.checks).toHaveLength(13);
     expect(json.axes.map((a) => a.id)).toEqual([
       "composition",
       "legibility",
@@ -178,6 +178,9 @@ describe("the published rubric IS the shipped rubric", () => {
       "SCHEDULE_OVERLAP",
       "DATE_INVALID",
       "DIM_ASPECT_MISMATCH",
+      // New in OQS 1.0.1: unfinished text delivered to a buyer is a hard failure. It reads
+      // as deliberate, which is worse than the omission it stands in for.
+      "PLACEHOLDER_TEXT",
     ]);
   });
 });

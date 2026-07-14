@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import sharp from "sharp";
+import { OQS_VERSION } from "@occestra/tribunal";
 import { encodeAbiParameters, getAddress, keccak256, parseAbiParameters, toBytes, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -219,7 +220,7 @@ describe("the 8 tools", () => {
     expect(soft.map((check) => check["id"])).toContain("PALETTE_DRIFT");
 
     expect(result["repairBrief"]).toContain("MUST");
-    expect(result["oqsVersion"]).toBe("1.0.0");
+    expect(result["oqsVersion"]).toBe(OQS_VERSION);
   });
 
   it("refuses a policy-violating brief politely — and does no work", async () => {
@@ -501,7 +502,7 @@ describe("http surface", () => {
     await start(new DevGate());
 
     const health = await (await fetch(`${base}/health`)).json();
-    expect(health).toMatchObject({ ok: true, service: "occestra", oqsVersion: "1.0.0" });
+    expect(health).toMatchObject({ ok: true, service: "occestra", oqsVersion: OQS_VERSION });
 
     const manifest = await (await fetch(`${base}/.well-known/occestra.json`)).json();
     expect(manifest.name).toBe("Occestra");
@@ -514,15 +515,15 @@ describe("http surface", () => {
     expect(manifest.tools).toHaveLength(8);
     expect(manifest.tools.find((t: { name: string }) => t.name === "oce_verify_keepsake").free).toBe(true);
     expect(manifest.styles).toHaveLength(4);
-    expect(manifest.quality.version).toBe("1.0.0");
+    expect(manifest.quality.version).toBe(OQS_VERSION);
   });
 
   it("publishes the rubric it actually runs", async () => {
     await start(new DevGate());
 
     const rubric = await (await fetch(`${base}/standard`, { headers: { accept: "application/json" } })).json();
-    expect(rubric.oqsVersion).toBe("1.0.0");
-    expect(rubric.checks).toHaveLength(12);
+    expect(rubric.oqsVersion).toBe(OQS_VERSION);
+    expect(rubric.checks).toHaveLength(13);
     expect(rubric.axes.every((axis: { threshold: number }) => axis.threshold === 70)).toBe(true);
   });
 

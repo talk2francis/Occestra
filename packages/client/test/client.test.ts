@@ -84,7 +84,7 @@ describe("SDK round-trips", () => {
       text: "Post 1: our tool does one thing well and here is exactly what.",
     });
     expect(report.artifacts[0]?.tribunal).toBeDefined();
-    expect(report.quality.oqsVersion).toBe("1.0.0");
+    expect(report.quality.oqsVersion).toMatch(/^1\.0\./);
   });
 
   it("3 · verifyKeepsake round-trips the seal of a pack we just made — free path", async () => {

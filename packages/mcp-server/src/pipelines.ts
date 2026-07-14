@@ -36,6 +36,7 @@ import {
   type RememberDeps,
   type StoryGraph,
   type ImageQuality,
+  type RunFacts,
   ensureStored,
   imageQualityFor,
   isUndelivered,
@@ -43,6 +44,7 @@ import {
 import { OQS_VERSION, runTribunal, type TribunalReport } from "@occestra/tribunal";
 import { HOUSE_STYLES, styleSystemPrompt, type CostGovernor } from "@occestra/providers";
 import { Sealer, leafOfSeal } from "@occestra/receipts";
+import { PRICES } from "./gate.js";
 import type { Store } from "./store.js";
 
 export interface PipelineContext {
@@ -178,6 +180,34 @@ const artifact = (over: Partial<Artifact> & Pick<Artifact, "id" | "kind" | "titl
   version: 1,
   ...over,
 });
+
+/** Our marketplace identity. Stated in copy about us, never guessed by a model. */
+const AGENT_ID = process.env["OCE_AGENT_ID"] ?? "5213";
+
+/**
+ * The facts a launch run is allowed to state.
+ *
+ * The model invented "Starting at $49 per event" for a product whose tools cost cents —
+ * not out of malice, but because a price beat needs a number and it had none. So it gets
+ * one. When the subject is OCCESTRA ITSELF, that means our REAL price list, read from the
+ * same constants the paywall charges from: the copy about us can no longer disagree with
+ * what we actually bill, because both come from one source.
+ */
+function runFacts(input: LaunchKitInput): RunFacts {
+  const subject = `${input.productName} ${input.url ?? ""} ${input.description ?? ""}`.toLowerCase();
+  const aboutUs = /occestra/.test(subject);
+
+  return {
+    productName: input.productName,
+    ...(input.url ? { url: input.url } : {}),
+    ...(aboutUs
+      ? {
+          agentId: AGENT_ID,
+          prices: Object.entries(PRICES).map(([name, usdt]) => ({ name, usdt })),
+        }
+      : {}),
+  };
+}
 
 /** The card social platforms actually crop to: 1.91:1, 1200x630. */
 const OG_WIDTH = 1200;
@@ -704,6 +734,7 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
     storage: ctx.deps.storage,
     clock: ctx.deps.clock,
     styleFor: (id) => HOUSE_STYLES[id],
+    facts: runFacts(input),
     ...(ctx.deps.log ? { log: ctx.deps.log } : {}),
     ...(ctx.deps.site ? { site: ctx.deps.site } : {}),
     ...(ctx.deps.market ? { market: ctx.deps.market } : {}),

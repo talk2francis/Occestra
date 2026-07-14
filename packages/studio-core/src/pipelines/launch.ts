@@ -29,6 +29,7 @@ import {
   type StoragePort,
   type TextModelPort,
 } from "../types.js";
+import { factsBlock, type RunFacts } from "../facts.js";
 import { PolicyRefusal } from "./celebrate.js";
 import {
   classifyImageFailure,
@@ -48,6 +49,11 @@ export interface LaunchDeps {
   market?: MarketDataPort;
   grader?: GradePort;
   styleFor?: (id: HouseStyleId) => HouseStyle;
+  /**
+   * What this run is allowed to state. Injected into every writer prompt so the model
+   * never has to guess a price, a URL, or a name — the three things it used to invent.
+   */
+  facts?: RunFacts | undefined;
   /** Raw provider errors go here — never into a pack. See delivery.ts. */
   log?: ((message: string, detail?: unknown) => void) | undefined;
 }
@@ -692,6 +698,12 @@ export async function runLaunch(
   const style = deps.styleFor?.(contract.styleId);
   if (!style) throw new Error("runLaunch requires a styleFor resolver");
 
+  // Everything the writers are permitted to assert. Built once, injected everywhere —
+  // a writer that has the facts does not reach for an invented price or a placeholder.
+  const FACTS = deps.facts
+    ? `\n\n${factsBlock(deps.facts)}`
+    : `\n\nESTABLISHED FACTS: only the evidence below. Invent nothing, and never write a placeholder — if a fact is missing, leave the claim out.`;
+
   /* --- 1. LOOK AT THE REAL SITE --- */
 
   let inspection: SiteInspection | undefined;
@@ -762,7 +774,7 @@ export async function runLaunch(
 
   const genomeResult = await askJson(deps, {
     role: "planner",
-    system: GENOME_SYSTEM,
+    system: GENOME_SYSTEM + FACTS,
     schema: GenomeSchema,
     maxTokens: 900,
     prompt: evidence,
@@ -1056,6 +1068,8 @@ export async function runLaunch(
 
     const threadSystem = (repairNote: string): string =>
       [
+        FACTS,
+        "",
         "You write launch threads for people who build things and can smell marketing from a mile away. They will close the tab on the first empty sentence.",
         "",
         "The arc, in order: hook (a real, concrete observation that makes them stop scrolling), problem, what it is, proof (only what the evidence supports), price or availability, one call to action. 6 to 8 posts.",
@@ -1162,6 +1176,8 @@ export async function runLaunch(
 
     const specSystem = (repairNote: string): string =>
       [
+        FACTS,
+        "",
         "You spec a landing page, section by section, with the actual copy written — not placeholders.",
         "A visitor decides in four seconds. The first section must earn the fifth.",
         "",
@@ -1279,6 +1295,8 @@ export async function runLaunch(
 
     const beatSystem = (repairNote: string): string =>
       [
+        FACTS,
+        "",
         "You write the beat sheet for a 90-second product demo video. The craft is product-agnostic and it is this:",
         "",
         "  cold open (0-8s)   — the thing working, before any explanation. No logo, no title card, no 'hi everyone'.",
@@ -1290,7 +1308,10 @@ export async function runLaunch(
         "",
         NO_FABRICATION,
         "",
-        "This matters most in the PRICE beat. A real failure we have seen: a beat sheet confidently specced 'Starting at $49 per event' for a product whose tools cost cents. Nobody asked it to invent a price — it invented one because a number is what goes in a price beat. Do not do this. If the evidence gives no price, the price beat says exactly: [YOUR PRICE HERE].",
+        // The old instruction here TOLD the model to write "[YOUR PRICE HERE]" when it had
+        // no price — and that bracket then shipped, inside a paid pack, to a customer. The
+        // cure for a missing fact is to say less, not to hand the buyer our stationery.
+        "This matters most in the PRICE beat. A real failure we have seen: a beat sheet confidently specced 'Starting at $49 per event' for a product whose tools cost cents. Nobody asked it to invent a price — it invented one because a number is what goes in a price beat. Do not do this. If a real price appears in the ESTABLISHED FACTS above, use it exactly. If no price is established, the price beat must state what IS true (how to start, what is free) and MUST NOT contain a number, a range, or a placeholder of any kind.",
         "",
         "It matters in the LIVE MAGIC beat too: do not spec a drag-and-drop interface, a dashboard, or a button unless the evidence proves it exists. Describe what the product DOES, in terms the evidence supports.",
         "",
