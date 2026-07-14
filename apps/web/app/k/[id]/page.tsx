@@ -131,10 +131,17 @@ export default async function KeepsakePage({ params }: { params: Promise<{ id: s
           <TribunalReport artifacts={pack.artifacts} />
         </div>
         {pack.coverageGaps.length > 0 && (
-          <p className="mt-4 text-[0.8rem] leading-relaxed text-ink/60">
+          <div className="mt-4">
             <span className="text-kicker text-[0.58rem] text-info">Pack-level gaps disclosed</span>
-            <span className="mt-1 block">{pack.coverageGaps.join(" · ")}</span>
-          </p>
+            <ul className="mt-2 space-y-1.5">
+              {pack.coverageGaps.map((gap) => (
+                <li key={gap.code} className="text-[0.8rem] leading-relaxed text-ink/60">
+                  <span className="text-data mr-2 text-ink/45">{gap.code}</span>
+                  {gap.note}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </section>
 

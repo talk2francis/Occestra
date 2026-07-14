@@ -16,6 +16,15 @@ export interface PublicSeal {
   verifyingContract: Hex;
 }
 
+/**
+ * A coverage gap as the public sees it: a stable code and one plain sentence.
+ * The server sanitizes these — no provider URL, HTTP status or error body reaches here.
+ */
+export interface PublicGap {
+  code: string;
+  note: string;
+}
+
 export interface PublicArtifact {
   id: string;
   kind: string;
@@ -48,7 +57,7 @@ export interface PublicPack {
     repairedCount: number;
     undeliveredCount?: number;
   };
-  coverageGaps: string[];
+  coverageGaps: PublicGap[];
   artifacts: PublicArtifact[];
   seal?: PublicSeal;
 }

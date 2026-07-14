@@ -10,7 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { verifySeal, leafOfSeal, chainFor } from "@occestra/receipts";
 import { rubricAsJson } from "@occestra/tribunal";
-import type { Pack } from "@occestra/studio-core";
+import { sanitizeGaps, sanitizeTribunal, type Pack } from "@occestra/studio-core";
 import { PRICES, type ToolName } from "./gate.js";
 import {
   PolicyRefusal,
@@ -56,7 +56,8 @@ export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
     keepsakeId: pack.id,
     studio: pack.studio,
     quality: pack.quality,
-    coverageGaps: pack.coverageGaps,
+    // Every public boundary sanitizes. A raw provider error must never reach a buyer.
+    coverageGaps: sanitizeGaps(pack.coverageGaps),
     artifacts: pack.artifacts.map((artifact) => ({
       id: artifact.id,
       kind: artifact.kind,
@@ -65,7 +66,7 @@ export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
       ...(artifact.data ? { content: artifact.data } : {}),
       ...(artifact.uri ? { url: ctx.store.signedUrlFor(artifact.uri, 86_400) } : {}),
       sources: artifact.sources,
-      tribunal: artifact.tribunal,
+      tribunal: sanitizeTribunal(artifact.tribunal),
       // The buyer is told what we owed and did not deliver — in the tool response,
       // not just on the web page.
       ...(artifact.undelivered ? { undelivered: artifact.undelivered } : {}),

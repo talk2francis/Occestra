@@ -10,7 +10,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import Database from "better-sqlite3";
-import type { Pack, StoragePort, StoredObject } from "@occestra/studio-core";
+import { sanitizeGaps, sanitizeTribunal, type Pack, type StoragePort, type StoredObject } from "@occestra/studio-core";
 
 export type OrderStatus = "pending" | "paid" | "refused" | "failed" | "demo";
 
@@ -193,7 +193,9 @@ export class Store {
       studio: pack.studio,
       createdAt: pack.createdAt,
       quality: pack.quality,
-      coverageGaps: pack.coverageGaps,
+      // Sanitized at RENDER time, not write time: packs already in the store were
+      // written with raw provider errors inside them, and this stops republishing them.
+      coverageGaps: sanitizeGaps(pack.coverageGaps),
       artifacts: pack.artifacts.map((artifact) => ({
         id: artifact.id,
         kind: artifact.kind,
@@ -205,7 +207,7 @@ export class Store {
           ? { url: artifact.uri ? this.signedUrlFor(artifact.uri, 86_400) : undefined }
           : { data: artifact.data }),
         sources: artifact.sources,
-        tribunal: artifact.tribunal,
+        tribunal: sanitizeTribunal(artifact.tribunal),
         // Shown, never hidden: the buyer is told what we owed them and did not deliver.
         ...(artifact.undelivered ? { undelivered: artifact.undelivered } : {}),
       })),
