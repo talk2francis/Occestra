@@ -14,6 +14,66 @@ import { sanitizeGaps, sanitizeTribunal, type Pack, type StoragePort, type Store
 
 export type OrderStatus = "pending" | "paid" | "refused" | "failed" | "demo";
 
+export type JobState = "queued" | "running" | "done" | "failed" | "cancelled";
+
+export interface JobRow {
+  id: string;
+  tool: string;
+  args: unknown;
+  state: JobState;
+  packId?: string;
+  error?: string;
+  attempts: number;
+  orderId?: string;
+  payerRef: string;
+  priceUsdt: number;
+  progress: Array<{ at: number; body: unknown }>;
+  cancelling: boolean;
+  createdAt: number;
+  startedAt?: number;
+  finishedAt?: number;
+}
+
+export interface RefundRow {
+  orderId: string;
+  payerRef: string;
+  amountUsdt: number;
+  tool: string;
+  reason: string;
+  txHash?: string;
+  paidAt?: number;
+  createdAt: number;
+}
+
+const toJobRow = (row: Record<string, unknown>): JobRow => ({
+  id: row["id"] as string,
+  tool: row["tool"] as string,
+  args: JSON.parse(String(row["args"])) as unknown,
+  state: row["state"] as JobState,
+  ...(row["pack_id"] ? { packId: row["pack_id"] as string } : {}),
+  ...(row["error"] ? { error: row["error"] as string } : {}),
+  attempts: row["attempts"] as number,
+  ...(row["order_id"] ? { orderId: row["order_id"] as string } : {}),
+  payerRef: row["payer_ref"] as string,
+  priceUsdt: row["price_usdt"] as number,
+  progress: JSON.parse(String(row["progress"] ?? "[]")) as Array<{ at: number; body: unknown }>,
+  cancelling: row["cancelling"] === 1,
+  createdAt: row["created_at"] as number,
+  ...(row["started_at"] ? { startedAt: row["started_at"] as number } : {}),
+  ...(row["finished_at"] ? { finishedAt: row["finished_at"] as number } : {}),
+});
+
+const toRefundRow = (row: Record<string, unknown>): RefundRow => ({
+  orderId: row["order_id"] as string,
+  payerRef: row["payer_ref"] as string,
+  amountUsdt: row["amount_usdt"] as number,
+  tool: row["tool"] as string,
+  reason: row["reason"] as string,
+  ...(row["tx_hash"] ? { txHash: row["tx_hash"] as string } : {}),
+  ...(row["paid_at"] ? { paidAt: row["paid_at"] as number } : {}),
+  createdAt: row["created_at"] as number,
+});
+
 export interface OrderRow {
   id: string;
   tool: string;
@@ -132,6 +192,58 @@ export class Store {
         payer      TEXT NOT NULL,
         tool       TEXT NOT NULL,
         used_at    INTEGER NOT NULL
+      );
+
+      -- Async pack jobs. A launch kit takes minutes; a marketplace client that waits
+      -- synchronously for it will time out, retry, and pay twice for work it already has.
+      -- The job outlives the HTTP request AND the process: state lives here, not in memory.
+      CREATE TABLE IF NOT EXISTS jobs (
+        id           TEXT PRIMARY KEY,
+        tool         TEXT NOT NULL,
+        args         TEXT NOT NULL,
+        state        TEXT NOT NULL,      -- queued | running | done | failed | cancelled
+        pack_id      TEXT,
+        error        TEXT,
+        attempts     INTEGER NOT NULL DEFAULT 0,
+        order_id     TEXT,
+        payer_ref    TEXT NOT NULL DEFAULT 'unknown',
+        price_usdt   REAL NOT NULL DEFAULT 0,
+        progress     TEXT NOT NULL DEFAULT '[]',
+        cancelling   INTEGER NOT NULL DEFAULT 0,
+        created_at   INTEGER NOT NULL,
+        started_at   INTEGER,
+        finished_at  INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_jobs_state ON jobs(state, created_at);
+
+      -- Idempotency. A buyer whose connection dropped will retry, and a retry must not be a
+      -- second charge for a pack we already made. The response is stored under the key and
+      -- replayed verbatim; the gate is never consulted a second time.
+      CREATE TABLE IF NOT EXISTS idempotency (
+        key          TEXT PRIMARY KEY,
+        request_hash TEXT NOT NULL,
+        tool         TEXT NOT NULL,
+        state        TEXT NOT NULL,      -- in_flight | done
+        response     TEXT,
+        created_at   INTEGER NOT NULL,
+        completed_at INTEGER
+      );
+
+      -- What we took and did not deliver.
+      --
+      -- Payment settles BEFORE the work runs — that is what x402 is. So a pipeline that
+      -- throws leaves money in our treasury and nothing in the buyer's hands. Silence there
+      -- would be theft with extra steps. Every such failure books a debt, in public, at
+      -- /health and /stats, and it stays booked until it is paid back on chain.
+      CREATE TABLE IF NOT EXISTS refunds (
+        order_id    TEXT PRIMARY KEY,
+        payer_ref   TEXT NOT NULL,
+        amount_usdt REAL NOT NULL,
+        tool        TEXT NOT NULL,
+        reason      TEXT NOT NULL,
+        tx_hash     TEXT,
+        paid_at     INTEGER,
+        created_at  INTEGER NOT NULL
       );
 
       CREATE INDEX IF NOT EXISTS idx_artifacts_pack ON artifacts(pack_id);
@@ -359,6 +471,8 @@ export class Store {
     coverageGapsDisclosed: number;
     paidOrders: number;
     revenueUsdt: number;
+    refundsOwed: number;
+    refundsOwedUsdt: number;
   } {
     const packs = this.db.prepare("SELECT body FROM packs").all() as Array<{ body: string }>;
     let repairs = 0;
@@ -383,6 +497,9 @@ export class Store {
       .prepare("SELECT COUNT(*) AS n FROM orders WHERE status = 'paid'")
       .get() as { n: number };
 
+    // Published because it is the number we would most like to hide.
+    const owed = this.refundsOwed();
+
     return {
       packsCreated: packs.length,
       sealsAnchored: anchored.n,
@@ -390,7 +507,286 @@ export class Store {
       coverageGapsDisclosed: gaps,
       paidOrders: paid.n,
       revenueUsdt: this.revenueUsdt(),
+      refundsOwed: owed.length,
+      refundsOwedUsdt: Number(owed.reduce((sum, r) => sum + r.amountUsdt, 0).toFixed(6)),
     };
+  }
+
+  /* ------------------------------------------------------------------- jobs */
+
+  createJob(job: {
+    id: string;
+    tool: string;
+    args: unknown;
+    payerRef: string;
+    priceUsdt: number;
+    orderId?: string;
+  }): void {
+    this.db
+      .prepare(
+        "INSERT INTO jobs (id, tool, args, state, payer_ref, price_usdt, order_id, created_at) VALUES (?, ?, ?, 'queued', ?, ?, ?, ?)",
+      )
+      .run(
+        job.id,
+        job.tool,
+        JSON.stringify(job.args),
+        job.payerRef,
+        job.priceUsdt,
+        job.orderId ?? null,
+        Date.now(),
+      );
+  }
+
+  getJob(id: string): JobRow | undefined {
+    const row = this.db.prepare("SELECT * FROM jobs WHERE id = ?").get(id) as
+      | Record<string, unknown>
+      | undefined;
+    return row ? toJobRow(row) : undefined;
+  }
+
+  /**
+   * Take the next queued job, atomically.
+   *
+   * SELECT-then-UPDATE inside one transaction, and the UPDATE re-asserts state='queued' —
+   * so if two workers race, exactly one sees changes===1 and the loser tries again. This is
+   * the whole of the concurrency control, and it is enough because SQLite serialises writes.
+   */
+  claimJob(): JobRow | undefined {
+    return this.db.transaction((): JobRow | undefined => {
+      const row = this.db
+        .prepare("SELECT * FROM jobs WHERE state = 'queued' ORDER BY created_at LIMIT 1")
+        .get() as Record<string, unknown> | undefined;
+      if (!row) return undefined;
+
+      const claimed = this.db
+        .prepare(
+          "UPDATE jobs SET state = 'running', attempts = attempts + 1, started_at = ? WHERE id = ? AND state = 'queued'",
+        )
+        .run(Date.now(), row["id"]);
+
+      if (claimed.changes !== 1) return undefined;
+      return this.getJob(row["id"] as string);
+    })();
+  }
+
+  /** Live counters for /health: how deep the queue is and how long the head has waited. */
+  jobQueueHealth(now = Date.now()): { queued: number; running: number; oldestWaitSeconds: number } {
+    const row = this.db
+      .prepare(
+        `SELECT
+           COALESCE(SUM(state = 'queued'), 0)  AS queued,
+           COALESCE(SUM(state = 'running'), 0) AS running,
+           MIN(CASE WHEN state = 'queued' THEN created_at END) AS oldest
+         FROM jobs`,
+      )
+      .get() as { queued: number; running: number; oldest: number | null };
+
+    return {
+      queued: row.queued,
+      running: row.running,
+      oldestWaitSeconds: row.oldest ? Math.round((now - row.oldest) / 1000) : 0,
+    };
+  }
+
+  appendJobProgress(id: string, event: unknown, at = Date.now()): void {
+    const row = this.db.prepare("SELECT progress FROM jobs WHERE id = ?").get(id) as
+      | { progress: string }
+      | undefined;
+    if (!row) return;
+
+    const events = JSON.parse(row.progress) as unknown[];
+    // A launch kit emits a few dozen events; a runaway loop must not grow the row without
+    // bound. The newest are the ones anybody reads.
+    events.push({ at, body: event });
+    const trimmed = events.slice(-200);
+
+    this.db.prepare("UPDATE jobs SET progress = ? WHERE id = ?").run(JSON.stringify(trimmed), id);
+  }
+
+  finishJob(id: string, packId: string): void {
+    this.db
+      .prepare("UPDATE jobs SET state = 'done', pack_id = ?, finished_at = ? WHERE id = ?")
+      .run(packId, Date.now(), id);
+  }
+
+  failJob(id: string, error: string): void {
+    this.db
+      .prepare("UPDATE jobs SET state = 'failed', error = ?, finished_at = ? WHERE id = ?")
+      .run(error, Date.now(), id);
+  }
+
+  /** Back into the queue for another attempt — used after a crash, and after a lost race. */
+  requeueJob(id: string): void {
+    this.db
+      .prepare("UPDATE jobs SET state = 'queued', started_at = NULL WHERE id = ?")
+      .run(id);
+  }
+
+  /**
+   * Ask a running job to stop. It is a REQUEST, not a kill: the worker checks between
+   * stages, because a half-torn-down pipeline would leave orphaned bytes on disk. A queued
+   * job cancels immediately, since nothing has been spent on it yet.
+   */
+  requestCancel(id: string): "cancelled" | "cancelling" | "not_cancellable" | "unknown" {
+    const job = this.getJob(id);
+    if (!job) return "unknown";
+
+    if (job.state === "queued") {
+      this.db
+        .prepare("UPDATE jobs SET state = 'cancelled', finished_at = ? WHERE id = ? AND state = 'queued'")
+        .run(Date.now(), id);
+      return "cancelled";
+    }
+
+    if (job.state === "running") {
+      this.db.prepare("UPDATE jobs SET cancelling = 1 WHERE id = ?").run(id);
+      return "cancelling";
+    }
+
+    return "not_cancellable"; // done, failed, or already cancelled — nothing left to stop
+  }
+
+  isCancelling(id: string): boolean {
+    const row = this.db.prepare("SELECT cancelling FROM jobs WHERE id = ?").get(id) as
+      | { cancelling: number }
+      | undefined;
+    return row?.cancelling === 1;
+  }
+
+  markCancelled(id: string): void {
+    this.db
+      .prepare("UPDATE jobs SET state = 'cancelled', finished_at = ? WHERE id = ?")
+      .run(Date.now(), id);
+  }
+
+  /**
+   * RESTART SURVIVAL. A job that was 'running' when the process died did not finish, and
+   * nobody is coming back for it — the in-memory promise went with the process. It was paid
+   * for, so it is requeued rather than dropped: re-running costs US the provider spend
+   * again, which is the right party to charge for our own crash.
+   *
+   * Twice is enough. A job that dies twice is not unlucky, it is poisoned — a brief that
+   * crashes the pipeline every time would otherwise loop forever, burning money on each
+   * pass. It is failed honestly and the money is booked as owed.
+   */
+  recoverJobs(maxAttempts = 2): { requeued: string[]; abandoned: string[] } {
+    const rows = this.db
+      .prepare("SELECT * FROM jobs WHERE state = 'running'")
+      .all() as Array<Record<string, unknown>>;
+
+    const requeued: string[] = [];
+    const abandoned: string[] = [];
+
+    for (const row of rows) {
+      const job = toJobRow(row);
+      if (job.attempts >= maxAttempts) {
+        this.failJob(job.id, "the run did not survive a restart, twice — it will not be retried again");
+        abandoned.push(job.id);
+      } else {
+        this.requeueJob(job.id);
+        requeued.push(job.id);
+      }
+    }
+
+    return { requeued, abandoned };
+  }
+
+  /* ---------------------------------------------------------- idempotency */
+
+  /**
+   * Claim an idempotency key.
+   *
+   * "fresh"     — nobody has used this key; the caller may do the work.
+   * "replay"    — the identical request already completed; hand back what it returned.
+   * "in_flight" — the identical request is running right now; do NOT start a second one.
+   * "conflict"  — the key was used for a DIFFERENT request. Refusing is the only safe
+   *               answer: silently doing the new work would charge for it under an old key,
+   *               and silently replaying the old response would answer a question nobody asked.
+   */
+  claimIdempotencyKey(
+    key: string,
+    requestHash: string,
+    tool: string,
+  ):
+    | { status: "fresh" }
+    | { status: "replay"; response: unknown }
+    | { status: "in_flight" }
+    | { status: "conflict" } {
+    return this.db.transaction(() => {
+      const row = this.db.prepare("SELECT * FROM idempotency WHERE key = ?").get(key) as
+        | Record<string, unknown>
+        | undefined;
+
+      if (!row) {
+        this.db
+          .prepare(
+            "INSERT INTO idempotency (key, request_hash, tool, state, created_at) VALUES (?, ?, ?, 'in_flight', ?)",
+          )
+          .run(key, requestHash, tool, Date.now());
+        return { status: "fresh" as const };
+      }
+
+      if (row["request_hash"] !== requestHash) return { status: "conflict" as const };
+
+      if (row["state"] === "done") {
+        return {
+          status: "replay" as const,
+          response: JSON.parse(String(row["response"] ?? "null")) as unknown,
+        };
+      }
+
+      return { status: "in_flight" as const };
+    })();
+  }
+
+  completeIdempotencyKey(key: string, response: unknown): void {
+    this.db
+      .prepare("UPDATE idempotency SET state = 'done', response = ?, completed_at = ? WHERE key = ?")
+      .run(JSON.stringify(response), Date.now(), key);
+  }
+
+  /** The work never happened, so the key must not stick — the buyer is entitled to retry. */
+  releaseIdempotencyKey(key: string): void {
+    this.db.prepare("DELETE FROM idempotency WHERE key = ? AND state = 'in_flight'").run(key);
+  }
+
+  /* ---------------------------------------------------------------- refunds */
+
+  /** Book a debt. Idempotent on the order: one failed order is owed exactly one refund. */
+  oweRefund(refund: {
+    orderId: string;
+    payerRef: string;
+    amountUsdt: number;
+    tool: string;
+    reason: string;
+  }): void {
+    if (refund.amountUsdt <= 0 || refund.payerRef === "dev" || refund.payerRef === "demo") return;
+
+    this.db
+      .prepare(
+        "INSERT OR IGNORE INTO refunds (order_id, payer_ref, amount_usdt, tool, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(refund.orderId, refund.payerRef, refund.amountUsdt, refund.tool, refund.reason, Date.now());
+  }
+
+  refundsOwed(): RefundRow[] {
+    const rows = this.db
+      .prepare("SELECT * FROM refunds WHERE paid_at IS NULL ORDER BY created_at")
+      .all() as Array<Record<string, unknown>>;
+    return rows.map(toRefundRow);
+  }
+
+  refundFor(orderId: string): RefundRow | undefined {
+    const row = this.db.prepare("SELECT * FROM refunds WHERE order_id = ?").get(orderId) as
+      | Record<string, unknown>
+      | undefined;
+    return row ? toRefundRow(row) : undefined;
+  }
+
+  markRefunded(orderId: string, txHash: string): void {
+    this.db
+      .prepare("UPDATE refunds SET tx_hash = ?, paid_at = ? WHERE order_id = ?")
+      .run(txHash, Date.now(), orderId);
   }
 
   /* --------------------------------------------------------- payment nonces */

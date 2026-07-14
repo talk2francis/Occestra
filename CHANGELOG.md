@@ -7,6 +7,60 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-1.1: async jobs, idempotency, and the money we owe
+
+Three ways an ASP can take money it did not earn, all of them invisible unless you go looking.
+
+**1. A timeout was a double charge.** A launch kit is a browser render, a brand genome, four
+images, seven pieces of copy, and a Tribunal pass over every one of them — minutes, not
+seconds. Answering that on an open HTTP connection means the marketplace client's timeout
+fires, and the client does the only thing it can: it retries. Two charges, one pack, and the
+first copy finished into a socket nobody was listening to.
+
+- **`oce_create_pack_job` / `oce_job_status` / `oce_job_result` / `oce_cancel_job`.** Accept,
+  charge once, hand back an id. A job costs **exactly what the tool it runs costs** — the
+  asynchrony is a courtesy, not a product. Polling, collecting and cancelling are **free**:
+  charging a buyer to ask whether the thing they already paid for is ready yet would be
+  indefensible.
+- **It survives us.** Job state is in SQLite, not in a promise. A job that was running when the
+  process died is requeued on boot and finished — re-running costs *us* the provider spend
+  again, which is the right party to bill for our own crash. Twice is the limit: a brief that
+  crashes the pipeline every time would otherwise loop forever, burning money each pass.
+- **`OCE_JOB_CONCURRENCY`** (default 2) is a **cost** dial, not a throughput dial — the governor
+  cannot slow down what it has already let start.
+- The progress feed is the **real run**: the venue search that actually fired, the image that
+  actually rendered, the Tribunal repairing what it failed. Not one line of it is decorative.
+
+**2. A retry was a second bill.** Now: send an `Idempotency-Key` and a retry replays the
+original answer, uncharged. Send nothing, and **the nonce inside your x402 payment is used as
+the key** — it is unique to the call and single-use by construction. So the identical request,
+replayed, is already safe **with no change on the buyer's side at all**. The replay is rebuilt
+from the payload rather than the bytes, so it carries the *retry's* JSON-RPC id; a client that
+gets back the id of a request it gave up on would drop the answer on the floor.
+
+**3. THE POLICY SCREEN RAN AFTER THE TILL — AND THREE TOOLS DID NOT RUN IT AT ALL.** The listing
+says, in writing, *"the PolicyGate refuses those briefs before any money is spent."* That was
+false twice over. `plan_occasion`, `launch_kit` and — worst — `make_keepsake`, the one tool that
+ingests photographs of real people, **never screened at all**. And the screening that did happen
+lived *inside* the pipeline, which x402 only reaches after settling on chain. A refusal you
+charged for is not a refusal, it is a fee.
+
+The screen now runs **in the paywall**, over the raw tool arguments, before the gate is
+consulted. No pipeline calls it, so no future pipeline can forget to call it — **the door does
+it.** A job's inner arguments are validated there too: a typo should cost a 400, not a charge,
+a crash and a refund.
+
+**And when we fail anyway, we say so in money.** x402 settles before the work runs, so a
+pipeline that throws leaves payment in our treasury and nothing in the buyer's hands. Every such
+failure now books a **refund**, against the payer's address, published at `/health` and
+`/stats` — the number we would most like to hide is the one we print. `node scripts/refunds.mjs`
+reports it; `--pay` returns it on chain. Paying is a **human** action on purpose: nothing in the
+server can move money out of the treasury on its own.
+
+Cancelling is honest about this too. A **queued** job refunds in full (nothing was spent). A
+**running** job stops at its next provider call and is **not** refunded — the money is already
+with real providers doing real work. The tool says so before you call it, not after.
+
 ## [Unreleased] — V2-1.0: make the standard agree with itself
 
 The critic was measured disagreeing with itself — the same schedule graded **F P F F P F**,

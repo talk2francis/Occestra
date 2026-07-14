@@ -9,7 +9,8 @@ import { AnchorWorker } from "./anchor.js";
 import { DevGate, OkxGate, type PaymentGate } from "./gate.js";
 import { buildGrader } from "./grader.js";
 import { buildApp, type AppContext } from "./http.js";
-import { VERSION } from "./server.js";
+import { JobQueue } from "./jobs.js";
+import { VERSION, packResult } from "./server.js";
 import { Store } from "./store.js";
 
 const env = process.env;
@@ -102,6 +103,17 @@ const ctx: AppContext = {
   ...(env["OCE_DEMO_PER_IP_CAP"] ? { demoPerIpCap: Number(env["OCE_DEMO_PER_IP_CAP"]) } : {}),
 };
 
+/* -------------------------------------------------------------- job queue */
+
+const jobs = new JobQueue({
+  ctx: { ...ctx, packForClient: (pack) => packResult(ctx, pack) },
+  concurrency: Number(env["OCE_JOB_CONCURRENCY"] ?? 2),
+  ...(built.linkChecker ? { linkChecker: built.linkChecker } : {}),
+});
+ctx.jobs = jobs;
+
+const recovered = jobs.start();
+
 const app = buildApp(ctx);
 
 /* --------------------------------------------------------- anchor worker */
@@ -134,6 +146,22 @@ app.listen(PORT, () => {
   console.log(`  chain          ${CHAIN_ID}`);
   console.log(`  registry       ${registryAddress ?? "(none — packs are unanchored)"}`);
   console.log(`  sealer         ${sealer?.signer ?? "(none — packs are unsigned)"}`);
+  console.log(`  job workers    ${env["OCE_JOB_CONCURRENCY"] ?? 2}`);
+
+  // A restart is not an excuse to lose work somebody has already paid for.
+  if (recovered.requeued.length > 0) {
+    console.log(`  recovered      ${recovered.requeued.length} job(s) requeued after restart`);
+  }
+  if (recovered.abandoned.length > 0) {
+    console.log(`  abandoned      ${recovered.abandoned.length} job(s) failed twice — refunds booked`);
+  }
+
+  const owed = store.refundsOwed();
+  if (owed.length > 0) {
+    console.log(
+      `\n  ⚠ REFUNDS OWED: ${owed.length} — ${owed.reduce((sum, r) => sum + r.amountUsdt, 0).toFixed(4)} USDT. Run: node scripts/refunds.mjs`,
+    );
+  }
   console.log(`  live adapters  ${Object.entries(built.live).filter(([, on]) => on).map(([name]) => name).join(", ") || "none"}`);
 
   if (built.coverageGaps.length > 0) {

@@ -13,13 +13,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import type { EngineDeps, Pack } from "@occestra/studio-core";
 import { buildGrader, type GraderEvent } from "./grader.js";
-import {
-  PolicyRefusal,
-  launchKit,
-  makeKeepsake,
-  planOccasion,
-  type PipelineContext,
-} from "./pipelines.js";
+import { PolicyRefusal, runPipeline, type PipelineContext } from "./pipelines.js";
 import type { Store } from "./store.js";
 
 export type DemoEvent =
@@ -71,6 +65,15 @@ const DemoBody = z.discriminatedUnion("tool", [
   }),
 ]);
 
+/** Which studio a tool belongs to — for the event feed, which speaks in studios. */
+export function studioOf(tool: string): string {
+  if (tool === "oce_plan_occasion" || tool === "oce_design_invite" || tool === "oce_write_toast") {
+    return "celebrate";
+  }
+  if (tool === "oce_make_keepsake") return "remember";
+  return "launch";
+}
+
 /** The studio role, as a person rather than an enum. */
 const ROLE_NAMES: Record<string, string> = {
   planner: "The Planner",
@@ -82,7 +85,7 @@ const ROLE_NAMES: Record<string, string> = {
 };
 
 /** Wrap the world-facing ports so real calls surface as real events. */
-function instrumentDeps(deps: EngineDeps, emit: (event: DemoEvent) => void): EngineDeps {
+export function instrumentDeps(deps: EngineDeps, emit: (event: DemoEvent) => void): EngineDeps {
   const announced = new Set<string>();
 
   return {
@@ -257,16 +260,13 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
   };
 
   const { tool, arguments: args } = parsed.data;
-  const studio =
-    tool === "oce_plan_occasion" ? "celebrate" : tool === "oce_make_keepsake" ? "remember" : "launch";
 
-  emit({ type: "run_started", tool, studio });
+  emit({ type: "run_started", tool, studio: studioOf(tool) });
 
   try {
-    let pack: Pack;
-    if (tool === "oce_plan_occasion") pack = await planOccasion(runCtx, args);
-    else if (tool === "oce_make_keepsake") pack = await makeKeepsake(runCtx, args);
-    else pack = await launchKit(runCtx, args);
+    // One dispatch table, shared with the paid path and the job queue. Three copies of this
+    // if/else was three chances to add a tool to only two of them.
+    const pack: Pack = await runPipeline(runCtx, tool, args);
 
     if (ctx.sealer && pack.seal) emit({ type: "sealing" });
     emit({ type: "run_complete", pack: ctx.packForClient(pack) });

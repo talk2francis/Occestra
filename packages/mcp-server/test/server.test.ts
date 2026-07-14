@@ -84,16 +84,17 @@ afterAll(() => {
 
 /* ------------------------------------------------------------------- tools */
 
-describe("the 8 tools", () => {
-  it("lists exactly the 8 tools in the price table, and nothing else", async () => {
+describe("the tools", () => {
+  it("lists exactly the priced tools, and nothing else", async () => {
     const ctx = makeCtx();
     const client = await connect(ctx);
 
     const { tools } = await client.listTools();
     const names = tools.map((tool) => tool.name).sort();
 
-    expect(names).toEqual([...TOOL_NAMES].sort());
-    expect(names).toHaveLength(8);
+    // Everything in the price table, plus the one tool whose price is not its own:
+    // oce_create_pack_job costs exactly what the tool it runs costs.
+    expect(names).toEqual([...TOOL_NAMES, "oce_create_pack_job"].sort());
     expect(names).toContain("oce_verify_keepsake");
 
     // Descriptions are the storefront — they must actually sell, and state the price.
@@ -512,7 +513,10 @@ describe("http surface", () => {
       x402Version: 2,
       proofHeader: "PAYMENT-SIGNATURE",
     });
-    expect(manifest.tools).toHaveLength(8);
+    // Everything in the price table, plus oce_create_pack_job — whose price is not its own.
+    expect(manifest.tools).toHaveLength(TOOL_NAMES.length + 1);
+    expect(manifest.async.create).toBe("oce_create_pack_job");
+    expect(manifest.idempotency.header).toBe("Idempotency-Key");
     expect(manifest.tools.find((t: { name: string }) => t.name === "oce_verify_keepsake").free).toBe(true);
     expect(manifest.styles).toHaveLength(4);
     expect(manifest.quality.version).toBe(OQS_VERSION);

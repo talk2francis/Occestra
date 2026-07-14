@@ -73,6 +73,49 @@ function screen(contract: OccasionContract): void {
   if (!verdict.allowed) throw new PolicyRefusal(PolicyGate.message(verdict));
 }
 
+/** Args that are bytes or opaque handles, not prose. Screening them is meaningless. */
+const NOT_PROSE = new Set(["imageBase64", "mediaRefs", "styleId", "confirmGraph"]);
+
+/** Every string in a tool call, so the screen cannot be dodged by putting it in a new field. */
+function proseOf(value: unknown, depth = 0): string[] {
+  if (depth > 4) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap((item) => proseOf(item, depth + 1));
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).flatMap(([key, val]) =>
+      NOT_PROSE.has(key) ? [] : proseOf(val, depth + 1),
+    );
+  }
+  return [];
+}
+
+/**
+ * THE POLICY SCREEN, MOVED IN FRONT OF THE PAYWALL.
+ *
+ * Two things were wrong, and they compounded.
+ *
+ * First, three of the six paid pipelines — plan_occasion, make_keepsake and launch_kit —
+ * never called the PolicyGate AT ALL. The one that ingests photographs of real people was
+ * among them.
+ *
+ * Second, the screening that DID happen ran inside the pipeline, which the HTTP layer
+ * reaches only AFTER settling the payment on chain. So a refused brief was a brief we had
+ * already charged for. The listing said, in writing, "the PolicyGate refuses those briefs
+ * before any money is spent" — and that was not true.
+ *
+ * The fix is architectural, not a patch: the screen now runs in the paywall itself, over the
+ * RAW tool arguments, before the gate is even consulted. It is not possible for a new tool to
+ * forget to call it, because no tool calls it — the door does.
+ *
+ * Prevention at generation beats detection plus repair, and this is the same rule applied to
+ * money: a check you cannot forget beats a check you must remember.
+ */
+export function screenToolInput(args: unknown): void {
+  const text = proseOf(args).join(" \n ").slice(0, 60_000);
+  const verdict = PolicyGate.screenText(text);
+  if (!verdict.allowed) throw new PolicyRefusal(PolicyGate.message(verdict));
+}
+
 /* ------------------------------------------------------------------ helpers */
 
 async function gradeAll(
@@ -304,6 +347,8 @@ export async function planOccasion(ctx: PipelineContext, input: PlanOccasionInpu
     locale: "en",
     ...(input.budgetUsd !== undefined ? { budgetUsd: input.budgetUsd } : {}),
   };
+
+  screen(contract);
 
   const celebrateDeps: CelebrateDeps = {
     text: ctx.deps.text,
@@ -654,6 +699,8 @@ export async function makeKeepsake(ctx: PipelineContext, input: MakeKeepsakeInpu
     ...(input.momentDate ? { momentDate: input.momentDate } : {}),
   };
 
+  screen(contract);
+
   const rememberDeps: RememberDeps = {
     text: ctx.deps.text,
     image: ctx.deps.image,
@@ -727,6 +774,8 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
     ...(input.description ? { description: input.description } : {}),
     ...(input.audience ? { audience: input.audience } : {}),
   };
+
+  screen(contract);
 
   const launchDeps: LaunchDeps = {
     text: ctx.deps.text,
@@ -844,4 +893,34 @@ export async function critique(
   );
 
   return { pack, report: outcome.report };
+}
+
+/* ---------------------------------------------------------------- dispatch */
+
+/**
+ * The six pipelines that produce a pack, in one table.
+ *
+ * There are now three ways in — the paid MCP call, the free Studio demo, and the async job
+ * queue — and each one used to carry its own if/else chain over tool names. Three chains is
+ * three chances to add a tool to two of them. One table cannot drift from itself.
+ */
+export const PACK_PIPELINES = {
+  oce_plan_occasion: planOccasion,
+  oce_design_invite: designInvite,
+  oce_write_toast: writeToast,
+  oce_moodboard: moodboard,
+  oce_make_keepsake: makeKeepsake,
+  oce_launch_kit: launchKit,
+} as const;
+
+export type PackTool = keyof typeof PACK_PIPELINES;
+
+export const isPackTool = (tool: string): tool is PackTool => tool in PACK_PIPELINES;
+
+export async function runPipeline(
+  ctx: PipelineContext,
+  tool: PackTool,
+  args: unknown,
+): Promise<Pack> {
+  return PACK_PIPELINES[tool](ctx, args as never);
 }

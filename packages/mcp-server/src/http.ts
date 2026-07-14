@@ -5,18 +5,30 @@
  * The paywall sits between "which tool did you ask for" and "run it": we read the tool name
  * off the JSON-RPC body, price it, and gate it BEFORE any model is touched.
  */
+import { createHash } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express, { type Express, type Request, type Response } from "express";
 import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
-import { PRICES, OkxGate, isFree, type PaymentGate } from "./gate.js";
+import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { callerIp as demoCallerIp, handleDemoRun } from "./demo.js";
+import { PolicyRefusal, screenToolInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
-import { VERSION, buildServer, packResult, type ServerContext } from "./server.js";
+import {
+  VERSION,
+  buildServer,
+  packResult,
+  packToolSchema,
+  toJson,
+  type ServerContext,
+  type ToolResult,
+} from "./server.js";
+import type { JobQueue } from "./jobs.js";
 
 export interface AppContext extends ServerContext {
   gate: PaymentGate;
+  jobs?: JobQueue;
   sealerAddress?: string;
   live?: Record<string, boolean>;
   /** Shared secret for the internal Studio demo route; absent = route is off. */
@@ -53,6 +65,42 @@ export function rateLimiter(limit = BURST, windowMs = WINDOW_MS, now: () => numb
     bucket.count += 1;
     return true;
   };
+}
+
+/* -------------------------------------------------------------- idempotency */
+
+interface StoredResponse {
+  payload: unknown;
+  isError: boolean;
+  paymentResponse?: string;
+}
+
+/**
+ * The same answer, again, and NOT a second charge.
+ *
+ * Rebuilt from the payload rather than replayed as bytes, and deliberately so: the retry has
+ * its own JSON-RPC id, and a client that gets back the id of a request it gave up on minutes
+ * ago will drop the response on the floor. Same answer, addressed to the question actually
+ * being asked.
+ */
+function replay(res: Response, id: unknown, stored: StoredResponse): void {
+  // True the first time, still true now — it describes the settlement that really happened.
+  if (stored.paymentResponse) res.set("PAYMENT-RESPONSE", stored.paymentResponse);
+  res.set("Idempotency-Replayed", "true");
+
+  res.status(200).json({
+    jsonrpc: "2.0",
+    id: id ?? null,
+    result: {
+      content: [
+        {
+          type: "text",
+          text: stored.isError ? String(stored.payload) : toJson(stored.payload),
+        },
+      ],
+      ...(stored.isError ? { isError: true } : {}),
+    },
+  });
 }
 
 /* ---------------------------------------------------------------- the app */
@@ -96,6 +144,8 @@ export function buildApp(ctx: AppContext): Express {
 
   app.get("/health", (_req, res) => {
     const anchor = ctx.store.anchorQueueHealth();
+    const jobs = ctx.store.jobQueueHealth();
+    const owed = ctx.store.refundsOwed();
 
     // A seal stuck in the queue is a promise made and not kept, and it must be loud.
     // Two anchor cycles (30min each) is generous; past that, something is wrong.
@@ -116,6 +166,14 @@ export function buildApp(ctx: AppContext): Express {
       live: ctx.live ?? {},
       coverageGaps: ctx.coverageGaps,
       anchorQueue: { ...anchor, stalled: anchorStalled },
+      jobs,
+      // The number we would most like not to publish, published. Money taken for work that
+      // was never delivered is a debt, and a debt nobody can see is not a debt, it is a loss
+      // somebody else absorbed.
+      refundsOwed: {
+        count: owed.length,
+        usdt: Number(owed.reduce((sum, refund) => sum + refund.amountUsdt, 0).toFixed(6)),
+      },
     });
   });
 
@@ -140,11 +198,33 @@ export function buildApp(ctx: AppContext): Express {
         asset: ctx.gate instanceof OkxGate ? undefined : undefined,
         currency: "USDT",
       },
-      tools: Object.entries(PRICES).map(([name, priceUsdt]) => ({
-        name,
-        priceUsdt,
-        free: priceUsdt === 0,
-      })),
+      tools: [
+        ...Object.entries(PRICES).map(([name, priceUsdt]) => ({
+          name,
+          priceUsdt,
+          free: priceUsdt === 0,
+        })),
+        {
+          name: "oce_create_pack_job",
+          priceUsdt: "the price of the tool it runs",
+          free: false,
+          runs: PACK_TOOLS,
+        },
+      ],
+      async: {
+        create: "oce_create_pack_job",
+        poll: "oce_job_status",
+        collect: "oce_job_result",
+        cancel: "oce_cancel_job",
+        statusUrl: `${ctx.publicBaseUrl}/j/{jobId}`,
+        note: "Long work (launch kits especially) should be run as a job. Polling and collecting are free.",
+      },
+      idempotency: {
+        header: "Idempotency-Key",
+        default: "the x402 payment nonce, when no header is sent",
+        replayHeader: "Idempotency-Replayed",
+        note: "A retry of an identical paid request returns the original response and is never charged twice.",
+      },
       quality: {
         standard: "Occestra Quality Standard",
         version: rubricAsJson().oqsVersion,
@@ -238,6 +318,31 @@ export function buildApp(ctx: AppContext): Express {
     res.json(pack);
   });
 
+  /* -------------------------------------------------------------- job status */
+
+  // The same thing oce_job_status returns, over plain HTTP, for anything that would rather
+  // poll a URL than speak MCP. Free, like the tool.
+  app.get("/j/:id", (req, res) => {
+    const job = ctx.store.getJob(req.params.id);
+    if (!job) {
+      res.status(404).json({ error: "no job with that id" });
+      return;
+    }
+
+    res.json({
+      jobId: job.id,
+      tool: job.tool,
+      state: job.state,
+      attempts: job.attempts,
+      elapsedSeconds: Math.round(((job.finishedAt ?? Date.now()) - job.createdAt) / 1000),
+      progress: job.progress,
+      // The brief itself is never echoed back here: a job id is not an authorization to read
+      // somebody's occasion.
+      ...(job.packId ? { keepsakeId: job.packId, keepsake: `${ctx.publicBaseUrl}/k/${job.packId}` } : {}),
+      ...(job.error ? { error: job.error } : {}),
+    });
+  });
+
   /* --------------------------------------------------- signed artifact bytes */
 
   app.get("/a/*key", async (req, res) => {
@@ -276,62 +381,165 @@ export function buildApp(ctx: AppContext): Express {
   /* -------------------------------------------------------------------- mcp */
 
   app.post("/mcp", async (req: Request, res: Response) => {
-    const body = req.body as { method?: string; params?: { name?: string } } | undefined;
+    const body = req.body as
+      | { method?: string; params?: { name?: string; arguments?: unknown } }
+      | undefined;
 
-    // The paywall: price the requested tool, gate it, and only then do any work.
+    // The context this ONE request runs under. If money moves, the order is attached to it,
+    // so a tool that takes payment and then fails knows exactly what it owes and to whom.
+    let requestCtx: ServerContext = ctx;
+    let idempotencyKey: string | undefined;
+
+    // The paywall: screen it, validate it, price it, gate it — and only then do any work.
     if (body?.method === "tools/call") {
       const tool = body.params?.name ?? "";
-      const priceUsdt = PRICES[tool as keyof typeof PRICES];
+      const args = body.params?.arguments;
+      const priceUsdt = priceOf(tool, args);
 
       if (priceUsdt === undefined) {
         res.status(404).json({ error: `unknown tool: ${tool}` });
         return;
       }
 
+      // 1. WOULD WE EVEN TAKE THIS BRIEF? Asked at the door, before the till.
+      //
+      // The listing promises "the PolicyGate refuses those briefs before any money is spent",
+      // and until now that was false twice over: three of the six paid pipelines never
+      // screened at all, and the ones that did screened INSIDE the pipeline — which the gate
+      // has already charged for by the time it runs. A refusal we charged for is not a
+      // refusal, it is a fee. The screen lives at the door now, where no future tool can
+      // forget to call it, because no tool calls it.
+      try {
+        screenToolInput(args);
+      } catch (error) {
+        if (error instanceof PolicyRefusal) {
+          res.status(403).json({ error: error.politeMessage, charged: false });
+          return;
+        }
+        throw error;
+      }
+
+      // 2. ARE THE ARGUMENTS VALID? A job carries another tool's arguments as an opaque
+      //    object, so nothing would have checked them until the pipeline crashed on them —
+      //    after settlement. A typo should cost a 400, not a charge and a refund.
+      if (tool === "oce_create_pack_job") {
+        const target = (args as { tool?: string })?.tool as PackToolName;
+        const inner = (args as { arguments?: unknown })?.arguments ?? {};
+        const parsed = packToolSchema(target).safeParse(inner);
+        if (!parsed.success) {
+          res.status(400).json({
+            error: `these arguments are not valid for ${target}`,
+            detail: parsed.error.issues.slice(0, 4).map((issue) => `${issue.path.join(".")}: ${issue.message}`),
+            charged: false,
+          });
+          return;
+        }
+      }
+
+      // 3. HAVE WE ALREADY DONE THIS? A dropped connection makes a client retry, and a retry
+      //    must never be a second charge for a pack we already built. If the buyer sent no
+      //    Idempotency-Key, we use the nonce inside their x402 payment — which is unique to
+      //    the call and single-use by construction. So the identical request, replayed, is
+      //    safe by default, with no change on the buyer's side at all.
+      if (!isFree(tool)) {
+        idempotencyKey =
+          req.get("idempotency-key")?.trim() || paymentNonceOf(req.headers) || undefined;
+
+        if (idempotencyKey) {
+          const hash = createHash("sha256")
+            .update(JSON.stringify({ tool, args }))
+            .digest("hex");
+          const claim = ctx.store.claimIdempotencyKey(idempotencyKey, hash, tool);
+
+          if (claim.status === "replay") {
+            replay(res, (body as { id?: unknown }).id, claim.response as StoredResponse);
+            return;
+          }
+          if (claim.status === "in_flight") {
+            res.status(409).json({
+              error: "a request with this Idempotency-Key is still running — poll, do not retry",
+              charged: false,
+            });
+            return;
+          }
+          if (claim.status === "conflict") {
+            res.status(422).json({
+              error: "this Idempotency-Key was used for a DIFFERENT request. Use a new key.",
+              charged: false,
+            });
+            return;
+          }
+        }
+      }
+
+      // 4. THE MONEY.
       if (!isFree(tool)) {
         const verdict = await ctx.gate.check({ headers: req.headers }, tool, priceUsdt);
 
-        if (!verdict.ok && verdict.status === 402) {
-          ctx.store.recordOrder({
-            id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            tool,
-            priceUsdt,
-            payerRef: "unpaid",
-            status: "pending",
-            createdAt: Date.now(),
-          });
-
-          res
-            .status(402)
-            .set("PAYMENT-REQUIRED", verdict.headerValue)
-            .json(verdict.challenge);
-          return;
-        }
-
         if (!verdict.ok) {
+          // Nothing was done, so the key must not stick — they are entitled to try again.
+          if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
+
+          if (verdict.status === 402) {
+            ctx.store.recordOrder({
+              id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+              tool,
+              priceUsdt,
+              payerRef: "unpaid",
+              status: "pending",
+              createdAt: Date.now(),
+            });
+
+            res.status(402).set("PAYMENT-REQUIRED", verdict.headerValue).json(verdict.challenge);
+            return;
+          }
+
           res.status(verdict.status).json({ error: verdict.reason });
           return;
         }
 
-        ctx.store.recordOrder({
+        const order = {
           id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           tool,
           priceUsdt,
           payerRef: verdict.payerRef,
+        };
+
+        ctx.store.recordOrder({
+          ...order,
           status: "paid",
           ...(verdict.txHash ? { txHash: verdict.txHash } : {}),
           createdAt: Date.now(),
         });
 
-        res.set(
-          "PAYMENT-RESPONSE",
-          OkxGate.settlementHeader(verdict, String(priceUsdt)),
-        );
+        res.set("PAYMENT-RESPONSE", OkxGate.settlementHeader(verdict, String(priceUsdt)));
+        requestCtx = { ...ctx, order };
       }
     }
 
+    // Remember what we answered, so a retry gets the same answer instead of a second bill.
+    if (idempotencyKey) {
+      const key = idempotencyKey;
+      const paymentResponse = res.get("payment-response");
+
+      requestCtx = {
+        ...requestCtx,
+        onResult: (result: ToolResult) => {
+          ctx.store.completeIdempotencyKey(key, {
+            ...result,
+            ...(paymentResponse ? { paymentResponse } : {}),
+          } satisfies StoredResponse);
+        },
+      };
+
+      // A call that never reached a tool — a transport error, a crash — answered nothing, so
+      // the key must not stick. The buyer is entitled to try again, and they have not been
+      // given anything to be idempotent ABOUT.
+      res.on("close", () => ctx.store.releaseIdempotencyKey(key));
+    }
+
     // Stateless: a fresh server + transport per request (gotcha #4).
-    const server = buildServer(ctx);
+    const server = buildServer(requestCtx);
     const transport = new StreamableHTTPServerTransport(
       {} as ConstructorParameters<typeof StreamableHTTPServerTransport>[0],
     );

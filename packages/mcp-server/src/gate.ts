@@ -44,11 +44,71 @@ export const PRICES = {
   oce_launch_kit: 0.25,
   oce_critique: 0.01,
   oce_verify_keepsake: 0,
+  // Running a job costs what the tool it runs costs, and not a cent more. Watching one is
+  // free: charging a buyer to ask whether the thing they already paid for is ready yet
+  // would be indefensible.
+  oce_job_status: 0,
+  oce_job_result: 0,
+  oce_cancel_job: 0,
 } as const satisfies Record<string, number>;
 
 export type ToolName = keyof typeof PRICES;
 export const TOOL_NAMES = Object.keys(PRICES) as ToolName[];
 export const isFree = (tool: string): boolean => PRICES[tool as ToolName] === 0;
+
+/** The six tools that make a pack — the only work an async job may be asked to do. */
+export const PACK_TOOLS = [
+  "oce_plan_occasion",
+  "oce_design_invite",
+  "oce_write_toast",
+  "oce_moodboard",
+  "oce_make_keepsake",
+  "oce_launch_kit",
+] as const;
+
+export type PackToolName = (typeof PACK_TOOLS)[number];
+
+/**
+ * A job is priced at exactly the price of the tool it runs.
+ *
+ * The asynchrony is not a product, it is a courtesy — the buyer is paying for a launch kit,
+ * and whether they wait on a socket or on a job id is our problem, not something to charge
+ * them for. So `oce_create_pack_job` has no price of its own; it inherits one, and the
+ * paywall has to look inside the arguments to find it.
+ */
+export function priceOf(tool: string, args: unknown): number | undefined {
+  if (tool === "oce_create_pack_job") {
+    const target = (args as { tool?: unknown } | undefined)?.tool;
+    if (typeof target !== "string") return undefined;
+    if (!(PACK_TOOLS as readonly string[]).includes(target)) return undefined;
+    return PRICES[target as ToolName];
+  }
+  return PRICES[tool as ToolName];
+}
+
+/**
+ * The nonce inside an x402 payment, WITHOUT verifying it.
+ *
+ * This is not a security check — it is an identity. Every x402 authorization already carries
+ * a nonce that is unique to the call and single-use by construction, which makes it a perfect
+ * idempotency key for a buyer who never thought to send one. So a plain HTTP retry of the
+ * identical paid request is idempotent for free, with no client change at all.
+ */
+export function paymentNonceOf(headers: GateRequest["headers"]): string | undefined {
+  const raw = headers["payment-signature"] ?? headers["x-payment"];
+  const proof = Array.isArray(raw) ? raw[0] : raw;
+  if (!proof) return undefined;
+
+  try {
+    const decoded = JSON.parse(Buffer.from(proof, "base64").toString("utf8")) as {
+      payload?: { authorization?: { nonce?: unknown } };
+    };
+    const nonce = decoded.payload?.authorization?.nonce;
+    return typeof nonce === "string" ? nonce.toLowerCase() : undefined;
+  } catch {
+    return undefined; // a malformed proof is the gate's business, not ours
+  }
+}
 
 /** Settlement asset decimals. USD₮0 on X Layer is 6dp, like every USDT deployment. */
 export const ASSET_DECIMALS = 6;
