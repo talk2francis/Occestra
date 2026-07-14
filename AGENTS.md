@@ -37,6 +37,8 @@ Lifestyle Companion + Artistic Excellence (category wins), Best Product, Creativ
 Settlement uses the OKX Payment SDK / current x402 revision (v2 era, CAIP-2 network ids). Before implementing, FETCH and follow the current docs: https://web3.okx.com/onchainos/dev-docs/payments/overview and https://web3.okx.com/onchainos/dev-docs/okxai/howtomcp and https://web3.okx.com/onchainos/dev-docs/okxai/registerasp . Record the exact challenge/settlement shapes you implement in the Deviations log with the doc URL and date. DevGate (allow-all) exists ONLY behind OCE_PAYMENT_MODE=dev for local/CI.
 
 ## A2MCP tools + prices (USDT per call)
+NOTE (V2-0, measured): THREE OF THESE SELL BELOW COST — launch_kit costs $0.44, design_invite
+$0.25, make_keepsake $0.18. See docs/pricing-rationale.md. V2-1 reprices against that table.
 - oce_plan_occasion   : 0.05
 - oce_design_invite   : 0.10
 - oce_make_keepsake   : 0.10
@@ -69,7 +71,7 @@ Types.Keepsake = [ {name:"keepsakeId",type:"string"}, {name:"manifestHash",type:
 - Two-step handover: startSealerHandover / acceptSealerHandover; custom errors NotSealer, NotPendingSealer, ZeroLeaf, AlreadySealed, ZeroAddress.
 - NatSpec: NEVER write "@word" tokens in comments (solc parses as doc tags and fails).
 
-## Tribunal — Occestra Quality Standard, OQS_VERSION = "1.0.0"
+## Tribunal — Occestra Quality Standard, OQS_VERSION = "1.0.1"
 Model critique axes (0–100 each): composition, legibility, style_fidelity, grounding, platform_fit.
 Pass rule: every axis >= 70 AND zero hard deterministic failures. Repair loop: on fail, produce a repairBrief and regenerate; max 2 repairs; the final TribunalReport ALWAYS ships inside the pack (pass or not).
 Deterministic checks (id | applies to | hard):
@@ -80,6 +82,7 @@ Deterministic checks (id | applies to | hard):
   SCHEDULE_OVERLAP          | schedule   | hard
   DATE_INVALID              | plan       | hard
   DIM_ASPECT_MISMATCH       | images     | hard
+  PLACEHOLDER_TEXT          | all copy (md/html/json) | hard   <- NEW in 1.0.1. Scans JSON VALUES, never JSON SYNTAX.
   CONTRAST_LOW (<4.5:1 body text) | invites/cards | soft
   PALETTE_DRIFT (off House Style) | images | soft
   LINK_DEAD                 | launch kit | soft
