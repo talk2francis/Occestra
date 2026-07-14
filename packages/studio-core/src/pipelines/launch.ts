@@ -238,6 +238,8 @@ async function askJson<T>(
     schema: z.ZodType<T, z.ZodTypeDef, unknown>;
     maxTokens?: number;
     temperature?: number;
+    /** What this beat is making — surfaced verbatim in the live event feed. */
+    producing?: string;
   },
 ): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
   const call = async (repair?: string): Promise<string> =>
@@ -249,6 +251,7 @@ async function askJson<T>(
         json: true,
         maxTokens: args.maxTokens ?? 1200,
         temperature: args.temperature ?? 0.5,
+        ...(args.producing ? { producing: args.producing } : {}),
       })
     ).text;
 
@@ -590,6 +593,8 @@ async function writeGuardedCopy<T>(
     banned: string[];
     maxTokens?: number;
     temperature?: number;
+    /** What this beat is making — surfaced verbatim in the live event feed. */
+    producing?: string;
   },
 ): Promise<
   | { ok: true; value: T; verdict: CopyVerdict }
@@ -600,6 +605,7 @@ async function writeGuardedCopy<T>(
     system: args.system(""),
     schema: args.schema,
     prompt: args.prompt,
+    ...(args.producing ? { producing: args.producing } : {}),
     ...(args.maxTokens !== undefined ? { maxTokens: args.maxTokens } : {}),
     ...(args.temperature !== undefined ? { temperature: args.temperature } : {}),
   });
@@ -615,6 +621,7 @@ async function writeGuardedCopy<T>(
       system: args.system(repairNoteFor(verdict)),
       schema: args.schema,
       prompt: args.prompt,
+      ...(args.producing ? { producing: args.producing } : {}),
       ...(args.maxTokens !== undefined ? { maxTokens: args.maxTokens } : {}),
       temperature: (args.temperature ?? 0.7) + 0.1,
     });
@@ -775,6 +782,7 @@ export async function runLaunch(
   const genomeResult = await askJson(deps, {
     role: "planner",
     system: GENOME_SYSTEM + FACTS,
+    producing: "the brand genome",
     schema: GenomeSchema,
     maxTokens: 900,
     prompt: evidence,
@@ -1108,6 +1116,7 @@ export async function runLaunch(
     ].join("\n");
 
     const thread = await writeGuardedCopy(deps, {
+      producing: "the launch thread",
       system: threadSystem,
       prompt: threadPrompt,
       schema: ThreadSchema,
@@ -1123,6 +1132,7 @@ export async function runLaunch(
 
       regenerators.set("launch_thread", async (brief, previous) => {
         const redone = await writeGuardedCopy(deps, {
+          producing: "the launch thread (repair)",
           system: (note) => threadSystem(`${note}${repairSuffix(brief)}`),
           prompt: threadPrompt,
           schema: ThreadSchema,
@@ -1197,6 +1207,7 @@ export async function runLaunch(
         .join("\n");
 
     const spec = await writeGuardedCopy(deps, {
+      producing: "the landing page spec",
       system: specSystem,
       prompt: evidence,
       schema: SpecSchema,
@@ -1325,6 +1336,7 @@ export async function runLaunch(
         .join("\n");
 
     const beats = await writeGuardedCopy(deps, {
+      producing: "the 90-second demo beat sheet",
       system: beatSystem,
       prompt: evidence,
       schema: BeatSchema,

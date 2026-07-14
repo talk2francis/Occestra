@@ -1,4 +1,5 @@
 import { ArtifactImage } from "@/components/keepsake/artifact-image";
+import { BrandGenome } from "@/components/keepsake/brand-genome";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { SourceChip } from "@/components/ui/source-chip";
 import type { PublicArtifact } from "@/lib/pack";
@@ -47,7 +48,14 @@ export function ArtifactView({ artifact }: { artifact: PublicArtifact }) {
         <ArtifactImage src={artifact.url} alt={artifact.title} />
       )}
 
-      {artifact.data && artifact.format === "md" && (
+      {/*
+        The brand genome is the artifact the site inspection was PAID for. It gets a
+        designed render — real colours as real swatches — not the generic prose path,
+        which printed its markdown emphasis verbatim.
+      */}
+      {artifact.data && artifact.kind === "brand_kit" && <BrandGenome markdown={artifact.data} />}
+
+      {artifact.data && artifact.format === "md" && artifact.kind !== "brand_kit" && (
         <div className="mt-4 space-y-3 border-l-2 border-ink/10 pl-4">
           {artifact.data.split(/\n{2,}/).map((block, index) => {
             const heading = block.match(/^#{1,3}\s+(.*)/);

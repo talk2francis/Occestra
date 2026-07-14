@@ -71,19 +71,35 @@ const DemoBody = z.discriminatedUnion("tool", [
   }),
 ]);
 
+/** The studio role, as a person rather than an enum. */
+const ROLE_NAMES: Record<string, string> = {
+  planner: "The Planner",
+  researcher: "The Researcher",
+  art_director: "The Art Director",
+  writer: "The Writer",
+  critic: "The Critic",
+  archivist: "The Archivist",
+};
+
 /** Wrap the world-facing ports so real calls surface as real events. */
 function instrumentDeps(deps: EngineDeps, emit: (event: DemoEvent) => void): EngineDeps {
-  let lastWriting = 0;
+  const announced = new Set<string>();
 
   return {
     ...deps,
     text: {
       complete: async (request) => {
-        // The writers make many model calls; one event per beat is plenty.
-        const now = Date.now();
-        if (now - lastWriting > 1500) {
-          lastWriting = now;
-          emit({ type: "writing", detail: "drafting with the model router" });
+        // Every model beat used to surface as the SAME sentence — "drafting with the model
+        // router" — over and over, which told a watching buyer nothing about what was being
+        // made for them. Now each beat says who is working and what they are making, and a
+        // beat only announces itself ONCE (a writer that repairs its own copy calls the
+        // model several times for one artifact; that is one event, not four).
+        const who = ROLE_NAMES[request.role] ?? "The Studio";
+        const label = request.producing ? `${who} · ${request.producing}` : who;
+
+        if (!announced.has(label)) {
+          announced.add(label);
+          emit({ type: "writing", detail: label });
         }
         return deps.text.complete(request);
       },

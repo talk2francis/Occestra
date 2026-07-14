@@ -358,6 +358,14 @@ export interface TextCompletionRequest {
   json?: boolean;
   maxTokens?: number;
   temperature?: number;
+  /**
+   * WHAT this call is producing ("the launch thread", "the brand genome").
+   *
+   * Purely for the live event feed. Without it every model beat surfaced as the same
+   * sentence — "drafting with the model router", over and over — which told a watching
+   * buyer nothing about what was being made for them.
+   */
+  producing?: string;
 }
 
 export interface TextCompletionResult {
