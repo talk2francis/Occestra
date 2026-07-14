@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ButtonLink } from "@/components/ui/button";
+import { Wordmark } from "@/components/site/wordmark";
 
 const LINKS = [
   { href: "/#studios", label: "Studios" },
@@ -33,13 +34,7 @@ export function Nav() {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-        <Link
-          href="/"
-          className="font-serif text-[1.35rem] font-medium tracking-tight text-ink"
-          style={{ fontVariationSettings: "'opsz' 40" }}
-        >
-          Occestra
-        </Link>
+        <Wordmark height={30} priority />
 
         <div className="hidden items-center gap-6 lg:flex">
           {LINKS.map((link) => (

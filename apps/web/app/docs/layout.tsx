@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DocsSidebar } from "@/components/docs/sidebar";
+import { Wordmark } from "@/components/site/wordmark";
 
 export const metadata: Metadata = {
   title: { default: "Docs", template: "%s · Occestra Docs" },
@@ -13,14 +14,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-ink/8 bg-ground/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5 sm:px-8">
-          <div className="flex items-baseline gap-3">
-            <Link
-              href="/"
-              className="font-serif text-[1.2rem] font-medium tracking-tight text-ink"
-              style={{ fontVariationSettings: "'opsz' 40" }}
-            >
-              Occestra
-            </Link>
+          <div className="flex items-center gap-3">
+            <Wordmark height={26} priority />
             <Link href="/docs" className="text-kicker text-amethyst">
               Docs
             </Link>

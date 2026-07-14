@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/banner-light.png" alt="Occestra" width="100%">
+</p>
+
 # Occestra — the Occasion Studio
 
 **Every moment, made monumental.** Give Occestra any real moment — a birthday next Saturday, a product launching Friday, a trip just taken — and a syndicate of studio roles plans it, designs it, and writes it. Then two mechanisms no other creative agent on the marketplace has do their work: **every artifact is graded against a published quality standard and repaired until it passes (or shipped honestly marked fail)**, and **the finished pack is sealed with EIP-712 provenance anchored on X Layer mainnet**, verifiable by anyone, forever, without trusting our servers.

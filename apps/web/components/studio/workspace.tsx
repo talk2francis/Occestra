@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Wordmark } from "@/components/site/wordmark";
 import type { StyleSwatch } from "@/lib/studio";
 import { Composer } from "./composer";
 import { PackPanel } from "./pack-panel";
@@ -87,14 +88,8 @@ export function Workspace({
         )}
       </AnimatePresence>
       <header className="flex items-center justify-between gap-4 border-b border-ink/10 bg-panel/60 px-5 py-3 sm:px-8">
-        <div className="flex items-baseline gap-4">
-          <Link
-            href="/"
-            className="font-serif text-[1.2rem] font-medium tracking-tight text-ink"
-            style={{ fontVariationSettings: "'opsz' 40" }}
-          >
-            Occestra
-          </Link>
+        <div className="flex items-center gap-4">
+          <Wordmark height={26} priority />
           <span className="text-kicker hidden text-amethyst sm:inline">The Studio</span>
         </div>
         <p className="text-data hidden text-ink/60 md:block">

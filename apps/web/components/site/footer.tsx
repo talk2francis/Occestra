@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Wordmark } from "@/components/site/wordmark";
 import { AGENT_ID, API_BASE, EXPLORER_REGISTRY, OQS_VERSION, REGISTRY } from "@/lib/real";
 
 export function Footer() {
@@ -7,10 +8,8 @@ export function Footer() {
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
         <div className="flex flex-wrap items-start justify-between gap-10">
           <div className="max-w-xs">
-            <p className="font-serif text-2xl font-medium tracking-tight" style={{ fontVariationSettings: "'opsz' 40" }}>
-              Occestra
-            </p>
-            <p className="mt-3 text-[0.9rem] leading-relaxed text-ink/65">
+            <Wordmark height={34} />
+            <p className="mt-4 text-[0.9rem] leading-relaxed text-ink/65">
               The Occasion Studio. Every moment, made monumental — and every artifact graded,
               repaired, and sealed with provenance you can check yourself.
             </p>
