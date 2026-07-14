@@ -94,6 +94,7 @@ export class FakeCritique implements CritiquePort {
     return {
       axes: { ...PASSING_AXES, ...(next.axes ?? {}) },
       issues: next.issues ?? [],
+      ...(next.citations ? { citations: next.citations } : {}),
       repairBrief: next.repairBrief ?? "",
       model: next.model ?? "fake-critic-1",
     };

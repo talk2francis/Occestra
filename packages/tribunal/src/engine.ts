@@ -72,6 +72,51 @@ interface Graded {
   failedOn: FailureClass;
 }
 
+/**
+ * A CORRECTNESS FAILURE THAT CANNOT BE QUOTED DOES NOT STAND.
+ *
+ * The critic disagreed with itself: the same schedule scored grounding 62 on one run and 72
+ * on the next — straddling the floor, so the artifact both passed and failed. Digging into
+ * the runs, the low scores never named a defect. They said things like "could be better
+ * evidenced" and "confidence is slightly higher than invented". That is a mood, not a finding.
+ *
+ * So a correctness axis may now only fall below its floor if the critic QUOTED the thing that
+ * is wrong — the unsourced claim, the ambiguous time, the number that does not add up. An
+ * uncited correctness failure is discarded and the score restored to the floor.
+ *
+ * This does not lower the bar. It raises what it takes to fail something: a citable cause,
+ * which is reproducible even when the number attached to it is not. Reproducible causes are
+ * what a standard is actually made of.
+ *
+ * CRAFT axes are left alone. Nobody is going to re-litigate a composition of 68, and taste is
+ * allowed to be taste.
+ */
+function requireCitations(
+  axes: Record<CritiqueAxis, number>,
+  citations: ReadonlyArray<{ axis: CritiqueAxis; quote: string }>,
+  notes: string[],
+): Record<CritiqueAxis, number> {
+  const cited = new Set(citations.filter((c) => c.quote.trim().length > 0).map((c) => c.axis));
+  const adjusted = { ...axes };
+
+  for (const axis of AXES) {
+    if (axis.class !== "correctness") continue;
+
+    const score = adjusted[axis.id] ?? 0;
+    if (score >= axis.threshold) continue;
+    if (cited.has(axis.id)) continue;
+
+    adjusted[axis.id] = axis.threshold;
+    notes.push(
+      `${axis.title} was scored ${score} but the critic quoted no defect to justify it. ` +
+        `A correctness failure without a citable cause is an opinion, and opinions do not reproduce — ` +
+        `the score is restored to the floor (${axis.threshold}).`,
+    );
+  }
+
+  return adjusted;
+}
+
 function hardFailures(results: CheckResult[]): CheckResult[] {
   return results.filter((r) => !r.passed && r.hard);
 }
@@ -113,7 +158,7 @@ async function gradeOnce(args: {
       ...(style ? { style } : {}),
     } as Parameters<CritiquePort["judge"]>[0]);
 
-    axes = critique.axes;
+    axes = requireCitations(critique.axes, critique.citations ?? [], notes);
     issues.push(...critique.issues);
     if (critique.repairBrief) repairBrief = critique.repairBrief;
     notes.push(`Critique by ${critique.model}.`);

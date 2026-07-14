@@ -137,7 +137,10 @@ describe("runTribunal", () => {
   });
 
   it("grades without repairing when no regenerate() is supplied", async () => {
-    const critique = new FakeCritique([], { axes: { legibility: 12 } as never });
+    // Fails on COMPOSITION — a craft axis. A correctness axis would need a citation to
+    // stand (see "a correctness failure that cannot be quoted"), and this test is about
+    // the repair loop, not about the citation rule.
+    const critique = new FakeCritique([], { axes: { composition: 12 } as never });
     const { report } = await runTribunal({
       artifact: artifact(),
       contract: contract(),

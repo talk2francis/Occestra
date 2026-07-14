@@ -341,6 +341,7 @@ function buildSchedule(
   contract: CelebrateContract,
   order: WorkOrder,
   venues: Place[],
+  sources: SourceTag[],
 ): { artifact: Artifact; timed: TimedBlock[] } {
   const blocks: Block[] = order.blocks.map((block) => {
     const venue = block.venueIndex !== null ? venues[block.venueIndex] : undefined;
@@ -389,6 +390,11 @@ function buildSchedule(
       kind: "schedule",
       title: "Running order",
       format: "json",
+      // A schedule that NAMES A VENUE is making a claim about the real world, and it must
+      // carry the receipt. These were being dropped — so "is this venue sourced?" was left
+      // for the LLM critic to feel out, and its grounding score oscillated 62-72 across the
+      // pass line on identical input. A checkable fact belongs in a deterministic check.
+      sources,
       data: JSON.stringify({
         // The envelope: this file can now be read without the brief beside it.
         occasion: contract.occasion,
@@ -789,7 +795,12 @@ export async function runCelebrate(
   /* --- 3. artifacts --- */
 
   const artifacts: Artifact[] = [];
-  const { artifact: scheduleArtifact, timed } = buildSchedule(contract, order, found.venues);
+  const { artifact: scheduleArtifact, timed } = buildSchedule(
+    contract,
+    order,
+    found.venues,
+    found.sources,
+  );
 
   if (wanted.has("plan")) {
     const summary = [

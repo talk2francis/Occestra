@@ -430,7 +430,21 @@ export class ModelRouter implements TextModelPort {
    * adapters take images now, so the preference is real.
    */
   get visionModel(): VisionCapable | undefined {
-    return this.anthropic ?? this.openai;
+    const model = this.anthropic ?? this.openai;
+    if (!model) return undefined;
+
+    // METERED. The critic used to reach the adapter DIRECTLY, so every critique — one per
+    // artifact, plus one more per repair pass — was invisible to the cost governor. The daily
+    // USD cap was guarding the writers and silently ignoring the judge, which on a launch kit
+    // is a dozen calls a run. A cap that cannot see half the spend is not a cap.
+    const governor = this.governor;
+    return {
+      async completeWithContent(request, content) {
+        const result = await model.completeWithContent(request, content);
+        governor.recordLlmSpend(result.usdCost);
+        return result;
+      },
+    };
   }
 
   get costGovernor(): CostGovernor {

@@ -289,6 +289,40 @@ export async function checkBudgetSum(ctx: CheckContext): Promise<CheckResult> {
 
 export async function checkSourceMissing(ctx: CheckContext): Promise<CheckResult> {
   const id: CheckId = "SOURCE_MISSING";
+
+  /**
+   * A SCHEDULE THAT NAMES A VENUE IS MAKING A CLAIM ABOUT THE REAL WORLD.
+   *
+   * This check only looked at plans. So a schedule could name "Aqui há Peixe" at
+   * 38.7119452, -9.1417003 with no receipt at all, and the only thing standing between that
+   * and a buyer was the LLM critic's *feeling* about grounding — which oscillated 62 to 72
+   * across the pass line on identical input, flipping the artifact between PASS and FAIL.
+   *
+   * "Does this venue carry a source?" is not a matter of taste. It is a yes/no question, and
+   * every judgment moved out of the critic and into arithmetic is a judgment that stops
+   * varying forever.
+   */
+  if (ctx.artifact.kind === "schedule") {
+    const body = SchedulePayloadSchema.safeParse(parseJson(ctx.artifact));
+    if (!body.success) return pass(id, true, "Schedule payload unreadable; SCHEMA_INVALID owns this.");
+
+    const named = body.data.items.filter((item) => item.venue?.name);
+    if (named.length === 0) {
+      return pass(id, true, "The schedule names no venue, so it claims nothing about the world.");
+    }
+
+    if (ctx.artifact.sources.length === 0) {
+      return fail(
+        id,
+        true,
+        "The schedule names real venues but carries no source. A place with coordinates and no receipt is an assertion, not a finding.",
+        named.map((item) => item.venue!.name).slice(0, 5),
+      );
+    }
+
+    return pass(id, true, "Every venue the schedule names is backed by a retrieved source.");
+  }
+
   if (ctx.artifact.kind !== "plan") return pass(id, true, "Not a plan; no grounded claims.");
 
   const body = PlanPayloadSchema.safeParse(parseJson(ctx.artifact));

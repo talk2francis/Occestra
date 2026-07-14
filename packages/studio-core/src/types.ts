@@ -446,9 +446,27 @@ export interface CritiqueRequest {
   style: HouseStyle;
 }
 
+/**
+ * The receipt for a failing score.
+ *
+ * A correctness axis may not fail on a feeling. If the critic scores grounding below the
+ * floor, it must be able to QUOTE the thing that is wrong — the unsourced claim, the number
+ * that does not add up. A failure with a citable cause is reproducible even when the number
+ * attached to it is not, and reproducible causes are what a standard is actually made of.
+ */
+export interface CritiqueCitation {
+  axis: CritiqueAxis;
+  /** The exact text or element in the artifact that is wrong. */
+  quote: string;
+  /** Why that specific thing fails the axis. */
+  why: string;
+}
+
 export interface CritiqueResult {
   axes: Record<CritiqueAxis, number>;
   issues: string[];
+  /** One per axis scored below its floor. See CritiqueCitation. */
+  citations?: CritiqueCitation[];
   /** Concrete, actionable instructions for the regeneration pass. */
   repairBrief: string;
   model: string;
