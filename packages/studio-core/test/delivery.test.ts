@@ -121,10 +121,14 @@ class FakeText implements TextModelPort {
         usdCost: 0,
         text: JSON.stringify({
           sections: [
-            { name: "Hero", purpose: "Earn four seconds.", headline: "Read them once.", body: "Tidepool batches notifications.", cta: "Try it" },
-            { name: "Problem", purpose: "Name the pain.", headline: "74 interruptions", body: "None urgent.", cta: "" },
-            { name: "How", purpose: "Show it.", headline: "It waits", body: "Nothing is lost, only delayed.", cta: "" },
-            { name: "Price", purpose: "Say the number.", headline: "Free in beta", body: "No card, no trial timer.", cta: "Start" },
+            // Every `purpose` must clear the schema's 10-character floor. An earlier draft of
+            // this fixture had "Show it." (8 chars), so the landing spec never validated —
+            // and the suite passed anyway, because the old code silently DROPPED a degraded
+            // artifact instead of reporting it. The bug was hiding a broken fixture.
+            { name: "Hero", purpose: "Earn the next four seconds.", headline: "Read them once.", body: "Tidepool batches notifications.", cta: "Try it" },
+            { name: "Problem", purpose: "Name the pain plainly.", headline: "74 interruptions", body: "None urgent.", cta: "" },
+            { name: "How", purpose: "Show the mechanism.", headline: "It waits", body: "Nothing is lost, only delayed.", cta: "" },
+            { name: "Price", purpose: "Say the number out loud.", headline: "Free in beta", body: "No card, no trial timer.", cta: "Start" },
           ],
         }),
       };
@@ -272,6 +276,34 @@ describe("a pack whose image provider dies mid-run", () => {
     const gap = pack.coverageGaps.find((g) => g.startsWith(UNDELIVERED_CODES.quota));
     expect(gap).toBeDefined();
     expect(gap).not.toMatch(/429|billing details|plan and billing/);
+  });
+
+  it("marks COPY that could not be written as undelivered too — not just pictures", async () => {
+    // The image fix was only half the bug. When a WRITER failed, the artifact was dropped
+    // exactly the same way, leaving a bare `launch_thread:degraded` gap — so a launch kit
+    // with no thread, no landing spec and no beat sheet still reported passRate 1.0 over
+    // the images that happened to survive. Text vanishing is no better than a picture
+    // vanishing. Found by watching a fake-mode run's event feed, not by a test.
+    class MuteWriter implements TextModelPort {
+      async complete() {
+        return { model: "fake", usdCost: 0, text: "{}" }; // never validates, twice
+      }
+    }
+
+    const { pack } = await runLaunch(contract(), deps({ text: new MuteWriter(), image: new QuotaImage(99) }));
+
+    // The three the WRITER owed. (The brand kit still ships — it is assembled from a
+    // fallback genome rather than written, so it is degraded, not absent.)
+    const owed = ["launch_thread", "landing_spec", "demo_script"];
+
+    for (const id of owed) {
+      const artifact = pack.artifacts.find((a) => a.id === id);
+      expect(artifact, `${id} vanished from the pack instead of being marked undelivered`).toBeDefined();
+      expect(artifact!.undelivered).toBeDefined();
+      expect(artifact!.tribunal).toBeUndefined(); // never graded — there is nothing to grade
+    }
+
+    expect(pack.quality.undeliveredCount).toBeGreaterThanOrEqual(owed.length);
   });
 
   it("treats bytes that do not survive the write as undelivered, not as a pass", async () => {

@@ -33,6 +33,7 @@ import { factsBlock, type RunFacts } from "../facts.js";
 import { PolicyRefusal } from "./celebrate.js";
 import {
   classifyImageFailure,
+  copyFailure,
   ensureStored,
   imageQualityFor,
   isUndelivered,
@@ -1163,6 +1164,20 @@ export async function runLaunch(
         }),
       );
     } else {
+      // Dropping the artifact would shrink the pass-rate denominator and let the pack
+      // report a score it never earned — the same bug as a vanished image.
+      deps.log?.("launch_thread degraded", thread.error);
+      artifacts.push(
+        undeliveredArtifact(
+          {
+            id: "launch_thread",
+            kind: "launch_thread",
+            title: `${contract.productName} — launch thread`,
+            format: "md",
+          },
+          copyFailure(),
+        ),
+      );
       gaps.push(`launch_thread:degraded — ${thread.error}`);
     }
   }
@@ -1284,6 +1299,18 @@ export async function runLaunch(
         }),
       );
     } else {
+      deps.log?.("landing_spec degraded", spec.error);
+      artifacts.push(
+        undeliveredArtifact(
+          {
+            id: "landing_spec",
+            kind: "landing_spec",
+            title: `${contract.productName} — landing page spec`,
+            format: "md",
+          },
+          copyFailure(),
+        ),
+      );
       gaps.push(`landing_spec:degraded — ${spec.error}`);
     }
   }
@@ -1396,6 +1423,18 @@ export async function runLaunch(
         }),
       );
     } else {
+      deps.log?.("demo_script degraded", beats.error);
+      artifacts.push(
+        undeliveredArtifact(
+          {
+            id: "demo_script",
+            kind: "demo_script",
+            title: `${contract.productName} — 90-second demo`,
+            format: "md",
+          },
+          copyFailure(),
+        ),
+      );
       gaps.push(`demo_script:degraded — ${beats.error}`);
     }
   }

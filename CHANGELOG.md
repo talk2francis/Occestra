@@ -39,6 +39,19 @@ product from misleading the person paying for it.
 
 ### Changed
 
+- **Degraded COPY is now `undelivered`, not vanished.** The image fix was only half the bug:
+  when a *writer* failed, the artifact was dropped the same way, leaving a bare
+  `launch_thread:degraded` gap — so a launch kit with no thread, no landing spec and no beat
+  sheet still reported `passRate: 1.0` over the images that happened to survive. Found by
+  watching a fake-mode run's event feed, not by a test.
+- **Facts injection + a hard `PLACEHOLDER_TEXT` check** (OQS **1.0.1**). The writer is given
+  the real product name, URL and — when the subject is Occestra — our actual price list, read
+  from the same constants the paywall charges from. Unfinished text delivered to a buyer is
+  now a hard failure.
+- **The brand genome renders as design**, not as raw markdown with the underscores showing.
+- **Event labels name the role and the artifact** ("The Writer · the launch thread") instead
+  of repeating "drafting with the model router" on every beat.
+
 - **Image quality tiers.** No `quality` was ever sent to the image provider, so it applied
   its DEFAULT — its most expensive tier — to every image, including moodboard thumbnails
   and repair drafts that get thrown away. Top tier is now bought only for work a person
@@ -70,6 +83,12 @@ product from misleading the person paying for it.
   a healthy ASP and drop paid requests mid-flight.
 
 ### Verified
+
+- **The ONE real run found a bug, which is what it is for.** `PLACEHOLDER_TEXT` hard-failed a
+  perfectly good plan because its bracket rule matched the JSON the plan is *made of*
+  (`[{"text":"Aqui há Peixe — 18A Rua da Trindade..."`). Brackets are syntax in JSON and links
+  in markdown; "shouting" is not evidence. The check now reads JSON *values*, never JSON
+  *syntax*, and the exact string is pinned by a test. Re-run: plan and schedule pass.
 
 - **Measured unit cost per tool** (`docs/pricing-rationale.md`, reproduce with
   `node scripts/cost-model.mjs`). **Three of the six paid tools sell below cost**: every

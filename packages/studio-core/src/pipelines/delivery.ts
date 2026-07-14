@@ -100,6 +100,25 @@ export function classifyImageFailure(error: unknown): Undelivered {
   return { code, reason: REASONS[code] ?? REASONS[UNDELIVERED_CODES.failed]! };
 }
 
+/**
+ * Copy that could not be written.
+ *
+ * The image fix above is only half the bug. When a WRITER failed — the model returned
+ * something that would not validate, twice — the artifact was dropped exactly the same
+ * way, leaving only a `launch_thread:degraded` gap. So a launch kit that produced no
+ * thread, no landing spec and no beat sheet still reported passRate 1.0 over the images
+ * that survived. Text vanishing is no more acceptable than a picture vanishing.
+ */
+export const COPY_UNDELIVERED = "writer:no_usable_output";
+
+export function copyFailure(): Undelivered {
+  return {
+    code: COPY_UNDELIVERED,
+    reason:
+      "The writer could not produce usable copy for this piece, so nothing is being passed off as it. The rest of the pack was delivered.",
+  };
+}
+
 /** The artifact that says, plainly, "this is missing and here is why". */
 export function undeliveredArtifact(
   base: { id: string; kind: ArtifactKind; title: string; format: ArtifactFormat },

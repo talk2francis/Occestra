@@ -512,21 +512,50 @@ export function sortFindings(results: CheckResult[]): CheckResult[] {
  * why it is worse than simply saying less. HARD — no critic score can argue it away.
  */
 const PLACEHOLDER_PATTERNS: ReadonlyArray<{ re: RegExp; what: string }> = [
-  // [ANYTHING IN SHOUTING BRACKETS] — [YOUR PRICE HERE], [INSERT NAME], [TBD]
-  { re: /\[[^\]\n]*(?:[A-Z]{2,}|your|insert|todo|tbd|placeholder)[^\]\n]*\]/g, what: "a bracketed placeholder" },
+  // A bracket is only a placeholder if it CONTAINS a placeholder word.
+  //
+  // The first version of this rule fired on any bracketed capitals — and hard-failed a
+  // real, good plan on its first live run, because the JSON it was scanning contained
+  // `[{"text":"Aqui há Peixe — 18A Rua da Trindade..."`. Brackets are syntax in JSON and
+  // links in markdown; "shouting" is not evidence of anything.
+  {
+    re: /\[[^\]\n]{0,60}?(?:your|insert|add|todo|tbd|tbc|placeholder|name here|price here|xxx)[^\]\n]{0,60}?\]/gi,
+    what: "a bracketed placeholder",
+  },
   // YOUR ___ HERE, without brackets
   { re: /\byour\s+\w+(?:\s+\w+)?\s+here\b/gi, what: "a 'your … here' placeholder" },
-  { re: /\b(?:TBD|TBC|TODO|FIXME|XXX+|TK+)\b/g, what: "an editing marker" },
+  { re: /\b(?:TBD|TBC|TODO|FIXME|XXX+)\b/g, what: "an editing marker" },
   { re: /\blorem\s+ipsum\b/i, what: "lorem ipsum" },
   { re: /\b(?:coming soon|placeholder text)\b/i, what: "filler standing in for real copy" },
 ];
 
-/** Markdown links legitimately use brackets; so does JSON. Only the SHOUTING kind is a defect. */
+/** Every string a human will actually read — JSON *values*, never JSON *syntax*. */
+function readableText(artifact: CheckContext["artifact"]): string | undefined {
+  const data = artifact.data;
+  if (data === undefined || data.length === 0) return undefined;
+  if (artifact.format !== "json") return data;
+
+  // Scan what the plan SAYS, not the braces and brackets it is made of.
+  const strings: string[] = [];
+  const walk = (value: unknown): void => {
+    if (typeof value === "string") strings.push(value);
+    else if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === "object") Object.values(value).forEach(walk);
+  };
+
+  try {
+    walk(JSON.parse(data));
+  } catch {
+    return data; // unparseable: SCHEMA_INVALID owns that, and we still scan the raw text
+  }
+  return strings.join("\n");
+}
+
 export async function checkPlaceholderText(ctx: CheckContext): Promise<CheckResult> {
   const id: CheckId = "PLACEHOLDER_TEXT";
   const hard = true;
 
-  const text = ctx.artifact.data;
+  const text = readableText(ctx.artifact);
   if (text === undefined || text.length === 0) {
     return skip(id, hard, "Not a copy artifact; there is no text to check.");
   }

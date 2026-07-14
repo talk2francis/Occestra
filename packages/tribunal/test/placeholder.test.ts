@@ -12,19 +12,23 @@
 import { describe, expect, it } from "vitest";
 import { checkPlaceholderText } from "../src/checks.js";
 
-const artifact = (data?: string) =>
+const artifact = (data?: string, format = "md") =>
   ({
     id: "launch_thread",
     kind: "launch_thread",
     title: "Thread",
-    format: "md",
+    format,
     sources: [],
     version: 1 as const,
     ...(data === undefined ? {} : { data }),
   }) as never;
 
-const run = (data?: string) =>
-  checkPlaceholderText({ artifact: artifact(data), contract: {} as never, deps: {} as never } as never);
+const run = (data?: string, format = "md") =>
+  checkPlaceholderText({
+    artifact: artifact(data, format),
+    contract: {} as never,
+    deps: {} as never,
+  } as never);
 
 describe("checkPlaceholderText", () => {
   it("fails hard on the bracket that actually shipped", async () => {
@@ -67,5 +71,33 @@ describe("checkPlaceholderText", () => {
   it("skips artifacts that carry no text at all, rather than failing them", async () => {
     const result = await run(undefined);
     expect(result.passed).toBe(true); // skip, not fail — an image has no copy to check
+  });
+
+  /**
+   * THE FALSE POSITIVE THAT HARD-FAILED A GOOD PLAN ON ITS FIRST LIVE RUN.
+   *
+   * The first version of the bracket rule fired on any bracketed capitals — so it matched
+   * the JSON the plan is MADE of: `[{"text":"Aqui há Peixe — 18A Rua da Trindade..."`.
+   * Brackets are syntax in JSON and links in markdown. "Shouting" is not evidence.
+   */
+  describe("the plan that this check wrongly killed", () => {
+    // Verbatim shape from pack oce_01kxgpantjtm9a6ve9qf22, 2026-07-14.
+    const plan = JSON.stringify({
+      summary: "Make her feel genuinely celebrated by the people who watched her grow.",
+      constraints: ["NO STAIRS", "ONE GUEST IS VEGAN"],
+      claims: [{ text: "Aqui há Peixe — 18A Rua da Trindade, Lisboa, 1200-466", source: "openstreetmap" }],
+    });
+
+    it("does not fire on the brackets and capitals that JSON is built from", async () => {
+      const result = await run(plan, "json");
+      expect(result.passed).toBe(true);
+    });
+
+    it("still catches a real placeholder INSIDE a JSON value", async () => {
+      const bad = JSON.stringify({ budget: { note: "Venue deposit: [YOUR PRICE HERE]" } });
+      const result = await run(bad, "json");
+      expect(result.passed).toBe(false);
+      expect(result.hard).toBe(true);
+    });
   });
 });
