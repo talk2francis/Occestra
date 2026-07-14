@@ -160,6 +160,15 @@ export default function EvaluationPage() {
           genuine provider spend. Reproduce with{" "}
           <code className="text-data text-[0.85em]">node scripts/slo.mjs</code>.
         </p>
+
+        <p className="mt-4 max-w-2xl text-[0.85rem] leading-relaxed text-ink/55">
+          A low pass rate is not always the critic. The launch kit renders four images in a burst,
+          and when a provider throttles one, the pack ships that piece as a declared{" "}
+          <em>undelivered</em> stub rather than dropping it — so the pack is thinner, and the
+          artifacts that <em>were</em> made are still graded and still pass. That is the range
+          working as designed: honest about what got made, never quietly shrinking the pack to
+          flatter the number.
+        </p>
       </section>
 
       {/* -------------------------------------------------------- the critic */}

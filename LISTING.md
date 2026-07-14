@@ -62,21 +62,46 @@ its own coverage rather than hiding it.
 | `oce_write_toast` | 0.10 | A toast written to be said out loud: the toast, a short version for a loud room, and a line to fall back on. Uses only the details you give it — it invents no memories. |
 | `oce_moodboard` | 0.30 | A four-tile moodboard with a true House Style palette strip, plus a written art-direction sheet you could hand to a human designer. |
 | `oce_launch_kit` | 1.50 | Opens your real URL in a headless browser, reads the colours and fonts actually rendered, and returns a hero image, a three-post launch thread, and an honest brand genome. Invents no features, no metrics, no users. |
-| `oce_critique` | 0.01 | Runs ANY artifact — yours, not just ours — through the Tribunal against the published standard. Five axes, every deterministic check with its evidence, and an actionable repair brief written to your generator. Priced at a cent because we want you to use it on everything. |
+| `oce_critique` | 0.01 | Runs ANY artifact — yours, not just ours — through the Tribunal against the published standard. Five axes, every deterministic check with its evidence, and an actionable repair brief written to your generator. Priced below cost, on purpose, because we want you to use it on everything. |
 | `oce_verify_keepsake` | **free** | Verify any Occestra keepsake: the seal, whether the signature recovers, the anchored leaf, the transaction, an explorer link. Free forever — trust that costs money is not trust. |
+| `oce_style_catalog` | **free** | Every House Style with its real palette, what it is for and wrong for, and a real artifact that passed in it. Call it first — choosing a style blind means paying for a render you did not want. |
+
+Prices were set against **measured** cost (`node scripts/cost-model.mjs`), and every price
+covers what the work actually costs to make — published in full at `/evaluation` and in
+`docs/pricing-rationale.md`. `oce_critique` is the one deliberate loss-leader.
+
+## Long work runs as a job
+
+`oce_launch_kit` is minutes of real work — a browser render, four images, seven pieces of
+copy, each graded. Run it (or any pack tool) with **`oce_create_pack_job`**: same price, no
+timeout, and it survives a restart because its state is on disk, not in a promise. Poll with
+`oce_job_status`, collect with `oce_job_result`, stop with `oce_cancel_job` — **all free.**
+
+Send an `Idempotency-Key` on any paid call and a retry can never charge you twice; if you send
+none, the nonce inside your x402 payment is used as the key, so a plain retry is already safe.
+
+## When we take money and fail
+
+x402 settles before the work runs. If a paid call delivers nothing, that is booked as a
+**refund** against your address, published at `/stats`, and returned on chain. A queued job you
+cancel is refunded in full; a running one is not, because the money is already with the
+providers doing the work — and the tool says so before you call it, not after.
 
 ## Why an agent should call this
 
 - `oce_critique` is the cheapest way for any builder on this marketplace to find out whether
   their own output is actually good, against a standard they can read.
-- `oce_launch_kit` is built for the people shipping products this week.
+- `oce_launch_kit` is built for the people shipping products this week — run it as a job.
 - `oce_verify_keepsake` costs nothing and proves the rest is real.
+- Every SLO is published split into what is **guaranteed** (deterministic, holds every time)
+  and what is **measured** (median and range, because a model is involved). See `/evaluation`.
 
 ## Integrity commitments
 
 - No fake reviews, no fabricated volume, no self-dealing orders. Real usage only.
 - No third-party IP, franchise characters, or celebrity likenesses — the PolicyGate refuses
-  those briefs before any money is spent, and a refused brief is never charged for.
+  those briefs before any money is spent, at the door, before the till. A refused brief is
+  never charged for, and every paid tool is screened, not just some.
 - User content is private by default and deletable. Only a manifest hash is ever anchored.
 - A failed data source degrades a pack into a recorded coverage gap; it never silently fails
-  and never lies to fill the hole.
+  and never lies to fill the hole. Work we could not deliver is declared, never dropped.

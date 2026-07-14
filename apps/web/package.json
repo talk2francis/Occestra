@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start --port 3010",
     "typecheck": "tsc --noEmit",
-    "audit": "node scripts/audit.mjs"
+    "audit": "node scripts/audit.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@occestra/tribunal": "*",

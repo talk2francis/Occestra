@@ -156,11 +156,19 @@ for (const { tool, runs } of plan) {
         repairs: pack.quality.repairedCount,
         artifacts: pack.artifacts.length,
         undelivered,
-        // The reproducible half: did every artifact ship its report, and did every HARD check
-        // that ran actually pass? A hard check that fails must fail the artifact — if one is
-        // failing and the pack still claims a pass, the guarantee is broken, not merely missed.
-        everyArtifactGraded: pack.artifacts.every((a) => Boolean(a.tribunal)),
+        // The reproducible half: did every DELIVERED artifact ship its report, and did every
+        // HARD check that ran actually pass? A hard check that fails must fail the artifact — if
+        // one is failing and the pack still claims a pass, the guarantee is broken, not missed.
+        //
+        // Undelivered artifacts are the declared exception: a provider refused to make the
+        // thing, so there was nothing to grade. They are the SUBJECT of the third guarantee
+        // ("declared, never dropped"), not a violation of the first two — excluding them here
+        // is the difference between measuring the guarantee and measuring around a stub. The
+        // first cut of this harness did NOT exclude them, and reported both guarantees BROKEN
+        // off a single undelivered launch-kit tile: a false alarm on my own accounting.
+        everyArtifactGraded: pack.artifacts.every((a) => a.undelivered || Boolean(a.tribunal)),
         hardChecksHeld: pack.artifacts.every((a) => {
+          if (a.undelivered) return true;
           const report = a.tribunal;
           if (!report) return false;
           const hardFails = report.deterministic.filter((check) => check.hard && !check.passed);

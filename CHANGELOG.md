@@ -7,6 +7,47 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-1.6/1.7: measure it, split the promise, and the bug that only measuring found
+
+**The SLOs are measured, not asserted — and published split in two**, because a single table
+would have been a quiet lie. There are two kinds of promise in this product:
+
+- **Reproducible-exact** — enforced by a deterministic check. A budget sums or
+  `BUDGET_SUM_MISMATCH` fails the artifact. There is no p95 here and no "usually": it is
+  arithmetic, and it holds every time or the pack is marked failed and says so. Publishing these
+  as a percentage would imply they could come out otherwise.
+- **Measured-with-variance** — everything a model touches. Pass rate depends on a critic; latency
+  depends on four providers and the internet. These get a **median and a range**, with the sample
+  size stated, because a single figure would claim a precision we have not earned, and n=2 is not
+  a distribution.
+
+`node scripts/slo.mjs` runs the real tools, prints the estimated bill first, and writes
+`docs/slo.json`, which the new **`/evaluation`** page renders. The critic-determinism work
+(V2-1.0) came before this on purpose: there is no point publishing a spread you have not first
+tried to shrink.
+
+**Measuring caught a bug that failed every buyer of `oce_design_invite`.** It passed its unit
+tests and failed 50–100% of real runs, for two reasons. The invitation *image* was scored
+legibility 30 / platform_fit 30 because the critic graded the artwork as a finished invitation and
+found no names or date inside it — but **every Occestra image is text-free by design** ("type is
+set separately"), which the tool descriptions state to the buyer. The critic did not know; now it
+does, and it will not fail any image tool for lacking lettering it was never meant to carry. And
+the *copy* was a static template with the raw occasion string interpolated, so "Mara & Sam are
+getting married" produced "invited to Mara & Sam are getting married" — now written by the model,
+grounded. **0–50% → 100% across three runs.** A tool can pass every unit test and still fail every
+real buyer; the fix was to measure the real thing.
+
+**The A2A declaration can no longer promise work the pipelines cannot do.** `a2a-drift.test.ts`
+checks every negotiated deliverable against the kind unions the pipelines actually produce, and
+that no bundle floor sits below the à-la-carte price of its own parts — an arbitrage against
+ourselves that nothing was watching for.
+
+**End-to-end coverage that unit tests structurally cannot give:** `scripts/job-smoke.mjs` drives
+the full async lifecycle over real HTTP (refused-at-the-door, create → poll → collect, idempotent
+retry, the health ledger), and `apps/web/tests/smoke.spec.ts` drives the real site with Chromium —
+the two bugs that shipped here before (a 400 on the site's own stylesheet, a nav that vanished on
+mobile) each failed zero unit tests and would have failed this.
+
 ## [Unreleased] — V2-1.3/1.4/1.5: the storefront
 
 **`oce_style_catalog` — free, and the tool to call first.** A `styleId` is an argument on almost
