@@ -15,7 +15,7 @@ import type {
   OccasionContract,
 } from "@occestra/studio-core";
 import { runChecks, sortFindings, type CheckDeps, type CheckResult } from "./checks.js";
-import { AXES, MAX_REPAIRS, OQS_VERSION, passes } from "./rubric.js";
+import { AXES, MAX_REPAIRS, OQS_VERSION, failureClass, passes, type FailureClass } from "./rubric.js";
 
 export interface TribunalReport {
   oqsVersion: string;
@@ -24,6 +24,15 @@ export interface TribunalReport {
   axes?: Record<CritiqueAxis, number>;
   issues: string[];
   pass: boolean;
+  /**
+   * WHAT KIND of failure this is — "correctness" (it says something untrue, or unreadable),
+   * "craft" (it is honest but not well enough made), or "both". Null when it passed.
+   *
+   * The bar has not moved: an artifact that fails on craft alone still fails. But a buyer
+   * reading a fail deserves to know whether they are holding a lie or a rough draft, and a
+   * repair loop that treats those the same is polishing prose on a claim that is false.
+   */
+  failedOn: FailureClass;
   repairs: number;
   notes: string[];
   coverageGaps: string[];
@@ -59,6 +68,8 @@ interface Graded {
   notes: string[];
   coverageGaps: string[];
   pass: boolean;
+  /** Truth, taste, both, or nothing. See rubric.failureClass(). */
+  failedOn: FailureClass;
 }
 
 function hardFailures(results: CheckResult[]): CheckResult[] {
@@ -119,7 +130,9 @@ async function gradeOnce(args: {
     issues.push(`${failure.id}: ${failure.detail}`);
   }
 
-  const pass = passes(axes, hardFailures(deterministic).length);
+  const hard = hardFailures(deterministic).length;
+  const pass = passes(axes, hard);
+  const failedOn = pass ? null : failureClass(axes, hard);
 
   // Even a silent critic must hand the repair loop something actionable.
   if (!pass && !repairBrief) {
@@ -134,6 +147,7 @@ async function gradeOnce(args: {
     notes,
     coverageGaps,
     pass,
+    failedOn,
   };
 }
 
@@ -150,13 +164,22 @@ export function buildRepairBrief(
   }
 
   if (axes) {
-    for (const axis of AXES) {
-      const score = axes[axis.id] ?? 0;
-      if (score < axis.threshold) {
-        lines.push(
-          `- [MUST] ${axis.title} scored ${score}/100 against a floor of ${axis.threshold}. ${axis.description}`,
-        );
-      }
+    // CORRECTNESS FIRST, ALWAYS. If a claim is untrue, improving its composition is
+    // polishing a lie — and a writer handed a mixed list will reach for the easy note.
+    // The order of this brief is the order the work should be done in.
+    const failing = (cls: "correctness" | "craft") =>
+      AXES.filter((axis) => axis.class === cls && (axes[axis.id] ?? 0) < axis.threshold);
+
+    for (const axis of failing("correctness")) {
+      lines.push(
+        `- [MUST — this is a correctness failure] ${axis.title} scored ${axes[axis.id] ?? 0}/100 against a floor of ${axis.threshold}. ${axis.description}`,
+      );
+    }
+
+    for (const axis of failing("craft")) {
+      lines.push(
+        `- [MUST — craft] ${axis.title} scored ${axes[axis.id] ?? 0}/100 against a floor of ${axis.threshold}. ${axis.description}`,
+      );
     }
   }
 
@@ -201,6 +224,7 @@ export async function runTribunal(args: RunTribunalArgs): Promise<TribunalOutcom
     ...(graded.axes ? { axes: graded.axes } : {}),
     issues: graded.issues,
     pass: graded.pass,
+    failedOn: graded.failedOn,
     repairs,
     notes: [...new Set([...notes, ...graded.notes])],
     coverageGaps: [...new Set(coverageGaps)],

@@ -37,6 +37,7 @@ import {
   type WeatherPort,
 } from "../types.js";
 import { estimateTravel, layOutSchedule, type Block, type TimedBlock } from "./travel.js";
+import { localTimeToInstant, wallClock, zoneFor } from "../zones.js";
 import {
   classifyImageFailure,
   ensureStored,
@@ -358,9 +359,28 @@ function buildSchedule(
     };
   });
 
-  // 18:00 local-ish is the honest default for an evening occasion; a model guessing a start
-  // time adds nothing and can contradict the date.
-  const timed = layOutSchedule(`${contract.date.slice(0, 10)}T18:00:00.000Z`, blocks);
+  // 18:00 is the honest default for an evening occasion — but 18:00 WHERE?
+  //
+  // This used to anchor at `${date}T18:00:00.000Z` while the comment beside it claimed
+  // "18:00 local-ish". For Lisbon in August (UTC+1) that renders as 19:00 on the guest's
+  // phone: everyone arrives an hour early. A plan whose times are wrong is not a plan.
+  // The start is now 18:00 on the clock IN THAT CITY, resolved through the platform's
+  // real IANA database. When we do not know the city's zone we say so, and use UTC — a
+  // guessed timezone is the same class of mistake as a guessed exchange rate.
+  const zone = zoneFor(contract.city);
+  const startInstant = zone
+    ? localTimeToInstant(contract.date, 18, zone)
+    : Date.parse(`${contract.date.slice(0, 10)}T18:00:00.000Z`);
+
+  const timed = layOutSchedule(new Date(startInstant).toISOString(), blocks);
+
+  const notes = zone
+    ? [
+        `All times are local to ${contract.city} (${zone}). The ISO timestamps are the exact instants; the "local" fields are what a guest will read on a clock.`,
+      ]
+    : [
+        `We could not resolve a timezone for "${contract.city}", so times are given in UTC. Check them against local time before you send this to anyone.`,
+      ];
 
   return {
     timed,
@@ -370,10 +390,20 @@ function buildSchedule(
       title: "Running order",
       format: "json",
       data: JSON.stringify({
+        // The envelope: this file can now be read without the brief beside it.
+        occasion: contract.occasion,
+        date: contract.date.slice(0, 10),
+        city: contract.city,
+        headcount: contract.headcount,
+        timezone: zone ?? "UTC",
+        notes,
         items: timed.map((block) => ({
           title: block.title,
           start: block.start,
           end: block.end,
+          ...(zone
+            ? { startLocal: wallClock(block.start, zone), endLocal: wallClock(block.end, zone) }
+            : {}),
           ...(block.venue ? { venue: block.venue } : {}),
         })),
       }),
@@ -381,28 +411,98 @@ function buildSchedule(
   };
 }
 
+/**
+ * What people actually pay with, where the occasion happens.
+ *
+ * NOT an exchange rate. We do not hold one, we cannot source one, and inventing one would
+ * be exactly the fabrication the Tribunal exists to catch. This is only used to TELL the
+ * host that the venue will quote them in something other than the currency they budgeted
+ * in — which is a fact, and a useful one.
+ */
+const LOCAL_CURRENCY: ReadonlyArray<{ re: RegExp; code: string }> = [
+  { re: /\b(lisbon|lisboa|porto|madrid|barcelona|paris|berlin|munich|rome|milan|vienna|amsterdam|dublin|athens|brussels|lyon)\b/i, code: "EUR" },
+  { re: /\b(london|manchester|edinburgh|glasgow|bristol)\b/i, code: "GBP" },
+  { re: /\b(lagos|abuja|ibadan|enugu|kano|port harcourt)\b/i, code: "NGN" },
+  { re: /\b(tokyo|osaka|kyoto)\b/i, code: "JPY" },
+  { re: /\b(nairobi|mombasa)\b/i, code: "KES" },
+  { re: /\b(accra|kumasi)\b/i, code: "GHS" },
+  { re: /\b(johannesburg|cape town|durban|pretoria)\b/i, code: "ZAR" },
+  { re: /\b(toronto|vancouver|montreal|ottawa|calgary)\b/i, code: "CAD" },
+  { re: /\b(sydney|melbourne|brisbane|perth)\b/i, code: "AUD" },
+  { re: /\b(mumbai|delhi|bangalore|bengaluru|chennai|kolkata)\b/i, code: "INR" },
+  { re: /\b(dubai|abu dhabi)\b/i, code: "AED" },
+  { re: /\b(são paulo|sao paulo|rio de janeiro)\b/i, code: "BRL" },
+];
+
+function localCurrency(city: string): string | undefined {
+  return LOCAL_CURRENCY.find((entry) => entry.re.test(city))?.code;
+}
+
+/** A reserve, because everything costs more than it says it will. */
+const CONTINGENCY_SHARE = 0.1;
+
+/**
+ * The budget.
+ *
+ * Two defects fixed here, both caught by the Tribunal on a real paid run, and both mine:
+ *
+ *  1. IT WAS ALWAYS "USD". The caller's budget field is `budgetUsd`, so the number really
+ *     is in dollars — but shipping "USD" for a candlelit dinner in LISBON with no comment
+ *     is either an error or an undisclosed assumption, and the reader cannot tell which.
+ *     It now says which, and names the currency the venue will actually quote in. It does
+ *     NOT convert: we have no rate, and an invented rate is a lie with a decimal point.
+ *
+ *  2. THERE WAS NO CONTINGENCY LINE — in a pack whose brief names `contingency` as a
+ *     deliverable. A budget with no reserve is not a budget, it is a wish. Ten percent is
+ *     held back and the rest is scaled around it, so the total still sums exactly.
+ */
 function buildBudget(contract: CelebrateContract, order: WorkOrder): Artifact {
   const total = contract.budgetUsd ?? contract.headcount * 45;
+
+  // The reserve comes off the top; the model's weights divide what is left.
+  const reserve = Math.round(total * CONTINGENCY_SHARE * 100) / 100;
+  const spendable = total - reserve;
 
   const weightSum = order.budgetWeights.reduce((sum, item) => sum + item.weight, 0) || 1;
 
   const items = order.budgetWeights.map((item) => ({
     label: item.label,
-    amount: Math.round(((item.weight / weightSum) * total * 100)) / 100,
+    amount: Math.round((item.weight / weightSum) * spendable * 100) / 100,
   }));
 
-  // Rounding always leaves a few cents. Force the remainder into the last line so the
-  // budget sums EXACTLY — the Tribunal hard-fails a mismatch, and it is right to.
-  const running = items.slice(0, -1).reduce((sum, item) => sum + item.amount, 0);
-  const last = items[items.length - 1];
-  if (last) last.amount = Math.round((total - running) * 100) / 100;
+  items.push({ label: `Contingency reserve (${Math.round(CONTINGENCY_SHARE * 100)}%)`, amount: reserve });
+
+  // Rounding always leaves a few cents. Force the remainder into the LAST SPENDABLE line —
+  // never into the reserve, which must stay exactly the percentage it claims to be. The
+  // Tribunal hard-fails a budget that does not sum, and it is right to.
+  const drift = total - items.reduce((sum, item) => sum + item.amount, 0);
+  const lastSpendable = items[items.length - 2];
+  if (lastSpendable) lastSpendable.amount = Math.round((lastSpendable.amount + drift) * 100) / 100;
+
+  const local = localCurrency(contract.city);
+  const notes = [
+    "Amounts are in USD, because that is the currency the budget was given in.",
+    ...(local && local !== "USD"
+      ? [
+          `${contract.city} prices in ${local}. Venues will quote you in ${local}, and no exchange rate is applied here — we do not have a sourced one, and will not invent one. Convert at the rate you actually get.`,
+        ]
+      : []),
+    `The ${Math.round(CONTINGENCY_SHARE * 100)}% reserve is held back deliberately. It is not spare money; it is the money for the thing that goes wrong.`,
+    "Excludes tips and service charges unless a line item says otherwise.",
+  ];
 
   return artifactOf({
     id: "budget",
     kind: "budget",
     title: "Budget",
     format: "json",
-    data: JSON.stringify({ currency: "USD", total, lineItems: items }),
+    data: JSON.stringify({
+      currency: "USD",
+      total,
+      perHead: Math.round((total / Math.max(1, contract.headcount)) * 100) / 100,
+      lineItems: items,
+      notes,
+    }),
   });
 }
 
@@ -486,7 +586,12 @@ function buildGuestGuide(
   const ink = style?.palette[2] ?? "#17141A";
   const accent = style?.palette[4] ?? "#6B3FA0";
 
-  const time = (iso: string): string => iso.slice(11, 16);
+  // THE SAME TIMEZONE BUG LIVED HERE TOO, in the one document the guests actually read.
+  // `iso.slice(11, 16)` takes the raw UTC hour off the ISO string — so a Lisbon dinner at
+  // 18:00 local printed "17:00" on the guide handed to ten people. The schedule's times
+  // are instants; what a guest needs is the clock on their own wall.
+  const zone = zoneFor(contract.city);
+  const time = (iso: string): string => (zone ? wallClock(iso, zone) : iso.slice(11, 16));
 
   const rows = timed
     .map((block) => {
@@ -534,12 +639,26 @@ function buildGuestGuide(
   p,li{font-size:.95rem}
   a{color:var(--accent)}
   footer{margin-top:3rem;font-size:.8rem;opacity:.55}
+  .note{margin:1.25rem 0 2rem;padding:.85rem 1rem;border-left:3px solid ${accent};background:rgba(0,0,0,.03);font-size:.92rem;line-height:1.55}
 </style>
 </head>
 <body>
 <main>
   <h1>${escapeHtml(contract.occasion)}</h1>
-  <p class="sub">${escapeHtml(contract.date.slice(0, 10))} &middot; ${escapeHtml(contract.city)}</p>
+  <p class="sub">${escapeHtml(contract.date.slice(0, 10))} &middot; ${escapeHtml(contract.city)}${
+    zone ? ` &middot; all times local (${escapeHtml(zone)})` : ""
+  }</p>
+
+  <!--
+    UP FRONT, not buried in the FAQ.
+    The guide used to lay out a venue with coordinates and a map pin like settled fact, and
+    only admit twelve inches lower that nothing was actually booked. A reader who stops
+    before the FAQ walks away believing there is a reservation. Occestra never claims a
+    booking it did not make — so the page says so before it says anything else.
+  -->
+  <p class="note"><strong>Nothing here is booked.</strong> These are real, researched
+  candidates — not reservations. The host confirms the venue; until then, treat every
+  place and time on this page as a proposal.</p>
 
   <table>
 ${rows}

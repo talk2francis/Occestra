@@ -7,6 +7,36 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — pre-V2-1: raise the work to the bar
+
+Keep Claude. Keep the bar. Make the work worthy of it — so every fix here is in the
+GENERATOR, not the grader. Lowering the standard so the defect passes is the cowardly repair.
+
+- **OQS 1.1.0 — the correctness/craft axis split.** Axes now declare what they measure.
+  *Correctness* (grounding, legibility) asks whether the work is TRUE and readable; *craft*
+  (composition, style fidelity, platform fit) asks whether it is well made. **The bar does not
+  move** — every axis still clears 70 and a craft-only failure still fails. What changes is
+  that a failing report can now say WHICH, so a buyer knows whether they hold a lie or a rough
+  draft, and the repair brief puts the untrue thing first: polishing the prose of a false claim
+  is polishing a lie.
+- **The budget said "USD" for a dinner in Lisbon and had no contingency line.** Both were real,
+  both were caught by the critic on a paid run. It now states why it is in dollars, names the
+  currency the venue will actually quote in (**without inventing an exchange rate** — a made-up
+  rate is a lie with a decimal point), holds back a 10% reserve that still sums exactly, and
+  reports a per-head figure.
+- **Every guest would have arrived an hour early.** The schedule anchored occasions at
+  `${date}T18:00:00.000Z` while the comment beside it said "18:00 local-ish". Lisbon in August
+  is UTC+1, so 18:00Z reads as 19:00 on a guest's phone. Times are now anchored to 18:00 on the
+  clock **in that city**, resolved through the platform's real IANA database — and the same bug
+  was fixed a second time in the guest guide, the one document guests actually read, where
+  `iso.slice(11,16)` was printing the raw UTC hour.
+- **The guest guide presented venues as booked.** It laid out a venue with map coordinates like
+  settled fact and only admitted twelve inches lower that nothing was reserved. It now says so
+  before it says anything else. Occestra never claims a booking it did not make.
+- **STANDING RULE: every deterministic check is now tested against JSON, markdown and prose.**
+  `PLACEHOLDER_TEXT` shipped tested only against markdown and hard-failed a good plan by matching
+  the JSON it was made of. A hard check that fires on correct work is worse than no check.
+
 ## [Unreleased] — V2-0: triage
 
 Integrity, honesty, and cost. Nothing in this release adds a feature; all of it stops the

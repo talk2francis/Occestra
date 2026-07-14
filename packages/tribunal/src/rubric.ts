@@ -8,7 +8,7 @@
  */
 import type { CritiqueAxis } from "@occestra/studio-core";
 
-export const OQS_VERSION = "1.0.1";
+export const OQS_VERSION = "1.1.0";
 
 /** Every axis must clear this for an artifact to pass. */
 export const AXIS_PASS_THRESHOLD = 70;
@@ -16,9 +16,28 @@ export const AXIS_PASS_THRESHOLD = 70;
 /** Hard cap on regeneration attempts. Reports ship pass or fail — we never loop forever. */
 export const MAX_REPAIRS = 2;
 
+/**
+ * What an axis is actually measuring.
+ *
+ * CORRECTNESS axes ask "is this TRUE, and can it be read?" — a failure here means the
+ * artifact says something wrong, or says it in a way nobody can use. That is a defect, and
+ * no amount of beautiful composition redeems it.
+ *
+ * CRAFT axes ask "is this WELL MADE?" — structure, style, fitness for its medium. A failure
+ * here means the work is honest but not yet good enough.
+ *
+ * THE BAR DOES NOT MOVE: every axis still has to clear 70, and an artifact that fails on
+ * craft alone still fails. What changes is that the pack can now SAY WHICH, so a buyer can
+ * tell "this is factually wrong" from "this needs another pass", and so the repair brief
+ * can lead with the thing that matters most. A grade that cannot explain itself is a score,
+ * not a standard.
+ */
+export type AxisClass = "correctness" | "craft";
+
 export interface AxisSpec {
   id: CritiqueAxis;
   title: string;
+  class: AxisClass;
   description: string;
   threshold: number;
 }
@@ -26,6 +45,7 @@ export interface AxisSpec {
 export const AXES: readonly AxisSpec[] = [
   {
     id: "composition",
+    class: "craft",
     title: "Composition",
     description:
       "Deliberate structure and hierarchy. Focal point, balance, and breathing room — not a centred blob or a wall of undifferentiated text.",
@@ -33,6 +53,7 @@ export const AXES: readonly AxisSpec[] = [
   },
   {
     id: "legibility",
+    class: "correctness",
     title: "Legibility",
     description:
       "Every word readable at its intended size, on its intended surface. Type sits on adequate contrast and is never crushed, clipped, or overflowing.",
@@ -40,6 +61,7 @@ export const AXES: readonly AxisSpec[] = [
   },
   {
     id: "style_fidelity",
+    class: "craft",
     title: "Style fidelity",
     description:
       "Faithful to the requested House Style — its palette, its type direction, its material and texture language. Not a generic default rendering.",
@@ -47,6 +69,7 @@ export const AXES: readonly AxisSpec[] = [
   },
   {
     id: "grounding",
+    class: "correctness",
     title: "Grounding",
     description:
       "Every factual claim is real, sourced, and timestamped. Nothing invented; nothing overclaimed; uncertainty stated plainly rather than smoothed over.",
@@ -54,6 +77,7 @@ export const AXES: readonly AxisSpec[] = [
   },
   {
     id: "platform_fit",
+    class: "craft",
     title: "Platform fit",
     description:
       "Correct for where it will actually live — dimensions, aspect, length, and tone appropriate to the medium and the audience.",
@@ -196,6 +220,38 @@ export const THRESHOLDS = {
   },
 } as const;
 
+/**
+ * WHY an artifact failed, in the only terms that matter to the person paying.
+ *
+ * The bar is unchanged — this does not decide pass or fail, `passes()` does. It decides what
+ * the pack is allowed to SAY about a failure. "This is factually wrong" and "this needs
+ * another pass on structure" are different sentences, and a buyer deserves the right one.
+ * The repair brief leads with correctness for the same reason: fixing the prose of a claim
+ * that is untrue is polishing a lie.
+ */
+export type FailureClass = "correctness" | "craft" | "both" | null;
+
+export function failureClass(
+  axes: Record<CritiqueAxis, number> | undefined,
+  hardFailures: number,
+): FailureClass {
+  // A hard deterministic failure is a correctness failure by definition: the budget does
+  // not sum, the schedule is impossible, the copy is unfinished. None of that is taste.
+  const hardIsCorrectness = hardFailures > 0;
+
+  const below = (cls: AxisClass): boolean =>
+    Boolean(axes) &&
+    AXES.filter((axis) => axis.class === cls).some((axis) => (axes![axis.id] ?? 0) < axis.threshold);
+
+  const correctness = hardIsCorrectness || below("correctness");
+  const craft = below("craft");
+
+  if (correctness && craft) return "both";
+  if (correctness) return "correctness";
+  if (craft) return "craft";
+  return null;
+}
+
 /** The pass rule, in one place. Every axis clears its threshold AND no hard check failed. */
 export function passes(
   axes: Record<CritiqueAxis, number> | undefined,
@@ -242,10 +298,16 @@ export function rubricAsMarkdown(): string {
   lines.push("");
   lines.push("## Scored axes");
   lines.push("");
-  lines.push("| Axis | Threshold | What it measures |");
-  lines.push("| --- | --- | --- |");
+  lines.push(
+    "Axes are of two kinds. **Correctness** axes ask whether the artifact is *true, and readable* — a failure means it says something wrong, and no amount of beautiful composition redeems that. **Craft** axes ask whether it is *well made*. Both must clear the same floor: an artifact that fails on craft alone still fails. The distinction exists so a failing report can tell you which it is — whether you are holding a lie or a rough draft — and so the repair brief can put the untrue thing first.",
+  );
+  lines.push("");
+  lines.push("| Axis | Kind | Threshold | What it measures |");
+  lines.push("| --- | --- | --- | --- |");
   for (const axis of AXES) {
-    lines.push(`| **${axis.title}** | ${axis.threshold}/100 | ${axis.description} |`);
+    lines.push(
+      `| **${axis.title}** | ${axis.class} | ${axis.threshold}/100 | ${axis.description} |`,
+    );
   }
   lines.push("");
   lines.push("## Deterministic checks");

@@ -3,6 +3,7 @@ export * from "./types.js";
 export * from "./policy.js";
 export * from "./manifest.js";
 export * from "./facts.js";
+export * from "./zones.js";
 export * from "./gaps.js";
 export * from "./pipelines/delivery.js";
 export * from "./pipelines/travel.js";

@@ -200,6 +200,9 @@ export const ScheduleItemSchema = z.object({
   title: z.string().min(1),
   start: z.string().datetime(),
   end: z.string().datetime(),
+  /** What a guest reads on a clock in that city — e.g. "19:00". The ISO fields are instants. */
+  startLocal: z.string().optional(),
+  endLocal: z.string().optional(),
   venue: z
     .object({
       name: z.string().min(1),
@@ -211,6 +214,20 @@ export const ScheduleItemSchema = z.object({
 export type ScheduleItem = z.infer<typeof ScheduleItemSchema>;
 
 export const SchedulePayloadSchema = z.object({
+  /**
+   * The envelope that makes the file READABLE ON ITS OWN.
+   *
+   * A schedule that is a bare array of items forces whoever opens it to go and find the
+   * brief before they can tell which event it even describes. And `timezone` is not a
+   * nicety: times used to ship as UTC for an event on the other side of an offset, which
+   * would have sent every guest to dinner an hour early.
+   */
+  occasion: z.string().optional(),
+  date: z.string().optional(),
+  city: z.string().optional(),
+  headcount: z.number().int().positive().optional(),
+  timezone: z.string().optional(),
+  notes: z.array(z.string()).default([]),
   items: z.array(ScheduleItemSchema).min(1),
 });
 export type SchedulePayload = z.infer<typeof SchedulePayloadSchema>;
@@ -221,6 +238,14 @@ export const BudgetPayloadSchema = z.object({
   lineItems: z
     .array(z.object({ label: z.string().min(1), amount: z.number() }))
     .min(1),
+  /** total / headcount. A budget you cannot read per person is a budget you cannot check. */
+  perHead: z.number().nonnegative().optional(),
+  /**
+   * What the reader has to know to USE the number: which currency it is in, why, and what
+   * it does not cover. A budget for a Lisbon dinner denominated in USD is not wrong — the
+   * buyer asked for USD — but shipping it without saying so is.
+   */
+  notes: z.array(z.string()).default([]),
 });
 export type BudgetPayload = z.infer<typeof BudgetPayloadSchema>;
 
