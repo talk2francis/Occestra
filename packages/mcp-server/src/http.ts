@@ -426,10 +426,46 @@ export function buildApp(ctx: AppContext): Express {
 
   /* -------------------------------------------------------------------- mcp */
 
+  /**
+   * The x402 discovery probe.
+   *
+   * onchainos x402-check / x402-validate probe a paid endpoint with a plain GET (and a POST with
+   * a "business body"), sending `Accept: application/json`, and expect an HTTP 402 carrying the
+   * x402 `accepts` array. Our MCP transport, however, requires `Accept: text/event-stream` and
+   * answers a plain probe with 405 (on GET) or 406 (on POST) — so the checker never saw the 402,
+   * and the listing was rejected. This emits the real 402 challenge to those probes. Genuine MCP
+   * clients send `text/event-stream` and are untouched.
+   *
+   * The probe fee (OCE_X402_PROBE_FEE, default 0.02 USDT) is the amount advertised at the resource
+   * level, kept equal to the fee registered on the marketplace so the token and price line up.
+   */
+  const emitX402Probe = (res: Response): boolean => {
+    if (!(ctx.gate instanceof OkxGate)) return false;
+    const fee = Number(process.env["OCE_X402_PROBE_FEE"] ?? 0.02);
+    const challenge = ctx.gate.challenge("service", fee);
+    res
+      .status(402)
+      .set("PAYMENT-REQUIRED", Buffer.from(JSON.stringify(challenge)).toString("base64"))
+      .type("application/json")
+      .json(challenge);
+    return true;
+  };
+
+  /** A plain buyer probe: no payment proof, and not asking for the MCP event stream. */
+  const isX402Probe = (req: Request): boolean => {
+    const hasPayment = Boolean(req.get("payment-signature") ?? req.get("x-payment"));
+    const wantsStream = (req.get("accept") ?? "").includes("text/event-stream");
+    return !hasPayment && !wantsStream;
+  };
+
   app.post("/mcp", async (req: Request, res: Response) => {
     const body = req.body as
       | { method?: string; params?: { name?: string; arguments?: unknown } }
       | undefined;
+
+    // An x402 discovery probe (Accept: application/json, no payment) gets the challenge, not a
+    // 406 from the MCP transport. A real MCP call — which asks for text/event-stream — proceeds.
+    if (isX402Probe(req) && emitX402Probe(res)) return;
 
     // The context this ONE request runs under. If money moves, the order is attached to it,
     // so a tool that takes payment and then fails knows exactly what it owes and to whom.
@@ -612,6 +648,9 @@ export function buildApp(ctx: AppContext): Express {
 
   // Stateless means stateless: no SSE stream to GET, no session to DELETE.
   app.get("/mcp", (_req, res) => {
+    // A bare GET is how x402-check discovers the service: answer with the 402 challenge (in okx
+    // mode) so the endpoint validates as a real x402 resource, rather than a 405.
+    if (emitX402Probe(res)) return;
     res.status(405).json({ error: "Occestra's MCP endpoint is stateless: POST only." });
   });
   app.delete("/mcp", (_req, res) => {

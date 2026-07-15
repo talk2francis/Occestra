@@ -19,7 +19,7 @@ import {
 } from "@occestra/providers";
 import { Sealer, verifySeal } from "@occestra/receipts";
 import type { EngineDeps } from "@occestra/studio-core";
-import { DevGate, OkxGate, PRICES, TOOL_NAMES, toAtomic } from "../src/gate.js";
+import { DEFAULT_ASSET, DevGate, OkxGate, PRICES, TOOL_NAMES, toAtomic } from "../src/gate.js";
 import { buildGrader } from "../src/grader.js";
 import { buildApp } from "../src/http.js";
 import { buildServer, type ServerContext } from "../src/server.js";
@@ -573,6 +573,37 @@ describe("http surface", () => {
 
     const body = await response.json();
     expect(body).toEqual(decoded); // body and header agree
+  });
+
+  it("emits an x402 challenge to a PLAIN buyer probe — GET and POST with Accept: application/json", async () => {
+    // onchainos x402-check probes with a bare GET and a POST carrying Accept: application/json,
+    // and requires an HTTP 402 with the accepts array. Our MCP transport wants text/event-stream
+    // and answered 405/406, so the checker never saw the 402 and the listing was rejected.
+    await start(new OkxGate({ store: makeCtx().store, treasury: TREASURY, chainId: 196 }));
+
+    // GET probe.
+    const get = await fetch(`${base}/mcp`, { headers: { accept: "application/json" } });
+    expect(get.status).toBe(402);
+    const getBody = await get.json();
+    expect(getBody.accepts[0].asset).toBe(DEFAULT_ASSET);
+    expect(getBody.accepts[0].network).toBe("eip155:196");
+    expect(get.headers.get("PAYMENT-REQUIRED")).toBeTruthy();
+
+    // POST probe with a non-MCP body.
+    const post = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify({ probe: true }),
+    });
+    expect(post.status).toBe(402);
+
+    // A REAL MCP client asking for the event stream is NOT probe-hijacked.
+    const real = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { accept: "application/json, text/event-stream", "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+    });
+    expect(real.status).toBe(200);
   });
 
   it("does the work in dev mode, and never gates the free tool even under a real gate", async () => {
