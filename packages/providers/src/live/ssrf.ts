@@ -12,6 +12,9 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
+/** How long a DNS resolution may take before the host is treated as unreachable. */
+const DNS_TIMEOUT_MS = 5_000;
+
 /** Parse an IPv4 dotted quad into its 32-bit integer, or undefined if it is not one. */
 function v4ToInt(ip: string): number | undefined {
   const parts = ip.split(".");
@@ -111,10 +114,20 @@ export async function assertPublicUrl(rawUrl: string): Promise<void> {
   const host = new URL(rawUrl).hostname.replace(/^\[|\]$/g, "");
   if (isIP(host)) return; // a literal already passed blockedHostSync
 
+  // DNS lookup with its OWN timeout. Node's `lookup` has none, and a domain pointed at a
+  // hanging resolver would otherwise stall forever — the link checker calls this on every
+  // referenced URL, so one bad DNS server could hang a whole launch kit. A resolve that does
+  // not finish in time is treated as unreachable, which is the safe verdict.
   let addresses: { address: string }[];
   try {
-    addresses = await lookup(host, { all: true });
-  } catch {
+    addresses = await Promise.race([
+      lookup(host, { all: true }),
+      new Promise<never>((_resolve, reject) =>
+        setTimeout(() => reject(new SsrfError("DNS lookup timed out")), DNS_TIMEOUT_MS).unref?.(),
+      ),
+    ]);
+  } catch (error) {
+    if (error instanceof SsrfError) throw error;
     throw new SsrfError("refusing to fetch a URL whose host does not resolve");
   }
 

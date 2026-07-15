@@ -28,7 +28,8 @@ export type DemoEvent =
   | { type: "run_complete"; pack: unknown }
   | { type: "run_failed"; message: string; reason: "policy" | "error" };
 
-const StyleId = z.enum(["amethyst_editorial", "gilded_noir", "sunprint", "atlas_ink"]);
+import { HouseStyleIdSchema } from "@occestra/studio-core";
+const StyleId = HouseStyleIdSchema;
 
 const DemoBody = z.discriminatedUnion("tool", [
   z.object({

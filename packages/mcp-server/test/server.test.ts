@@ -528,7 +528,7 @@ describe("http surface", () => {
     expect(manifest.refunds.policy).toContain("settles before the work runs");
     expect(manifest.provenance.verify).toContain("free");
     expect(manifest.tools.find((t: { name: string }) => t.name === "oce_verify_keepsake").free).toBe(true);
-    expect(manifest.styles).toHaveLength(4);
+    expect(manifest.styles).toHaveLength(10);
     expect(manifest.quality.version).toBe(OQS_VERSION);
   });
 

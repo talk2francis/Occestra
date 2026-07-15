@@ -1,0 +1,14 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os"; import { join } from "node:path";
+import { buildDeps } from "@occestra/providers";
+import { buildGrader } from "@occestra/mcp-server/dist/grader.js";
+import { launchKit } from "@occestra/mcp-server/dist/pipelines.js";
+import { Store } from "@occestra/mcp-server/dist/store.js";
+const dir = mkdtempSync(join(tmpdir(), "oce-lk-")); const store = new Store({ dataDir: dir, baseUrl: "http://t" });
+const built = buildDeps(process.env, { storage: store.storage });
+const ctx = { deps: built.deps, store, grader: buildGrader({ deps: built.deps, linkChecker: built.linkChecker }), coverageGaps: [], linkChecker: built.linkChecker, governor: built.governor };
+const t0 = Date.now();
+const pack = await launchKit(ctx, { productName: "Tidepool", description: "A calm inbox for people who work in focus blocks.", audience: "indie makers", styleId: "neon_reverie" });
+console.log(`launch_kit(no-url) ${(Date.now()-t0)/1000}s passRate ${pack.quality.passRate} undelivered ${pack.quality.undeliveredCount}`);
+console.log("LK DONE");
+store.close(); rmSync(dir, { recursive: true, force: true });

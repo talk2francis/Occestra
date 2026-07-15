@@ -26,6 +26,12 @@ export const HouseStyleIdSchema = z.enum([
   "gilded_noir",
   "sunprint",
   "atlas_ink",
+  "solstice_bloom",
+  "jazz_age",
+  "paper_lantern",
+  "porcelain_garden",
+  "neon_reverie",
+  "terra_fresco",
 ]);
 export type HouseStyleId = z.infer<typeof HouseStyleIdSchema>;
 

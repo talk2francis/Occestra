@@ -130,4 +130,10 @@ export const HOUSE_STYLE_NAMES = [
   { id: "gilded_noir", name: "Gilded Noir" },
   { id: "sunprint", name: "Sunprint" },
   { id: "atlas_ink", name: "Atlas Ink" },
+  { id: "solstice_bloom", name: "Solstice Bloom" },
+  { id: "jazz_age", name: "Jazz Age" },
+  { id: "paper_lantern", name: "Paper Lantern" },
+  { id: "porcelain_garden", name: "Porcelain Garden" },
+  { id: "neon_reverie", name: "Neon Reverie" },
+  { id: "terra_fresco", name: "Terra Fresco" },
 ] as const;

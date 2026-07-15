@@ -10,7 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { verifySeal, leafOfSeal, chainFor } from "@occestra/receipts";
 import { rubricAsJson } from "@occestra/tribunal";
-import { sanitizeGaps, sanitizeTribunal, saltedManifestCommitment, type Pack } from "@occestra/studio-core";
+import { sanitizeGaps, sanitizeTribunal, saltedManifestCommitment, type HouseStyleId, type Pack } from "@occestra/studio-core";
 import { PACK_TOOLS, PRICES, type PackToolName, type ToolName } from "./gate.js";
 import { HOUSE_STYLES } from "@occestra/providers";
 import type { JobQueue } from "./jobs.js";
@@ -29,9 +29,11 @@ import type { Store } from "./store.js";
 
 export const VERSION = "1.0.0";
 
-const STYLE_IDS = ["amethyst_editorial", "gilded_noir", "sunprint", "atlas_ink"] as const;
+// Derived from the styles themselves, so a new House Style is offered by every tool the moment
+// it is defined — no second list to forget to update.
+const STYLE_IDS = Object.keys(HOUSE_STYLES) as [HouseStyleId, ...HouseStyleId[]];
 const StyleId = z.enum(STYLE_IDS).describe(
-  "House Style. Call oce_style_catalog (FREE) to see the real palette of each one, what it is for, and a real passing example. Short version: amethyst_editorial = warm ivory editorial collage, the safe default. gilded_noir = near-black + champagne gold, black-tie. sunprint = cyanotype blues, the right register for a MEMORY. atlas_ink = map-and-ledger, for anything a person has to read and act on.",
+  "House Style. Call oce_style_catalog (FREE) to see the real palette of all ten, what each is for, and a real passing example. In short: amethyst_editorial = warm ivory editorial (the safe default); gilded_noir = black + gold, black-tie; jazz_age = art-deco geometry, glamorous; solstice_bloom = pressed-flower botanicals, sunny; paper_lantern = festival paper-cut, communal; sunprint = cyanotype blues, for a MEMORY; porcelain_garden = blue-white chinaware, delicate keepsakes; terra_fresco = ochre plaster, travel & rustic; neon_reverie = luminous dark minimalism, launch-native; atlas_ink = map-and-ledger, for itineraries.",
 );
 
 /** JSON with bigints rendered as decimal strings — a seal carries them. */

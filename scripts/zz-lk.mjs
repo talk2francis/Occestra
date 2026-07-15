@@ -1,0 +1,15 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os"; import { join } from "node:path";
+import { buildDeps } from "@occestra/providers";
+import { buildGrader } from "@occestra/mcp-server/dist/grader.js";
+import { launchKit } from "@occestra/mcp-server/dist/pipelines.js";
+import { Store } from "@occestra/mcp-server/dist/store.js";
+const dir = mkdtempSync(join(tmpdir(), "oce-lk-")); const store = new Store({ dataDir: dir, baseUrl: "http://t" });
+const built = buildDeps(process.env, { storage: store.storage });
+const ctx = { deps: built.deps, store, grader: buildGrader({ deps: built.deps, linkChecker: built.linkChecker }), coverageGaps: [], linkChecker: built.linkChecker, governor: built.governor };
+const t0 = Date.now();
+const pack = await launchKit(ctx, { productName: "Occestra", url: "https://occestra.xyz", description: "An occasion studio that grades its own work against a published standard.", audience: "agents and the people who build them" });
+console.log(`launch_kit ${(Date.now()-t0)/1000}s | passRate ${pack.quality.passRate} | undelivered ${pack.quality.undeliveredCount} | packGrade ${JSON.stringify(pack.quality.packGrade)}`);
+for (const a of pack.artifacts) console.log(`  ${a.kind} ${a.format} -> ${a.tribunal?.profile} ${a.tribunal?.pass?"PASS":"fail"}`);
+console.log("spent:", built.governor.spentUsd.toFixed(4), "LK DONE");
+store.close(); rmSync(dir, { recursive: true, force: true });

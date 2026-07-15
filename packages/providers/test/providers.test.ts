@@ -585,16 +585,32 @@ describe("buildDeps", () => {
 /* ------------------------------------------------------------------- styles */
 
 describe("house styles", () => {
-  it("ships four versioned styles, each with a real palette and negative prompt", () => {
+  it("ships ten versioned styles, each with a real palette, negative prompt, and applicability", () => {
     const ids = Object.keys(HOUSE_STYLES);
-    expect(ids).toEqual(["amethyst_editorial", "gilded_noir", "sunprint", "atlas_ink"]);
+    expect(ids).toEqual([
+      "amethyst_editorial",
+      "gilded_noir",
+      "sunprint",
+      "atlas_ink",
+      "solstice_bloom",
+      "jazz_age",
+      "paper_lantern",
+      "porcelain_garden",
+      "neon_reverie",
+      "terra_fresco",
+    ]);
 
     for (const style of Object.values(HOUSE_STYLES)) {
+      expect(style.id).toBeTruthy();
       expect(style.version).toMatch(/^\d+\.\d+\.\d+$/);
       expect(style.palette.length).toBeGreaterThanOrEqual(5);
       expect(style.palette.every((hex) => /^#[0-9A-F]{6}$/i.test(hex))).toBe(true);
       expect(style.promptSystem.length).toBeGreaterThan(400); // art direction, not a vibe word
       expect(style.negativePrompt).toContain("no watermarks");
+      // Every style is gated to at least one studio, and its guidance is written.
+      expect(style.appliesTo.studios.length).toBeGreaterThan(0);
+      expect(style.bestFor.length).toBeGreaterThan(20);
+      expect(style.wrongFor.length).toBeGreaterThan(10);
     }
   });
 

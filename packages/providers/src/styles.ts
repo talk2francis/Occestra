@@ -142,11 +142,209 @@ export const ATLAS_INK: HouseStyle = {
   seedStrategy: "contract_hash",
 };
 
+export const SOLSTICE_BLOOM: HouseStyle = {
+  id: "solstice_bloom",
+  name: "Solstice Bloom",
+  version: "1.0.0",
+  promptSystem: [
+    "Medium: pressed-flower botanicals and cut-paper collage on warm cream stock, as though from a summer almanac.",
+    "Build the image from real pressed petals, translucent leaf skeletons, and torn hand-painted paper. Layer them with faint drop-shadows so each element sits just above the page. Physical, tactile, sun-warmed — never flat vector clip-art.",
+    "Composition: an off-centre bloom or spray as the focal element, with a loose asymmetric scatter of smaller botanicals trailing to one edge and generous cream space on the other. Never a symmetrical wreath. Never fill the frame.",
+    "Light: high, warm midsummer sun. Long soft shadows, honest falloff, a faint golden cast at the edges. No glow, no rim light.",
+    "Colour: cream and soft sage ground, with coral, marigold and a single deep rose doing the singing. Warm and outdoor, never pastel-nursery.",
+    "Texture: paper tooth, the fine veining of a real petal, faint watercolour bleed at the edges of the painted shapes.",
+    "Mood: generous, sunlit, celebratory without being loud. The image should feel like the first warm evening of the year.",
+  ].join("\n"),
+  palette: ["#FBF6EC", "#E7EBD3", "#F4A259", "#E76F51", "#C44536", "#6A7B53"],
+  typeDirection:
+    "A humanist serif with a little warmth for the headline, set large and airy. A clean grotesk for details. Let the botanicals frame the type; never overlap them onto small copy.",
+  negativePrompt: [
+    "no symmetrical wreaths, no clip-art flowers",
+    "no neon, no glow, no gradients",
+    "no 3D render, no glossy plastic",
+    "no nursery pastels, no baby-shower cuteness",
+    "no stock-photo faces",
+    "no watermarks, no signatures, no gibberish lettering",
+  ].join(", "),
+  bestFor:
+    "Summer and daytime celebrations — garden parties, warm-season weddings, birthdays that want warmth over formality. A brighter, sunnier alternative to Amethyst Editorial for the celebrate studio.",
+  wrongFor:
+    "Anything nocturnal or formal (Gilded Noir), or a memory that wants stillness (Sunprint). It runs warm and awake.",
+  appliesTo: { studios: ["celebrate", "remember"] },
+  seedStrategy: "contract_hash",
+};
+
+export const JAZZ_AGE: HouseStyle = {
+  id: "jazz_age",
+  name: "Jazz Age",
+  version: "1.0.0",
+  promptSystem: [
+    "Medium: art-deco poster art, as though screen-printed for a 1920s theatre bill in gold ink on deep lacquer.",
+    "Build the image from hard geometric forms — sunburst fans, stepped ziggurats, chevrons, concentric arcs — in flat metallic gold over emerald and ink. Draughtsman-precise line-work, no painterly softness.",
+    "Composition: strong vertical symmetry OR a single bold diagonal, always anchored on a central axis. A commanding focal motif framed by radiating geometry. Deliberate, architectural, theatrical.",
+    "Light: not naturalistic — light is implied by the metallic sheen of the gold against the dark ground. Crisp, high-contrast, lacquered.",
+    "Colour: deep emerald and near-black ink ground; champagne and antique gold for the geometry. One optional accent of oxblood. Rich and jewel-toned, never garish.",
+    "Texture: fine screen-print grain, a faint sheen on the gold, the flat matte of the dark ground. Nothing distressed — this is opulent, not vintage-worn.",
+    "Mood: glamorous, formal, electric with the confidence of the 1920s. The image should feel like an invitation you would keep.",
+  ].join("\n"),
+  palette: ["#0E1F1A", "#123A2E", "#C9A227", "#E8D08B", "#7A1F2B", "#F3EEE0"],
+  typeDirection:
+    "A geometric deco display face for the headline — high-waisted, all-caps, tightly kerned, ideally with a subtle inline or a hairline gold rule beneath. A clean geometric sans for details. Symmetry is welcome here.",
+  negativePrompt: [
+    "no distressed or grungy vintage textures",
+    "no neon, no modern gradients",
+    "no 3D render, no glossy plastic",
+    "no painterly softness, no watercolour",
+    "no stock-photo faces",
+    "no watermarks, no signatures, no gibberish lettering",
+  ].join(", "),
+  bestFor:
+    "Formal and glamorous occasions — galas, milestone anniversaries, black-tie parties, a launch that wants theatrical confidence. Deco geometry where Gilded Noir is more restrained.",
+  wrongFor:
+    "Tender or quiet moments, and daytime warmth. It is bold and architectural, not intimate.",
+  appliesTo: { studios: ["celebrate", "launch"] },
+  seedStrategy: "contract_hash",
+};
+
+export const PAPER_LANTERN: HouseStyle = {
+  id: "paper_lantern",
+  name: "Paper Lantern",
+  version: "1.0.0",
+  promptSystem: [
+    "Medium: layered paper-cut art (jianzhi / kirigami feel), as though lit from behind by festival lanterns.",
+    "Build the image from stacked cut-paper layers with clean scissored edges, each casting a soft shadow on the one beneath, so depth comes from real overlapping paper. Silhouette-forward.",
+    "Composition: a warm central glow — a lantern, a moon, a doorway of light — with cut-paper motifs (blossoms, cranes, foliage, figures) radiating outward in symmetrical or gently mirrored arrangement. Communal, welcoming.",
+    "Light: warm lantern-light from within the scene, glowing through the translucent paper layers. Soft haloed edges where the light bleeds through; deep shadow where the paper stacks.",
+    "Colour: festival reds and vermilion, warm gold, with pockets of deep indigo night behind the glow. Celebratory and warm, never fluorescent.",
+    "Texture: the fibrous edge of torn and cut mulberry paper, a faint grain in the flat colours, the soft gradient of backlight through paper.",
+    "Mood: communal, festive, generous — the feeling of a street of lanterns on a warm night. Made to gather people.",
+  ].join("\n"),
+  palette: ["#2A1213", "#C1272D", "#E8452B", "#F2A63B", "#F6E7C1", "#3B2F6B"],
+  typeDirection:
+    "A warm humanist serif or a softly brushed display face for the headline; a clean sans for details. Center-weighted layouts suit the symmetry. Keep type clear of the busiest cut-paper areas.",
+  negativePrompt: [
+    "no photographic realism, no 3D render",
+    "no neon or electric glow (the light is warm paper-light)",
+    "no gradients that look digital",
+    "no clip-art, no flat vector sterility",
+    "no stock-photo faces",
+    "no watermarks, no signatures, no gibberish lettering",
+  ].join(", "),
+  bestFor:
+    "Communal celebrations — festivals, big family gatherings, reunions, cultural occasions, housewarmings. Warmth and togetherness for the celebrate studio.",
+  wrongFor:
+    "Corporate launches and formal black-tie work. It is warm and folk-rooted, not sleek.",
+  appliesTo: { studios: ["celebrate", "remember"] },
+  seedStrategy: "contract_hash",
+};
+
+export const PORCELAIN_GARDEN: HouseStyle = {
+  id: "porcelain_garden",
+  name: "Porcelain Garden",
+  version: "1.0.0",
+  promptSystem: [
+    "Medium: blue-and-white chinaware painting, as though glazed onto fine porcelain — the tradition of delft and qinghua.",
+    "Build the image from fine cobalt brushwork on a warm white glaze: florals, vines, birds, and scrolling borders, painted with the controlled bleed of pigment into wet glaze. Hand-painted, never printed-flat.",
+    "Composition: a central floral spray or vignette framed by a delicate scrolling border, with calm white space between motifs. Balanced, unhurried, gently symmetrical.",
+    "Light: even, diffuse studio light on a glazed surface — a faint sheen across the white, the cobalt reading darker where the brush pooled. No harsh shadow.",
+    "Colour: warm porcelain white ground and cobalt blue, in every value from pale wash to deep indigo. Optionally the faintest crackle-glaze warmth. Restrained and cool; blue is the only hue.",
+    "Texture: the soft bleed of cobalt into glaze, hairline crackle in the white, the smooth sheen of fired porcelain.",
+    "Mood: delicate, heirloom, quietly precious. The image should feel like something kept in a cabinet and handed down.",
+  ].join("\n"),
+  palette: ["#F7F5EF", "#EDF1F5", "#2B4C8C", "#1B2E5A", "#6E93C4", "#B9C9DE"],
+  typeDirection:
+    "A fine transitional serif with delicate hairlines for the headline; keep it small and precise, never bold. Let the cobalt borders do the framing. A quiet sans for functional detail.",
+  negativePrompt: [
+    "no colours other than the blue/white family",
+    "no neon, no glow, no gradients that look digital",
+    "no 3D render, no glossy plastic",
+    "no heavy or grungy textures",
+    "no stock-photo faces",
+    "no watermarks, no signatures, no gibberish lettering",
+  ].join(", "),
+  bestFor:
+    "Delicate keepsakes and heirloom-feeling memories — a christening, an anniversary of someone gone, a quiet family milestone. An alternative to Sunprint for the remember studio when the feeling is fine rather than nostalgic-warm.",
+  wrongFor:
+    "Loud celebrations and launches. It is hushed and precious, and it uses only blue.",
+  appliesTo: { studios: ["remember", "celebrate"] },
+  seedStrategy: "contract_hash",
+};
+
+export const NEON_REVERIE: HouseStyle = {
+  id: "neon_reverie",
+  name: "Neon Reverie",
+  version: "1.0.0",
+  promptSystem: [
+    "Medium: luminous minimalism — a single glowing form in a deep dark field, as though a neon sign photographed in a night studio.",
+    "Build the image from one or two clean luminous shapes (a line, an arc, a simple geometric mark) glowing against near-black. Restraint is the whole point: one light source, vast dark space, nothing cluttering it.",
+    "Composition: a single off-centre luminous focal element with enormous negative space of deep colour around it. Calm, confident, modern. Never busy, never a collage.",
+    "Light: the glow IS the light — soft electric bloom radiating from the luminous form into the dark, a gentle falloff, a faint reflection beneath. This is the one style where glow belongs.",
+    "Colour: deep aubergine and midnight-violet ground; electric magenta, violet, and a cool cyan edge for the glow. Saturated but disciplined — two or three luminous hues, no rainbow.",
+    "Texture: near-none — a clean matte dark field, a faint grain, the soft bloom of the light. Minimal and premium.",
+    "Mood: nocturnal, modern, quietly electric. The image should feel like a product launched at midnight — assured, not loud.",
+  ].join("\n"),
+  palette: ["#120A1F", "#1E1036", "#C724B1", "#7A2FF2", "#38BDF8", "#F4EBFF"],
+  typeDirection:
+    "A clean geometric sans, light or medium weight, generously spaced — set small and calm against the dark so the glow carries the drama. Never a script, never a serif. Let the luminous form be the hero.",
+  negativePrompt: [
+    "no clutter, no collage, no busy backgrounds",
+    "no daylight or warm paper tones",
+    "no skeuomorphic 3D render, no glossy plastic bevels",
+    "no rainbow of neon — keep to two or three hues",
+    "no stock-photo faces",
+    "no watermarks, no signatures, no gibberish lettering",
+  ].join(", "),
+  bestFor:
+    "Launch-native and nocturnal work — a software or product launch that wants a modern, premium, after-dark feel; the hero image and the mark. Built for the launch studio.",
+  wrongFor:
+    "Warm, tactile, heirloom occasions. It is cool, dark, and digital by design — the opposite of a pressed flower.",
+  appliesTo: { studios: ["launch", "celebrate"] },
+  seedStrategy: "contract_hash",
+};
+
+export const TERRA_FRESCO: HouseStyle = {
+  id: "terra_fresco",
+  name: "Terra Fresco",
+  version: "1.0.0",
+  promptSystem: [
+    "Medium: fresco painting on a plaster wall, as though a sun-faded mural in a Mediterranean courtyard.",
+    "Build the image from matte pigment worked into rough plaster — earthy, chalky, with the faint texture of the wall showing through. Painterly and warm, with the soft edges of pigment absorbed into damp lime.",
+    "Composition: a grounded, calm arrangement — a horizon, an arch, a still-life of the land — with a strong sense of place and generous warm space. Rustic but composed, never cluttered.",
+    "Light: high dry Mediterranean sun, warm and even, with the gentle bleaching of a fresco that has faced south for a century. Soft shadows, no gloss.",
+    "Colour: terracotta, ochre, warm sand and olive, with a chalky sky-blue accent. Sun-baked, earthy, faded rather than saturated.",
+    "Texture: the tooth of plaster, the chalk of dry pigment, hairline age-cracks, a faint uneven wash where the colour soaked in.",
+    "Mood: warm, grounded, unhurried — the feeling of a long lunch in the shade. Made for places and journeys.",
+  ].join("\n"),
+  palette: ["#F0E4D0", "#E4C59E", "#C97B4A", "#A8482B", "#7C8A4E", "#4E7C8A"],
+  typeDirection:
+    "A warm old-style serif with a hand-cut feel for the headline; a simple humanist sans for details. Let the plaster texture sit behind, and keep type in the calmer areas so the tooth does not fight the letters.",
+  negativePrompt: [
+    "no neon, no glow, no digital gradients",
+    "no 3D render, no glossy plastic",
+    "no cold or corporate palettes",
+    "no heavy grunge — this is faded, not dirty",
+    "no stock-photo faces",
+    "no watermarks, no signatures, no gibberish lettering",
+  ].join(", "),
+  bestFor:
+    "Travel keepsakes and rustic, place-rooted occasions — a trip remembered, a countryside wedding, a harvest supper. Warm and grounded for the remember and celebrate studios.",
+  wrongFor:
+    "Sleek launches and formal black-tie. It is earthy and sun-faded, not sharp.",
+  appliesTo: { studios: ["remember", "celebrate"] },
+  seedStrategy: "contract_hash",
+};
+
 export const HOUSE_STYLES: Readonly<Record<HouseStyleId, HouseStyle>> = Object.freeze({
   amethyst_editorial: AMETHYST_EDITORIAL,
   gilded_noir: GILDED_NOIR,
   sunprint: SUNPRINT,
   atlas_ink: ATLAS_INK,
+  solstice_bloom: SOLSTICE_BLOOM,
+  jazz_age: JAZZ_AGE,
+  paper_lantern: PAPER_LANTERN,
+  porcelain_garden: PORCELAIN_GARDEN,
+  neon_reverie: NEON_REVERIE,
+  terra_fresco: TERRA_FRESCO,
 });
 
 export function styleFor(id: HouseStyleId): HouseStyle {
