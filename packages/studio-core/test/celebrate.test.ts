@@ -180,6 +180,9 @@ const style: HouseStyle = {
   typeDirection: "serif",
   negativePrompt: "no gloss",
   seedStrategy: "contract_hash",
+  appliesTo: { studios: ["celebrate", "remember", "launch"] },
+  bestFor: "test",
+  wrongFor: "test",
 };
 
 const makeDeps = (over: Partial<CelebrateDeps> = {}): CelebrateDeps => ({

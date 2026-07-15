@@ -738,6 +738,7 @@ export function buildServer(ctx: ServerContext): McpServer {
             id: style.id,
             name: style.name,
             version: style.version,
+            appliesTo: style.appliesTo.studios,
             bestFor: style.bestFor,
             wrongFor: style.wrongFor,
             palette: style.palette,

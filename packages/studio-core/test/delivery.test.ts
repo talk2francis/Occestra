@@ -34,6 +34,9 @@ const style: HouseStyle = {
   typeDirection: "editorial serif + precise grotesk",
   negativePrompt: "no gloss",
   seedStrategy: "contract_hash",
+  appliesTo: { studios: ["celebrate", "remember", "launch"] },
+  bestFor: "test",
+  wrongFor: "test",
 };
 
 const PNG_1PX =

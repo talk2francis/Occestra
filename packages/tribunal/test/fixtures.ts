@@ -37,6 +37,9 @@ export const sunprint: HouseStyle = {
   typeDirection: "editorial serif",
   negativePrompt: "no neon, no gradients",
   seedStrategy: "contract_hash",
+  appliesTo: { studios: ["celebrate", "remember", "launch"] },
+  bestFor: "test",
+  wrongFor: "test",
 };
 
 export const artifact = (over: Partial<Artifact> = {}): Artifact => ({

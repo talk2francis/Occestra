@@ -40,9 +40,10 @@ import {
   ensureStored,
   imageQualityFor,
   isUndelivered,
+  composeImagePrompt,
 } from "@occestra/studio-core";
 import { OQS_VERSION, gradePack, runTribunal, type TribunalReport } from "@occestra/tribunal";
-import { HOUSE_STYLES, styleSystemPrompt, type CostGovernor } from "@occestra/providers";
+import { HOUSE_STYLES, resolveStyleForStudio, type CostGovernor } from "@occestra/providers";
 import { Sealer, leafOfSeal } from "@occestra/receipts";
 import { PRICES } from "./gate.js";
 import type { Store } from "./store.js";
@@ -220,7 +221,7 @@ async function makeImage(
   const style = HOUSE_STYLES[args.styleId];
 
   const result = await ctx.deps.image.generate({
-    prompt: `${styleSystemPrompt(style)}\n\nSUBJECT:\n${args.subject}`,
+    prompt: composeImagePrompt(args.subject, style),
     negative: style.negativePrompt,
     size: args.size,
     quality: args.quality,
@@ -796,10 +797,18 @@ export interface LaunchKitInput {
 
 /** The full LAUNCH studio (Phase 8). Pipeline is pure; the world arrives through ports. */
 export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Promise<Pack> {
+  // Gate the requested style to launch work. atlas_ink on a software launch would try to render
+  // a map where a wordmark was asked for — the exact defect subject_fidelity now catches. We
+  // substitute a launch-appropriate style up front rather than let it happen and then fail it.
+  const resolved = resolveStyleForStudio(input.styleId, "launch");
+  const styleGaps = resolved.substituted
+    ? [`STYLE_SUBSTITUTED: ${resolved.substituted.reason}`]
+    : [];
+
   const contract: LaunchContract = {
     id: `l_${ctx.deps.clock.now()}`,
     studio: "launch",
-    styleId: input.styleId ?? "amethyst_editorial",
+    styleId: resolved.style.id,
     createdAt: nowIso(ctx),
     requester: "agent",
     productName: input.productName,
@@ -839,7 +848,7 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
   const withCard = await deriveOgCard(ctx, pack);
 
   let sealed: Pack = withPackGrade(
-    { ...withCard, coverageGaps: [...new Set([...ctx.coverageGaps, ...withCard.coverageGaps])] },
+    { ...withCard, coverageGaps: [...new Set([...ctx.coverageGaps, ...styleGaps, ...withCard.coverageGaps])] },
     contract,
   );
 

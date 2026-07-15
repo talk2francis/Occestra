@@ -7,6 +7,22 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-2.2: style gating, and a subject-first prompt
+
+Two defences against the map incident, upstream of the critic that now catches it.
+
+**Styles are gated to the work they suit.** Every House Style gains `appliesTo.studios`. atlas_ink
+— map-and-ledger — is for celebrate itineraries and is **excluded from launch brand work**, where
+its motifs would try to become the subject. Ask for atlas_ink on a software launch and the
+pipeline substitutes a launch-appropriate style and **records the substitution** as a coverage
+gap; it is never silent. The catalog and manifest now publish each style's `appliesTo`.
+
+**The image prompt leads with the SUBJECT.** It used to lead with the House Style and append the
+subject last — which is how a wordmark came back as a map: the style's recurring motifs drifted
+into becoming the subject. `composeImagePrompt(subject, style)` now puts the subject first and
+names the style explicitly as a *treatment* that must not replace it. Prevention at generation,
+one layer before the grader.
+
 ## [Unreleased] — OQS 1.2: rubric profiles, and the axis the map incident needed
 
 Grading everything on the same five axes was a category error, and it shipped a real defect: a

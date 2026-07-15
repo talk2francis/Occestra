@@ -28,6 +28,7 @@ import {
   type SourceTag,
   type StoragePort,
   type TextModelPort,
+  composeImagePrompt,
 } from "../types.js";
 import { factsBlock, type RunFacts } from "../facts.js";
 import { PolicyRefusal } from "./celebrate.js";
@@ -313,16 +314,7 @@ async function makeImage(
 ): Promise<string> {
   const result = await deps.image.generate({
     quality: args.quality,
-    prompt: [
-      `HOUSE STYLE: ${args.style.name} (v${args.style.version})`,
-      args.style.promptSystem,
-      `PALETTE (stay inside it): ${args.palette.join(", ")}`,
-      `TYPOGRAPHY: ${args.style.typeDirection}`,
-      `NEVER: ${args.style.negativePrompt}`,
-      "",
-      "SUBJECT:",
-      args.subject,
-    ].join("\n"),
+    prompt: composeImagePrompt(args.subject, args.style),
     negative: args.style.negativePrompt,
     size: args.size,
   });

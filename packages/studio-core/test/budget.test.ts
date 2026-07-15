@@ -27,6 +27,9 @@ const style: HouseStyle = {
   typeDirection: "small-caps grotesk",
   negativePrompt: "no gloss",
   seedStrategy: "contract_hash",
+  appliesTo: { studios: ["celebrate", "remember", "launch"] },
+  bestFor: "test",
+  wrongFor: "test",
 };
 
 /** Returns a valid work order; the arithmetic under test is ours, never the model's. */

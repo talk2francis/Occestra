@@ -35,6 +35,7 @@ import {
   type StoragePort,
   type TextModelPort,
   type WeatherPort,
+  composeImagePrompt,
 } from "../types.js";
 import { estimateTravel, layOutSchedule, type Block, type TimedBlock } from "./travel.js";
 import { localTimeToInstant, wallClock, zoneFor } from "../zones.js";
@@ -862,26 +863,14 @@ export async function runCelebrate(
   if (wanted.has("invitation")) {
     const size = "1024x1536";
     try {
-      const styleSystem = style
-        ? [
-            `HOUSE STYLE: ${style.name} (v${style.version})`,
-            style.promptSystem,
-            `PALETTE (stay inside it): ${style.palette.join(", ")}`,
-            `NEVER: ${style.negativePrompt}`,
-          ].join("\n")
-        : "";
-
       const inviteSubject = [
-        styleSystem,
-        "",
-        "SUBJECT:",
         `An invitation artwork for: ${contract.occasion}, in ${contract.city}.`,
         `The feeling: ${contract.vibe}.`,
         "No text, no lettering, no numerals anywhere in the image — the type is set separately.",
       ].join("\n");
 
       const generated = await deps.image.generate({
-        prompt: inviteSubject,
+        prompt: style ? composeImagePrompt(inviteSubject, style) : inviteSubject,
         ...(style ? { negative: style.negativePrompt } : {}),
         size,
         quality: imageQualityFor("invitation"),
@@ -1031,15 +1020,13 @@ export async function runCelebrate(
   if (wanted.has("moodboard") && style) {
     try {
       const generated = await deps.image.generate({
-        prompt: [
-          `HOUSE STYLE: ${style.name}`,
-          style.promptSystem,
-          `PALETTE: ${style.palette.join(", ")}`,
-          "",
-          "SUBJECT:",
-          `A moodboard sheet for ${contract.occasion} in ${contract.city}. Four vignettes in a 2x2 grid: a material close-up, a wider scene, a detail of light, and an object. The feeling: ${contract.vibe}.`,
-          "No text, no lettering anywhere.",
-        ].join("\n"),
+        prompt: composeImagePrompt(
+          [
+            `A moodboard sheet for ${contract.occasion} in ${contract.city}. Four vignettes in a 2x2 grid: a material close-up, a wider scene, a detail of light, and an object. The feeling: ${contract.vibe}.`,
+            "No text, no lettering anywhere.",
+          ].join("\n"),
+          style,
+        ),
         negative: style.negativePrompt,
         size: "1024x1024",
         quality: imageQualityFor("moodboard"),

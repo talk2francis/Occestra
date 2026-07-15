@@ -27,6 +27,9 @@ const style: HouseStyle = {
   typeDirection: "quiet humanist serif",
   negativePrompt: "no faces, no portraits",
   seedStrategy: "contract_hash",
+  appliesTo: { studios: ["celebrate", "remember", "launch"] },
+  bestFor: "test",
+  wrongFor: "test",
 };
 
 /* ------------------------------------------------------------------- fakes */

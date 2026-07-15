@@ -48,8 +48,48 @@ export const HouseStyleSchema = z.object({
    */
   bestFor: z.string().min(1),
   wrongFor: z.string().min(1),
+  /**
+   * Where this style may be applied.
+   *
+   * A House Style is not universally appropriate. atlas_ink is map-and-ledger — right for an
+   * itinerary, wrong for a software launch, where its motifs would try to BECOME the subject
+   * (this is exactly how a brand mark once came back as a map). `studios` gates a style to the
+   * work it suits; the launch pipeline substitutes a launch-appropriate style rather than let
+   * atlas_ink render a compass where a wordmark was asked for.
+   */
+  appliesTo: z.object({
+    studios: z.array(StudioKindSchema).min(1),
+  }),
 });
 export type HouseStyle = z.infer<typeof HouseStyleSchema>;
+
+/** Is this style appropriate for this studio's work? */
+export function styleAppliesToStudio(style: HouseStyle, studio: StudioKind): boolean {
+  return style.appliesTo.studios.includes(studio);
+}
+
+/**
+ * The image prompt, SUBJECT-FIRST.
+ *
+ * The subject leads and the House Style follows as a TREATMENT of it — not the other way round.
+ * When the style led, its recurring motifs (maps, ledgers, botanicals) drifted into becoming the
+ * subject: a software brand mark rendered as a map, and it passed, because nothing said the
+ * subject was load-bearing and the style was not. Leading with the subject, and naming the style
+ * explicitly as a treatment that must not replace it, is prevention at generation.
+ */
+export function composeImagePrompt(subject: string, style: HouseStyle): string {
+  return [
+    "SUBJECT — render THIS, and only this. It is the subject of the image, not a suggestion:",
+    subject,
+    "",
+    "TREATMENT — depict the subject above in the following House Style. The style is a TREATMENT of the subject, never a replacement for it. Do NOT let the style's recurring motifs (maps, ledgers, compasses, botanical plates, and the like) become the subject when they are not what was asked for.",
+    `HOUSE STYLE: ${style.name} (v${style.version})`,
+    style.promptSystem,
+    `PALETTE (stay inside it): ${style.palette.join(", ")}`,
+    `TYPOGRAPHY: ${style.typeDirection}`,
+    `NEVER: ${style.negativePrompt}`,
+  ].join("\n");
+}
 
 /* ------------------------------------------------------------------ sources */
 

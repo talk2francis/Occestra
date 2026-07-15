@@ -277,6 +277,7 @@ export function buildApp(ctx: AppContext): Express {
         name: style.name,
         version: style.version,
         palette: style.palette,
+        appliesTo: style.appliesTo.studios,
         bestFor: style.bestFor,
       })),
       limits: {
