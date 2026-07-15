@@ -46,24 +46,3 @@ export function axisVerdict(score: number): Verdict {
   if (score >= 55) return "repair";
   return "fail";
 }
-
-export function AxisChip({
-  axis,
-  score,
-  className = "",
-}: {
-  axis: string;
-  score: number;
-  className?: string;
-}) {
-  const verdict = axisVerdict(score);
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-ground px-2.5 py-0.5 font-mono text-[0.7rem] text-ink/75 ${className}`}
-    >
-      <span aria-hidden className={`size-1.5 rounded-full ${dotTone[verdict]}`} />
-      {axis.replace(/_/g, " ")}
-      <span className="font-medium text-ink">{score}</span>
-    </span>
-  );
-}

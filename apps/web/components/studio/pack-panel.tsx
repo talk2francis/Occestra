@@ -122,8 +122,14 @@ export function PackPanel({
               )}
             </div>
 
-            {pack.artifacts.map((artifact) => (
-              <div key={artifact.id} className="rounded-xl border border-ink/10 bg-ground p-3.5">
+            {pack.artifacts.map((artifact, index) => (
+              <motion.div
+                key={artifact.id}
+                initial={{ opacity: 0, y: reduced ? 0 : 18, scale: reduced ? 1 : 0.98, rotate: reduced ? 0 : index % 2 === 0 ? -0.5 : 0.5 }}
+                animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+                transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 280, damping: 27, delay: Math.min(index * 0.07, 0.42) }}
+                className="rounded-xl border border-ink/10 bg-ground p-3.5"
+              >
                 {artifact.undelivered && (
                   <div className="mb-2.5 rounded-lg border border-dashed border-ink/15 bg-panel/50 p-3">
                     <p className="text-[0.82rem] leading-relaxed text-ink/70">
@@ -167,7 +173,7 @@ export function PackPanel({
                     </a>
                   )}
                 </p>
-              </div>
+              </motion.div>
             ))}
 
             <div className="space-y-2 pt-1">

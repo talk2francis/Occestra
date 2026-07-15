@@ -1,6 +1,7 @@
 import { Reveal } from "@/components/motion";
 import { GuillocheCorner } from "@/components/ui/guilloche";
-import { AxisChip, GradeChip } from "@/components/ui/grade-chip";
+import { AxisChip } from "@/components/ui/axis-chip";
+import { GradeChip } from "@/components/ui/grade-chip";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { API_BASE, OQS_VERSION, TRIBUNAL_CASE } from "@/lib/real";
 

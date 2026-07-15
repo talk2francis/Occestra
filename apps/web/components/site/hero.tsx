@@ -5,19 +5,35 @@ import { SealMark } from "@/components/ui/seal-mark";
 import { CELEBRATE } from "@/lib/real";
 import { HeroStone, HeroWalkthrough } from "./hero-enhancements";
 
-function PrismFallback() {
+function ClusterFallback() {
   return (
-    <svg viewBox="0 0 120 140" className="hero-prism-fallback h-24 w-auto sm:h-32" aria-hidden>
-      <g strokeLinejoin="round">
-        <polygon points="60,4 112,52 60,136 8,52" fill="var(--color-amethyst)" opacity="0.16" />
-        <polygon points="60,4 112,52 60,78" fill="var(--color-amethyst)" opacity="0.5" />
-        <polygon points="60,4 8,52 60,78" fill="var(--color-plum)" opacity="0.55" />
-        <polygon points="8,52 60,78 60,136" fill="var(--color-amethyst)" opacity="0.75" />
-        <polygon points="112,52 60,78 60,136" fill="var(--color-plum)" opacity="0.8" />
-        <polygon points="60,4 84,30 60,42 36,30" fill="var(--color-lilac)" opacity="0.55" />
-        <polygon points="60,4 112,52 60,78 8,52" fill="none" stroke="var(--color-plum)" strokeWidth="1" opacity="0.35" />
-        <polygon points="8,52 60,136 112,52" fill="none" stroke="var(--color-plum)" strokeWidth="1" opacity="0.35" />
+    <svg viewBox="0 0 170 160" className="hero-prism-fallback h-28 w-auto sm:h-36" aria-hidden>
+      <defs>
+        <linearGradient id="cluster-amethyst" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="var(--color-lilac)" stopOpacity="0.9" />
+          <stop offset="0.48" stopColor="var(--color-amethyst)" stopOpacity="0.82" />
+          <stop offset="1" stopColor="var(--color-plum)" stopOpacity="0.92" />
+        </linearGradient>
+        <radialGradient id="cluster-warm">
+          <stop offset="0" stopColor="#FFD0A8" stopOpacity="0.82" />
+          <stop offset="1" stopColor="var(--color-amethyst)" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="84" cy="136" rx="54" ry="14" fill="url(#cluster-warm)" opacity="0.22" />
+      <g stroke="var(--color-plum)" strokeWidth="1" strokeLinejoin="round">
+        <polygon points="80,14 99,42 94,124 69,126 63,43" fill="url(#cluster-amethyst)" />
+        <polygon points="80,14 81,110 63,43" fill="var(--color-lilac)" opacity="0.34" />
+        <polygon points="35,39 58,55 74,124 55,132 29,65" fill="url(#cluster-amethyst)" opacity="0.88" />
+        <polygon points="35,39 55,117 29,65" fill="#FFD0A8" opacity="0.28" />
+        <polygon points="133,42 141,69 111,131 93,124 113,57" fill="url(#cluster-amethyst)" opacity="0.9" />
+        <polygon points="133,42 112,118 113,57" fill="var(--color-lilac)" opacity="0.34" />
+        <polygon points="16,76 38,79 58,132 42,140 13,99" fill="url(#cluster-amethyst)" opacity="0.72" />
+        <polygon points="154,75 158,99 126,140 111,132 137,80" fill="url(#cluster-amethyst)" opacity="0.76" />
+        <polygon points="55,54 69,70 70,129 55,132 43,76" fill="var(--color-amethyst)" opacity="0.7" />
+        <polygon points="111,56 124,77 112,132 95,126 98,72" fill="var(--color-amethyst)" opacity="0.64" />
+        <path d="M34 137 56 119 82 126 109 120 136 138 111 150 58 150Z" fill="var(--color-plum)" opacity="0.75" />
       </g>
+      <path d="M38 56 52 67" stroke="#FFF4DD" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
     </svg>
   );
 }
@@ -112,7 +128,7 @@ export function Hero() {
             </div>
           </div>
           <div className="hero-enter hero-enter-fade hidden shrink-0 pb-4 md:block" style={heroDelay("0.3s")} aria-hidden>
-            <HeroStone fallback={<PrismFallback />} />
+            <HeroStone fallback={<ClusterFallback />} />
           </div>
         </div>
 

@@ -61,6 +61,10 @@ export function SealMoment({
   const reduced = useReducedMotion() ?? false;
   const [open, setOpen] = useState(true);
 
+  useEffect(() => {
+    window.dispatchEvent(new Event("oce-seal-press"));
+  }, []);
+
   // The moment holds the stage briefly, then yields to the pack itself.
   useEffect(() => {
     const timer = setTimeout(() => setOpen(false), reduced ? 2200 : 3400);
@@ -142,7 +146,9 @@ export function SealMoment({
                 animate={reduced ? undefined : { rotate: 0 }}
                 transition={{ duration: 1.1, delay: 0.12, ease: PRESS_EASE }}
               >
-                <GuillocheRing size={248} />
+                <span className="guilloche-drift block">
+                  <GuillocheRing size={248} />
+                </span>
               </motion.span>
               <SealMark size={176} className="relative text-amethyst drop-shadow-[0_10px_28px_rgba(45,27,78,0.28)]" />
             </motion.div>

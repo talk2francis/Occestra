@@ -7,6 +7,34 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-5: adaptive crystal cluster and motion language
+
+- Replaced the single hero prism with a seven-stone amethyst geode cluster: individually cut
+  physical materials, independent micro-rotation, restrained sparkles, cursor parallax, a
+  seven-second facet glint, Daylight refraction and Nocturne-only selective bloom.
+- Kept the cluster as a progressive enhancement. It loads only after visitor intent, freezes
+  offscreen, rejects software WebGL renderers, caps DPR at 1.5, and measures two seconds of
+  frame cadence on the visitor's device. Below 55 FPS it removes the scene and returns to the
+  art-directed static SVG cluster; reduced-motion and no-WebGL users never mount Three.js.
+- Added a privacy-safe recent-seals ticker sourced from the real store. The public endpoint
+  returns only generic studio/artifact-count descriptors for sealed public packs; regression
+  tests prove that private packs, unsealed packs, and stored titles cannot leak into it.
+- Added interaction-local motion: in-view artifact settles, first-view grade count-ups,
+  visible Studio repair returns, active-role pulses, magnetic primary actions, a compact route
+  cue, rotating seal guilloché, and refined toast motion. Every effect collapses under
+  `prefers-reduced-motion` and server HTML never begins hidden.
+- Added an opt-in sound control, persisted locally and defaulting OFF. When enabled, a seal
+  press produces one original soft Web Audio foley note. Ambience remains deliberately unwired
+  until the owner supplies a commercially licensed track.
+- Added dual-theme 10-second hero capture and frame-cadence evidence tooling. Software-only VPS
+  browsers explicitly report the adaptive fallback rather than pretending to benchmark GPU
+  rendering they cannot perform.
+- Closed the production audit at 30/30 normal-motion and 30/30 reduced-motion checks across the
+  five affected surfaces, both themes and three viewports. Lighthouse 13.4 on the actual mobile
+  path is 97 performance / 100 accessibility / 100 best practices / 100 SEO (LCP 0.5s, TBT
+  200ms, CLS 0); simulated CPU scores are recorded separately because this shared VPS also hosts
+  long-running build agents and services.
+
 ## [Unreleased] — V2-4: Amethyst Nocturne and certificate texture
 
 - Added a complete dark theme on an aubergine ground with WCAG-AA typography and brightened

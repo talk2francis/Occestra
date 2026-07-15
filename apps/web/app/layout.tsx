@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans, Spline_Sans_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { GrainOverlay } from "@/components/ui/grain-overlay";
+import { MotionDirector } from "@/components/ui/motion-director";
 import { THEME_SCRIPT } from "@/components/ui/theme";
 import "./globals.css";
 
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {children}
         <GrainOverlay />
+        <MotionDirector />
         <Toaster
           position="bottom-right"
           toastOptions={{

@@ -1,4 +1,5 @@
-import { AxisChip, GradeChip } from "@/components/ui/grade-chip";
+import { AxisChip } from "@/components/ui/axis-chip";
+import { GradeChip } from "@/components/ui/grade-chip";
 import type { PublicArtifact } from "@/lib/pack";
 
 /**

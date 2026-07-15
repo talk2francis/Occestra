@@ -64,6 +64,28 @@ export interface PublicPack {
 
 const INTERNAL = process.env.OCE_INTERNAL_API ?? "http://127.0.0.1:8412";
 
+export interface RecentPublicPack {
+  id: string;
+  studio: PublicPack["studio"];
+  createdAt: string;
+  descriptor: string;
+  deliveredCount: number;
+}
+
+/** Real recent activity from the store; private packs and user titles are excluded upstream. */
+export async function fetchRecentPublicPacks(limit = 8): Promise<RecentPublicPack[]> {
+  try {
+    const res = await fetch(`${INTERNAL}/recent-packs?limit=${Math.max(1, Math.min(20, limit))}`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { packs?: RecentPublicPack[] };
+    return Array.isArray(body.packs) ? body.packs : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Server-side fetch; signed artifact URLs are minted per request. */
 export async function fetchPack(id: string): Promise<PublicPack | undefined> {
   if (!/^oce_[0-9a-z]{22}$/.test(id)) return undefined;

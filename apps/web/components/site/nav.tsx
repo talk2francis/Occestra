@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ButtonLink } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme";
+import { SoundToggle } from "@/components/ui/sound-toggle";
 import { Wordmark } from "@/components/site/wordmark";
 
 const LINKS = [
@@ -65,6 +66,7 @@ export function Nav() {
           </Link>
 
           <ThemeToggle className="-ml-1" />
+          <SoundToggle className="-ml-2" />
 
           <ButtonLink href="/studio" size="sm">
             Open the Studio

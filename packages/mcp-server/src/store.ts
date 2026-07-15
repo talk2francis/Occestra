@@ -406,6 +406,62 @@ export class Store {
     };
   }
 
+  /**
+   * A privacy-safe pulse of recent finished work for the public landing page.
+   *
+   * Titles are deliberately NOT returned: even a public pack can contain a
+   * person's name in its first artifact title, and a ticker is not the place
+   * to republish it. The descriptor is derived from studio + delivered count;
+   * private packs are excluded in SQL before their JSON is even parsed.
+   */
+  recentPublicSealedPacks(limit = 8): Array<{
+    id: string;
+    studio: Pack["studio"];
+    createdAt: string;
+    descriptor: string;
+    deliveredCount: number;
+  }> {
+    const safeLimit = Math.max(1, Math.min(20, Math.trunc(limit)));
+    const rows = this.db
+      .prepare(
+        `SELECT p.body FROM packs p
+         WHERE NOT EXISTS (SELECT 1 FROM pack_private private WHERE private.pack_id = p.id)
+         ORDER BY p.created_at DESC
+         LIMIT ?`,
+      )
+      .all(safeLimit * 4) as Array<{ body: string }>;
+
+    const recent: Array<{
+      id: string;
+      studio: Pack["studio"];
+      createdAt: string;
+      descriptor: string;
+      deliveredCount: number;
+    }> = [];
+
+    for (const row of rows) {
+      let pack: Pack;
+      try {
+        pack = JSON.parse(row.body) as Pack;
+      } catch {
+        continue;
+      }
+      if (!pack.seal) continue;
+      const deliveredCount = pack.artifacts.filter((artifact) => !artifact.undelivered).length;
+      const studioName = pack.studio[0]?.toUpperCase() + pack.studio.slice(1);
+      recent.push({
+        id: pack.id,
+        studio: pack.studio,
+        createdAt: pack.createdAt,
+        descriptor: `${studioName} pack · ${deliveredCount} delivered artifact${deliveredCount === 1 ? "" : "s"}`,
+        deliveredCount,
+      });
+      if (recent.length >= safeLimit) break;
+    }
+
+    return recent;
+  }
+
   /** Record which private uploads a pack was built from, so delete can find them again. */
   linkUploads(packId: string, keys: string[]): void {
     const insert = this.db.prepare(

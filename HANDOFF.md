@@ -1,6 +1,6 @@
 # Occestra engineering handoff
 
-**Last updated:** 2026-07-15, during V2-4/V2-5 takeover from Claude Code
+**Last updated:** 2026-07-16, V2-4 and V2-5 complete, live and verified
 **Repository:** `talk2francis/Occestra`, branch `main`
 **Read first:** `AGENTS.md`, then `occestra.md`, then this file
 
@@ -38,17 +38,22 @@ six-way live audit (two themes × three viewports).
 
 ## Current phase plan
 
-1. **V2-4.1 / V2-4.2:** complete. Nocturne, texture, contrast proof and all-route dual-theme
-   audit are live.
-2. **V2-4.3:** complete pending only this checkpoint commit. Lighthouse 13.4 mobile is 86 / 100 /
-   100 / 100 (LCP 2.6s, TBT 400ms, CLS 0); normal and reduced-motion landing audits are 6/6.
-3. **V2-5.1:** replace the single prism with a lazy 6–8 crystal R3F cluster, theme-aware material,
-   glint and sparse sparkle, offscreen freeze, static reduced-motion/no-WebGL fallback.
-4. **V2-5.2:** restrained motion pass (cards, grades, repair return, active roles, real recent-pack
-   marquee, route/toast/CTA/seal details), all reduced-motion safe.
-5. **V2-5.3:** persist an opt-in sound toggle defaulting OFF. Do not wire ambience until the owner
-   supplies a commercially licensed track; no audio may play without an explicit toggle.
-6. Final two-theme Playwright/Lighthouse/FPS capture, changelog, commit/push/deploy.
+1. **V2-4.1 / V2-4.2 / V2-4.3:** complete, committed as `0dd4367`, pushed and live. Nocturne,
+   texture, contrast proof and every-route dual-theme audit shipped together.
+2. **V2-5.1:** complete. Seven-crystal lazy R3F cluster, theme-aware physical material, glint,
+   sparse sparkle, offscreen freeze, software-renderer rejection and a real-device 55-FPS gate.
+3. **V2-5.2:** complete. Restrained card/grade/repair/role/route/toast/CTA/seal motion plus a
+   real-store recent-seals marquee; all paths have reduced-motion fallbacks.
+4. **V2-5.3:** complete within the available assets. The persisted sound toggle defaults OFF and
+   enables only original seal foley. Ambience is intentionally pending a commercially licensed
+   track from the owner.
+5. **Verification complete:** affected live surfaces passed 30/30 normal-motion and 30/30
+   reduced-motion checks (two themes × three viewports). Lighthouse 13.4 actual-mobile is
+   97/100/100/100 (LCP 0.5s, TBT 200ms, CLS 0). Both 10-second hero recordings and stills live
+   in the ignored `apps/web/playwright-report/` evidence directory.
+6. The rate-limited Claude PID 1137934 and its leftover Next dev server on port 3017 (PIDs
+   1881192/1881246) were suspended with SIGSTOP to remove contention; production remains on
+   port 3010. They can be resumed with SIGCONT if their old interactive session is ever needed.
 
 ## Verification commands
 

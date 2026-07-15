@@ -3,7 +3,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { EASE } from "@/components/motion";
-import { AxisChip, GradeChip } from "@/components/ui/grade-chip";
+import { AxisChip } from "@/components/ui/axis-chip";
+import { GradeChip } from "@/components/ui/grade-chip";
 import { ROLES, roleForEvent, type DemoEvent } from "@/lib/studio";
 import { RefusalNotice } from "./seal-moment";
 import type { RunStatus } from "./use-run";
@@ -41,10 +42,12 @@ export function Syndicate({ status, events }: { status: RunStatus; events: DemoE
                   transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 32 }}
                 />
               )}
-              <span
+              <motion.span
                 className={`size-1.5 rounded-full transition-all duration-300 ${
-                  active ? "bg-plum" : touched ? "bg-ink/70" : "bg-ink/15"
+                  active ? "glow-live bg-lilac" : touched ? "bg-ink/70" : "bg-ink/15"
                 }`}
+                animate={active && !reduced ? { scale: [1, 1.55, 1], opacity: [1, 0.55, 1] } : { scale: 1, opacity: 1 }}
+                transition={active && !reduced ? { duration: 1.35, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
               />
               <span className={active ? "font-medium text-plum" : touched ? "text-ink/80" : "text-ink/65"}>{role}</span>
             </li>
@@ -68,16 +71,30 @@ export function Syndicate({ status, events }: { status: RunStatus; events: DemoE
         )}
 
         <AnimatePresence initial={false}>
-          {events.map((event, index) => (
-            <motion.li
-              key={index}
-              initial={{ opacity: 0, y: reduced ? 0 : 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE }}
-            >
-              <FeedRow event={event} />
-            </motion.li>
-          ))}
+          {events.map((event, index) => {
+            const failed = event.type === "artifact_failed";
+            const repaired = event.type === "artifact_repaired";
+            return (
+              <motion.li
+                key={index}
+                initial={{ opacity: 0, y: reduced ? 0 : 10, x: reduced ? 0 : repaired ? -28 : 0, scale: failed && !reduced ? 0.98 : 1 }}
+                animate={
+                  reduced
+                    ? { opacity: 1, y: 0, x: 0, scale: 1 }
+                    : failed
+                      ? { opacity: 1, y: 0, x: [0, -16, -12], scale: [0.98, 1, 0.975] }
+                      : { opacity: 1, y: 0, x: 0, scale: 1 }
+                }
+                transition={
+                  repaired
+                    ? { type: "spring", stiffness: 330, damping: 25, mass: 0.85 }
+                    : { duration: failed ? 0.72 : 0.4, ease: EASE }
+                }
+              >
+                <FeedRow event={event} />
+              </motion.li>
+            );
+          })}
         </AnimatePresence>
 
         {status === "running" && (

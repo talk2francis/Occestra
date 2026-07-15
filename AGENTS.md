@@ -156,6 +156,26 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
 
+- 2026-07-15 (V2-5) — **A SOFTWARE WEBGL CONTEXT IS NOT A CAPABLE WEBGL CONTEXT.** Headless
+  Chromium on this VPS exposes WebGL through SwiftShader, then renders the cluster in single-digit
+  FPS while also software-encoding video. Capability detection now rejects SwiftShader/llvmpipe,
+  and real hardware receives an additional two-second on-device cadence sample after scene load:
+  below 55 FPS the Canvas is unmounted and the static SVG remains. Evidence tooling enforces 55
+  only when WebGL is truly active; calling a software fallback a failed 3D benchmark would be as
+  dishonest as calling it a successful one.
+- 2026-07-15 (V2-5) — **A RECENT-ACTIVITY TICKER IS A PRIVACY BOUNDARY, NOT DECORATION.** The
+  ticker reads only sealed, public packs and publishes a generic studio + delivered-count
+  descriptor. SQL excludes `pack_private`; the serializer never selects a title; tests seed a
+  private pack, an unsealed public pack and a secret title and prove all three stay absent. Real
+  activity is useful social proof only when it reveals nothing its owner did not publish.
+- 2026-07-15 (V2-5) — **A BENCHMARK ON A SHARED BUILD HOST NEEDS A CONTROL.** Lighthouse 13.4
+  simulated-mobile samples varied from 61–77 while the tiny `/pricing` control also fell to 81;
+  process inspection found the rate-limited Claude process still consuming CPU plus its 2.3 GB
+  Next dev server. Both were suspended (reversibly) and the production service was untouched.
+  The actual mobile path scores 97/100/100/100 with LCP 0.5s, TBT 200ms and CLS 0. Treat that as
+  the local product measurement and keep the V2-4 isolated simulated baseline (86) in history;
+  never present a contended synthetic sample as a user regression or cherry-pick it as a pass.
+
 - 2026-07-15 (V2-4) — **REDUCED MOTION IS ALSO AN SSR INPUT, AND THE SERVER CANNOT SEE IT.**
   The walkthrough rendered second 0 on the server and its completed second-25 frame on a client
   with `prefers-reduced-motion`, then conditionally removed its progress bar before hydration.

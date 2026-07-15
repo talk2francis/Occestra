@@ -67,6 +67,40 @@ describe("a private pack's /k page shows the seal, not the contents", () => {
   });
 });
 
+describe("the public activity pulse is real and anonymous", () => {
+  it("returns sealed public work, excludes private/unsealed work, and never returns artifact titles", () => {
+    const s = store();
+    const publicSealed = pack("oce_01kxpublicsealed000001", "celebrate");
+    publicSealed.artifacts[0]!.title = "Francis and Ada's private dinner";
+    publicSealed.seal = {
+      keepsakeId: publicSealed.id,
+      manifestHash: `0x${"11".repeat(32)}`,
+      packKind: 0,
+      createdAt: Date.now(),
+      signature: "0x11",
+      signer: `0x${"22".repeat(20)}`,
+      chainId: 196,
+      verifyingContract: `0x${"33".repeat(20)}`,
+    };
+
+    const publicUnsealed = pack("oce_01kxpublicplain0000001", "launch");
+    const privateSealed = pack("oce_01kxprivsealed00000001", "remember");
+    privateSealed.seal = { ...publicSealed.seal, keepsakeId: privateSealed.id, packKind: 1 };
+
+    s.savePack(publicSealed);
+    s.savePack(publicUnsealed);
+    s.savePack(privateSealed);
+    s.savePrivate(privateSealed.id, `0x${randomBytes(32).toString("hex")}`, s.hashOwnerToken("owner"));
+
+    const recent = s.recentPublicSealedPacks(8);
+    expect(recent).toHaveLength(1);
+    expect(recent[0]?.id).toBe(publicSealed.id);
+    expect(recent[0]?.descriptor).toBe("Celebrate pack · 2 delivered artifacts");
+    expect(JSON.stringify(recent)).not.toContain("Francis");
+    expect(JSON.stringify(recent)).not.toContain("Ada");
+  });
+});
+
 describe("the salt is released only to the owner", () => {
   it("reveals the salt to the right token, and refuses a wrong one", () => {
     const s = store();

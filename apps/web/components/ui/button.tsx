@@ -40,7 +40,7 @@ export function Button({
   ...rest
 }: ButtonOwnProps & ComponentPropsWithoutRef<"button">) {
   return (
-    <button className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} {...rest}>
+    <button data-magnetic={variant === "primary" ? "" : undefined} className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} {...rest}>
       {children}
     </button>
   );
@@ -57,6 +57,7 @@ export function ButtonLink({
   return (
     <Link
       href={href}
+      data-magnetic={variant === "primary" ? "" : undefined}
       className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
       {...rest}
     >

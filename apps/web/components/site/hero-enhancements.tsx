@@ -12,7 +12,18 @@ const AnimatedWalkthrough = dynamic(
 function supportsWebgl(): boolean {
   try {
     const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    if (!context) return false;
+    const debug = context.getExtension("WEBGL_debug_renderer_info");
+    const renderer = debug
+      ? String(context.getParameter(debug.UNMASKED_RENDERER_WEBGL)).toLowerCase()
+      : "";
+    // A software renderer can technically create WebGL while delivering a
+    // single-digit frame rate. That is not a capability; use the art-directed
+    // SVG cluster instead.
+    const software = /(swiftshader|llvmpipe|software rasterizer)/.test(renderer);
+    context.getExtension("WEBGL_lose_context")?.loseContext();
+    return !software;
   } catch {
     return false;
   }
@@ -56,12 +67,15 @@ export function HeroStone({ fallback }: { fallback: ReactNode }) {
   const reduced = useReducedMotionPreference();
   const intended = useIntentArm(!reduced);
   const [webgl, setWebgl] = useState(false);
+  const [performanceFailed, setPerformanceFailed] = useState(false);
 
   useEffect(() => {
     if (intended && !reduced) setWebgl(supportsWebgl());
   }, [intended, reduced]);
 
-  return intended && webgl && !reduced ? <PrismCanvas /> : fallback;
+  return intended && webgl && !reduced && !performanceFailed
+    ? <PrismCanvas onPerformanceFail={() => setPerformanceFailed(true)} />
+    : fallback;
 }
 
 /** The real animated replay is enhancement, not first-paint tax. Its detailed

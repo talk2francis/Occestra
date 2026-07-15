@@ -4,5 +4,10 @@
  * motion disables it in CSS.
  */
 export default function Template({ children }: { children: React.ReactNode }) {
-  return <div className="route-sheet">{children}</div>;
+  return (
+    <div className="route-sheet">
+      <span aria-hidden className="route-cue" />
+      {children}
+    </div>
+  );
 }

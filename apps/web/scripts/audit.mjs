@@ -90,6 +90,13 @@ for (const route of ROUTES) {
           let parent = el.parentElement;
           let contained = false;
           while (parent) {
+            // Deliberate non-scrollable clip windows (for example the marquee)
+            // contain a translated child wider than the viewport by design.
+            // The root pan check above still proves no user can move sideways.
+            if (parent.hasAttribute("data-audit-clip")) {
+              contained = true;
+              break;
+            }
             if (/(auto|scroll)/.test(getComputedStyle(parent).overflowX)) {
               contained = true;
               break;

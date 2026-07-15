@@ -376,6 +376,16 @@ export function buildApp(ctx: AppContext): Express {
     res.json({ ...ctx.store.stats(), oqsVersion: rubricAsJson().oqsVersion, asOf: new Date().toISOString() });
   });
 
+  // Public, privacy-safe activity pulse for the landing marquee. No user title,
+  // brief or artifact content is returned; private packs never enter the query.
+  app.get("/recent-packs", (req, res) => {
+    const requested = Number.parseInt(String(req.query.limit ?? "8"), 10);
+    res.json({
+      packs: ctx.store.recentPublicSealedPacks(Number.isFinite(requested) ? requested : 8),
+      asOf: new Date().toISOString(),
+    });
+  });
+
   /* -------------------------------------------- internal Studio demo (SSE) */
 
   app.get("/internal/demo/quota", (req, res) => {

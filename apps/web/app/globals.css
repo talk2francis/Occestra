@@ -185,10 +185,22 @@ html {
   from { opacity: 0; transform: translateY(26px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@keyframes prism-fallback-float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-6px) rotate(4deg); }
-  75% { transform: translateY(-3px) rotate(-4deg); }
+@keyframes recent-packs-travel {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes route-cue-travel {
+  0% { transform: scaleX(0); opacity: 0; }
+  18% { opacity: 1; }
+  72% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+@keyframes seal-guilloche-drift {
+  to { transform: rotate(360deg); }
+}
+@keyframes toast-settle {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 /* Do not animate the full page or every below-fold section at startup. A
    12,000px composited route layer and a dozen simultaneous reveal timelines
@@ -204,15 +216,76 @@ html {
 .hero-enter-fade {
   animation-name: hero-enter-fade-rise;
 }
-.hero-prism-fallback {
-  animation: prism-fallback-float 14s ease-in-out infinite;
+.recent-track {
+  animation: recent-packs-travel 44s linear 6s infinite;
+}
+.recent-track:hover {
+  animation-play-state: paused;
+}
+.route-cue {
+  position: fixed;
+  z-index: 70;
+  inset: 0 0 auto;
+  height: 2px;
+  pointer-events: none;
+  transform-origin: left;
+  background: linear-gradient(90deg, transparent, var(--color-amethyst) 24%, var(--color-lilac) 72%, transparent);
+  animation: route-cue-travel 0.72s var(--ease-editorial) both;
+}
+.guilloche-drift {
+  animation: seal-guilloche-drift 24s linear infinite;
+  transform-origin: center;
+}
+
+/* The Director only adds motion-ready after hydration. Server HTML therefore
+   never hides content, and reduced-motion never enters these initial states. */
+.motion-ready [data-reveal-card] {
+  opacity: 0;
+  transform: translateY(22px) rotate(var(--card-tilt, -0.4deg)) scale(0.985);
+  transition:
+    opacity 0.62s var(--ease-editorial) var(--card-delay, 0ms),
+    transform 0.78s var(--ease-editorial) var(--card-delay, 0ms),
+    box-shadow 0.25s ease;
+}
+.motion-ready [data-reveal-card].is-revealed {
+  opacity: 1;
+  transform: translateY(0) rotate(0) scale(1);
+}
+
+[data-magnetic] {
+  --mag-x: 0px;
+  --mag-y: 0px;
+}
+[data-magnetic].is-magnetic {
+  transform: translate3d(var(--mag-x), var(--mag-y), 0);
+  will-change: transform;
+  transition-duration: 80ms;
+}
+
+[data-sonner-toast] {
+  animation: toast-settle 0.46s var(--ease-editorial) both;
+  transition: transform 0.22s var(--ease-editorial), box-shadow 0.22s ease;
+}
+[data-sonner-toast]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-keepsake) !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .route-sheet,
   .reveal-rise,
   .hero-enter,
-  .hero-prism-fallback {
+  .recent-track,
+  .route-cue,
+  .guilloche-drift,
+  [data-sonner-toast] {
     animation: none;
+  }
+  .recent-track {
+    transform: none;
+  }
+  [data-magnetic],
+  [data-sonner-toast]:hover {
+    transform: none;
   }
 }
 

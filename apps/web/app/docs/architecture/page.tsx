@@ -101,6 +101,22 @@ export default function ArchitectureDoc() {
           <InlineCode>prefers-reduced-motion</InlineCode>, while Open Graph images remain
           theme-stable so a shared pack never changes identity with the viewer&apos;s preference.
         </p>
+        <p>
+          The hero&apos;s seven-stone amethyst cluster is progressive enhancement, not an entry
+          tax. It waits for visitor intent, freezes when offscreen, refuses software renderers,
+          caps device-pixel ratio at 1.5, and removes itself if an on-device sample falls below
+          55 FPS. Daylight refracts; Nocturne adds selective bloom to only two accent facets.
+          Reduced-motion and no-WebGL visitors keep the same composition through a static,
+          art-directed SVG cluster without downloading the Three.js scene.
+        </p>
+        <p>
+          Motion explains state: grades count up once, a failed artifact visibly returns for
+          repair, active roles pulse, finished cards settle, and the seal&apos;s guilloché turns
+          during the press. The recent-seals ribbon is populated from anonymized public store
+          data, never invented activity. Sound follows the same restraint: persisted, default
+          off, and limited to a soft seal foley until a commercially licensed ambience track is
+          supplied.
+        </p>
       </Section>
 
       <Callout tone="good">

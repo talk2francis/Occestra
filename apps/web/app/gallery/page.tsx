@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +58,7 @@ export default async function GalleryPage() {
         <p className="mt-10 text-[0.9rem] text-ink/65">The store is briefly unreachable — nothing fake will be shown in its place.</p>
       ) : (
         <div className="mt-12 columns-1 gap-5 sm:columns-2 lg:columns-3 [&>*]:mb-5 [&>*]:break-inside-avoid">
-          {packs.map((pack) => {
+          {packs.map((pack, index) => {
             const image = firstImage(pack);
             const text = image ? undefined : excerpt(pack);
             const styleId = pack.artifacts.find((a) => a.styleId)?.styleId;
@@ -67,6 +68,11 @@ export default async function GalleryPage() {
               <Link
                 key={pack.id}
                 href={`/k/${pack.id}`}
+                data-reveal-card
+                style={{
+                  "--card-delay": `${(index % 3) * 90}ms`,
+                  "--card-tilt": `${index % 2 === 0 ? -0.45 : 0.45}deg`,
+                } as CSSProperties}
                 className="lum-edge group block overflow-hidden rounded-2xl border border-ink/10 bg-ground shadow-lift transition-shadow hover:shadow-keepsake"
               >
                 {image && (
