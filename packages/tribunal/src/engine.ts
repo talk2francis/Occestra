@@ -21,7 +21,7 @@ import {
   OQS_VERSION,
   failureClass,
   passes,
-  profileFor,
+  gradingProfile,
   type FailureClass,
   type Profile,
 } from "./rubric.js";
@@ -148,8 +148,10 @@ async function gradeOnce(args: {
   const notes: string[] = [];
   const coverageGaps: string[] = [];
 
-  // What KIND of thing is this, and therefore which axes mean anything for it.
-  const profile = profileFor(artifact.kind, artifact.format);
+  // What KIND of thing is this, and therefore which axes mean anything for it. gradingProfile
+  // narrows the plan profile to the axes that apply to THIS artifact (a schedule is not judged
+  // on budget_consistency, a budget not on contingency).
+  const profile = gradingProfile(artifact.kind, artifact.format);
 
   const checkCtx = {
     artifact,

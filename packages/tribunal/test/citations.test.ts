@@ -102,8 +102,13 @@ describe("a CITED correctness failure absolutely stands — the bar has not move
 
 describe("CRAFT is left to taste, uncited", () => {
   it("still fails an uncited contingency score — nobody re-litigates a 68", async () => {
+    // Graded as a CONTINGENCY artifact, whose profile carries the contingency craft axis.
     const critique = new FakeCritique([], { axes: { contingency: 41 } });
-    const { report } = await grade(critique);
+    const { report } = await runTribunal({
+      artifact: artifact({ kind: "contingency", format: "md", data: "## Contingency\n\nIf it rains, move indoors." }),
+      contract: contract(),
+      deps: { critique },
+    });
 
     expect(report.axes!.contingency).toBe(41); // untouched
     expect(report.pass).toBe(false);

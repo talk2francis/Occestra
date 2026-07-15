@@ -107,7 +107,8 @@ const AXIS: Record<CritiqueAxis, CritiqueAxisSpec> = {
     threshold: t,
     description: "Concrete and earned. Every sentence carries information a reader could not have guessed.",
     guidance:
-      "THE SUBSTITUTION TEST: could this sentence be pasted, unchanged, into copy about a completely different subject? If yes it is filler and it fails. 'Elevate your special occasion' scores below 45. A polished sentence that says nothing is worse than a rough one that says something.",
+      "THE SUBSTITUTION TEST: could this sentence be pasted, unchanged, into copy about a completely different subject? If yes it is filler and it fails. 'Elevate your special occasion' scores below 45. " +
+      "BUT judge only against what the brief PROVIDED. Do NOT deduct for omitting a detail that was never given — a venue address, a time, an RSVP line the writer was not handed. The writer cannot invent it, and penalising its absence is faulting the artifact for obeying the brief. Ceremonial copy (an invitation) may use warm convention; it fails only when it says nothing the given facts do not already say.",
   },
   factual_support: {
     id: "factual_support",
@@ -267,6 +268,39 @@ export function profileFor(kind: ArtifactKind, format: string): Profile {
   if (VISUAL_FORMATS.has(format)) return PROFILES.visual;
   if (PLAN_KINDS.has(kind)) return PROFILES.plan;
   return PROFILES.written;
+}
+
+/**
+ * NOT EVERY AXIS IN A PROFILE APPLIES TO EVERY ARTIFACT IN IT.
+ *
+ * The plan profile's vocabulary covers the whole occasion, but a single plan-family artifact is
+ * a PART: a schedule has no budget, a budget has no schedule, and CONTINGENCY is its own separate
+ * artifact — none of the others should be failed for "not having a contingency section". Grading
+ * a budget on schedule_feasibility, or a schedule on contingency, is the map-incident error one
+ * more time: an axis measured against something the artifact was never meant to contain. So each
+ * plan-family kind is graded on the subset that genuinely applies to it; the published profile
+ * still lists the full vocabulary, and says an artifact is graded on the subset for its kind.
+ *
+ * Visual and written profiles are coherent as they stand — every axis applies to every artifact
+ * in them — so they are returned whole.
+ */
+const PLAN_AXES_BY_KIND: Partial<Record<ArtifactKind, CritiqueAxis[]>> = {
+  plan: ["source_coverage", "date_validity", "uncertainty_disclosure"],
+  schedule: ["schedule_feasibility", "date_validity", "source_coverage", "uncertainty_disclosure"],
+  budget: ["budget_consistency", "uncertainty_disclosure"],
+  contingency: ["contingency", "uncertainty_disclosure"],
+  guest_guide: ["source_coverage", "date_validity", "uncertainty_disclosure"],
+};
+
+/** The axes an artifact is actually graded on — the profile, narrowed to what applies to its kind. */
+export function gradingProfile(kind: ArtifactKind, format: string): Profile {
+  const profile = profileFor(kind, format);
+  if (profile.id !== "plan") return profile;
+
+  const ids = PLAN_AXES_BY_KIND[kind];
+  if (!ids) return profile;
+
+  return { ...profile, axes: ids.map((id) => profile.axes.find((axis) => axis.id === id)!).filter(Boolean) };
 }
 
 /* --------------------------------------------------------- deterministic ---*/
@@ -435,6 +469,12 @@ export function rubricAsMarkdown(): string {
       lines.push(`| **${axis.title}** | ${axis.class} | ${axis.threshold}/100 | ${axis.description} |`);
     }
     lines.push("");
+    if (p.id === "plan") {
+      lines.push(
+        "The plan profile's axes are its full vocabulary. A single plan-family artifact is graded on the **subset that applies to its kind** — a schedule is judged on feasibility and dates, a budget on its arithmetic, a contingency on its fallbacks. None is faulted for lacking a section that belongs to a different artifact in the pack.",
+      );
+      lines.push("");
+    }
   }
   lines.push("## A failing correctness score must be QUOTABLE");
   lines.push("");

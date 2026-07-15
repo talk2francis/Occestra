@@ -107,6 +107,17 @@ deliverable ship, do the artifacts agree with each other on the date, did the de
 A set of individually-passing artifacts is not automatically a good pack, and now the standard can
 say so.
 
+**Calibration, measured on the real rail.** A profile's axes are its full vocabulary, but not every
+axis applies to every artifact in it: a schedule has no budget, a budget has no schedule, and
+contingency is its own artifact. Grading a budget on `schedule_feasibility`, or a schedule on
+`contingency`, is the map-incident error one more time — an axis measured against something the
+artifact was never meant to contain — and measuring caught it: a real plan run dropped to a 0.2
+pass rate on first profile contact. So each plan-family artifact is graded on the **subset that
+applies to its kind**; the critic is now shown the artifact's attached **sources** (so a sourced
+venue coordinate is not flagged unsourced); and `specificity` no longer faults copy for omitting a
+detail — a venue address — that was never given to the writer. Back to a stable **1.0** on the
+Lisbon plan and the Porto invitation. Earned by fixing the grader's aim, not by lowering the bar.
+
 **OQS → 1.2.0.** Note: this is 1.2.0, not the 1.1.0 the phase brief named — 1.1.0 was already
 taken by the V2-1.0 determinism work (axis classes + the citation rule), and adding profiles and a
 new axis on top is a real rubric change, so the honest semver is a further bump. Stored reports are

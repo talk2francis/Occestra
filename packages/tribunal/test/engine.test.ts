@@ -18,6 +18,11 @@ const goodBudget = (total: number, amount: number): Artifact =>
     lineItems: [{ label: "Dinner", amount }],
   });
 
+// A contingency artifact — graded on the contingency CRAFT axis, so a low score there exercises
+// the repair loop without needing a citation (craft is allowed to be a judgement).
+const craftArtifact = (): Artifact =>
+  artifact({ kind: "contingency", format: "md", data: "## Contingency\n\nIf it rains, move the toast indoors." });
+
 describe("runTribunal", () => {
   it("passes a clean artifact with strong axes, and always attaches the report", async () => {
     const { artifact: out, report } = await runTribunal({
@@ -40,7 +45,7 @@ describe("runTribunal", () => {
 
     let regenerated = 0;
     const { report } = await runTribunal({
-      artifact: artifact(),
+      artifact: craftArtifact(),
       contract: contract(),
       deps: { critique },
       regenerate: async (brief, previous) => {
@@ -61,7 +66,7 @@ describe("runTribunal", () => {
 
     let regenerated = 0;
     const { artifact: out, report } = await runTribunal({
-      artifact: artifact(),
+      artifact: craftArtifact(),
       contract: contract(),
       deps: { critique },
       regenerate: async (_brief, previous) => {
@@ -123,7 +128,7 @@ describe("runTribunal", () => {
     const critique = new FakeCritique([], { axes: { contingency: 10 } });
 
     const { report } = await runTribunal({
-      artifact: artifact(),
+      artifact: craftArtifact(),
       contract: contract(),
       deps: { critique },
       regenerate: async () => {
@@ -142,7 +147,7 @@ describe("runTribunal", () => {
     // the repair loop, not about the citation rule.
     const critique = new FakeCritique([], { axes: { contingency: 12 } });
     const { report } = await runTribunal({
-      artifact: artifact(),
+      artifact: craftArtifact(),
       contract: contract(),
       deps: { critique },
     });

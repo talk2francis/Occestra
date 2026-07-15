@@ -56,12 +56,17 @@ export class PlaywrightSite implements SitePort {
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36 Occestra/0.1",
       });
 
-      // And guard every request the page makes — redirects and subresources included. A public
-      // page that 302s into 169.254.169.254 is the classic SSRF bypass; the browser must not
-      // follow it. This is the cheap synchronous check (literal IPs, localhost, non-http); the
-      // entry URL already passed the full DNS-resolving guard above.
+      // And guard every NETWORK request the page makes — redirects and subresources included. A
+      // public page that 302s into 169.254.169.254 is the classic SSRF bypass; the browser must
+      // not follow it. Only http(s) requests can be an SSRF vector, so data:, blob:, and the
+      // browser's own about:blank are let through untouched — intercepting those hangs the page.
       await context.route("**/*", (route) => {
-        const blocked = blockedHostSync(route.request().url());
+        const requestUrl = route.request().url();
+        if (!/^https?:/i.test(requestUrl)) {
+          void route.continue();
+          return;
+        }
+        const blocked = blockedHostSync(requestUrl);
         if (blocked) {
           void route.abort("blockedbyclient");
         } else {

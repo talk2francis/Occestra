@@ -124,6 +124,21 @@ export class ModelCritique implements CritiquePort {
   async judge(request: CritiqueRequest): Promise<CritiqueResult> {
     const { artifact, contract, style, profile } = request;
 
+    // The sources the artifact actually carries. Without this the critic scores source_coverage
+    // and factual_support against what it can see INLINE — and flags a venue's coordinates or a
+    // price as "unsourced" when the source is attached to the artifact, just not printed in the
+    // body. The deterministic SOURCE_MISSING check already reads these; the critic must too.
+    const sourcesBlock =
+      artifact.sources && artifact.sources.length > 0
+        ? [
+            "",
+            "SOURCES ATTACHED TO THIS ARTIFACT (these back its grounded claims — do NOT call a claim unsourced if it is covered here):",
+            ...artifact.sources.map(
+              (s) => `- ${s.source}${s.retrievedAt ? ` @ ${s.retrievedAt}` : ""}${s.url ? ` (${s.url})` : ""}`,
+            ),
+          ].join("\n")
+        : "";
+
     const brief = [
       `ARTIFACT KIND: ${artifact.kind} (${artifact.format})`,
       `TITLE: ${artifact.title}`,
@@ -131,6 +146,7 @@ export class ModelCritique implements CritiquePort {
       "",
       "THE BRIEF IT WAS MADE FOR:",
       JSON.stringify(contract, null, 2),
+      sourcesBlock,
       "",
       style ? styleSystemPrompt(style) : "(no House Style declared)",
       "",
