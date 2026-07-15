@@ -76,6 +76,27 @@ into becoming the subject. `composeImagePrompt(subject, style)` now puts the sub
 names the style explicitly as a *treatment* that must not replace it. Prevention at generation,
 one layer before the grader.
 
+## [Unreleased] — V2-3: ten House Styles
+
+Six new House Styles, each with the same art-director craft as the original four — medium,
+composition, light, material, and an explicit list of what would cheapen it — plus a palette,
+type direction, `appliesTo` gating, and bestFor/wrongFor guidance:
+
+- **solstice_bloom** — pressed-flower botanicals, coral and marigold; sunny daytime celebrations.
+- **jazz_age** — art-deco geometry, gold on emerald and ink; glamorous, formal occasions.
+- **paper_lantern** — festival paper-cut, reds and gold lit from within; communal celebrations.
+- **porcelain_garden** — blue-and-white chinaware florals; delicate, heirloom keepsakes.
+- **neon_reverie** — luminous minimalism, magenta and violet on deep dark; launch-native.
+- **terra_fresco** — ochre and terracotta plaster fresco; travel and rustic warmth.
+
+All ten are offered by every tool automatically — the tool and demo `styleId` enums derive from
+the styles themselves, so there is no second list to forget. The Studio's style picker now groups
+by studio recommendation (via `appliesTo`), showing the styles that suit the current occasion
+first. `oce_style_catalog` serves all ten with real swatches and a real passing example.
+
+**Gallery reseeded** with real packs across the new styles — real images, real grades, real seals
+— so `/gallery` is visibly colourful and diverse rather than four-tone.
+
 ## [Unreleased] — OQS 1.2: rubric profiles, and the axis the map incident needed
 
 Grading everything on the same five axes was a category error, and it shipped a real defect: a

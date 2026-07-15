@@ -116,6 +116,10 @@ export class Store {
 
     this.db = new Database(join(this.dataDir, "occestra.db"));
     this.db.pragma("journal_mode = WAL");
+    // WAL allows concurrent readers with one writer; busy_timeout makes a second writer WAIT for
+    // the lock (up to 5s) instead of throwing SQLITE_BUSY. This matters whenever a second process
+    // touches the store — the gallery reseed writing while the live ASP serves, for instance.
+    this.db.pragma("busy_timeout = 5000");
     this.migrate();
   }
 

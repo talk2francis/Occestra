@@ -106,14 +106,23 @@ export default function StudiosDoc() {
 
       <Section id="styles" title="House Styles">
         <p>
-          Four versioned prompt systems with stable ids:{" "}
-          <InlineCode>amethyst_editorial</InlineCode> (warm ivory, ink, deep amethyst, editorial
-          collage), <InlineCode>gilded_noir</InlineCode> (near-black, champagne gold, formal),{" "}
-          <InlineCode>sunprint</InlineCode> (cyanotype blues, botanical, the REMEMBER default),{" "}
-          <InlineCode>atlas_ink</InlineCode> (map-and-ledger, cream paper, itinerary-native).
-          Changing a style bumps its version; palettes are published in the manifest and{" "}
-          <InlineCode>PALETTE_DRIFT</InlineCode> measures renders against them. See them in use in
-          the <Link href="/gallery" className="text-amethyst underline underline-offset-2">gallery</Link>.
+          Ten versioned prompt systems with stable ids, each gated to the studios it suits
+          (<InlineCode>appliesTo</InlineCode>):{" "}
+          <InlineCode>amethyst_editorial</InlineCode> (warm ivory editorial collage, the safe
+          default), <InlineCode>gilded_noir</InlineCode> (near-black + champagne gold, black-tie),{" "}
+          <InlineCode>jazz_age</InlineCode> (art-deco geometry, gold on emerald),{" "}
+          <InlineCode>solstice_bloom</InlineCode> (pressed-flower botanicals, sunny),{" "}
+          <InlineCode>paper_lantern</InlineCode> (festival paper-cut, communal),{" "}
+          <InlineCode>sunprint</InlineCode> (cyanotype blues, the REMEMBER default),{" "}
+          <InlineCode>porcelain_garden</InlineCode> (blue-white chinaware, delicate keepsakes),{" "}
+          <InlineCode>terra_fresco</InlineCode> (ochre plaster, travel &amp; rustic),{" "}
+          <InlineCode>neon_reverie</InlineCode> (luminous dark minimalism, launch-native), and{" "}
+          <InlineCode>atlas_ink</InlineCode> (map-and-ledger, itinerary-native — never applied to
+          launch brand work). Changing a style bumps its version; palettes are published in the
+          manifest and <InlineCode>PALETTE_DRIFT</InlineCode> measures renders against them. Call{" "}
+          <InlineCode>oce_style_catalog</InlineCode> (free) for all ten with real swatches and a
+          real passing example, or see them in use in the{" "}
+          <Link href="/gallery" className="text-amethyst underline underline-offset-2">gallery</Link>.
         </p>
       </Section>
 
