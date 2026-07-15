@@ -37,12 +37,28 @@ export default function Provenance() {
           <InlineCode>canonicalJson</InlineCode>: object keys recursively sorted, no extra
           whitespace, bigints as decimal strings. Then:
         </p>
-        <CodeBlock lang="text" title="manifest hash">{`manifestHash = keccak256(utf8Bytes(canonicalJson(manifest)))`}</CodeBlock>
+        <CodeBlock lang="text" title="manifest hash (public packs)">{`manifestHash = keccak256(utf8Bytes(canonicalJson(manifest)))`}</CodeBlock>
         <p>
           Personal content never touches the chain — the hash is the only thing that leaves the
           store. Two manifests differing by one character produce unrelated hashes, so the seal
           binds the <em>exact</em> delivered work.
         </p>
+
+        <Callout tone="info">
+          <strong>Private keepsakes are salted.</strong>{" "}
+          A public pack&apos;s hash is deterministic, which is fine when the pack is public: anyone
+          can recompute it. But a <em>private</em> keepsake — every Remember pack — needs more.
+          A deterministic hash is confirmable by anyone who obtains the pack, and identical
+          manifests commit to identical leaves, which is linkable. So a private keepsake commits
+          to a <strong>salted</strong> hash instead:
+          <CodeBlock lang="text" title="manifest commitment (private packs)">{`commitment = keccak256(salt || canonicalJson(manifest))   // salt = 32 random bytes`}</CodeBlock>
+          The salt is stored with the pack, never on chain and never in the public page, and is
+          released only to the owner (who presents their owner token). The anchored leaf then
+          proves the keepsake <em>exists</em> and was sealed — while revealing nothing about it and
+          linking to nothing. The owner, holding the salt, can still verify the commitment opens to
+          their pack; a stranger can verify the signature and the anchor, but not the contents. A
+          memory can be proven without being published.
+        </Callout>
       </Section>
 
       <Section id="leaf" title="2 · The leaf">

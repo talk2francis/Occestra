@@ -10,7 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { verifySeal, leafOfSeal, chainFor } from "@occestra/receipts";
 import { rubricAsJson } from "@occestra/tribunal";
-import { sanitizeGaps, sanitizeTribunal, type Pack } from "@occestra/studio-core";
+import { sanitizeGaps, sanitizeTribunal, saltedManifestCommitment, type Pack } from "@occestra/studio-core";
 import { PACK_TOOLS, PRICES, type PackToolName, type ToolName } from "./gate.js";
 import { HOUSE_STYLES } from "@occestra/providers";
 import type { JobQueue } from "./jobs.js";
@@ -178,9 +178,26 @@ export interface ToolResult {
 export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
   const anchor = ctx.store.anchorOf(pack.id);
 
+  // A private (Remember) pack was sealed to a SALTED commitment. The owner — this caller, in
+  // their own paid channel — is handed the salt and an owner token ONCE. The salt lets them
+  // verify the on-chain leaf themselves; the token authorises revealing it again, and deleting
+  // the pack. This is the only place either appears.
+  const secrets = (pack as Pack & { privateSecrets?: { ownerToken: string; salt: string } }).privateSecrets;
+
   return {
     keepsakeId: pack.id,
     studio: pack.studio,
+    ...(secrets
+      ? {
+          private: true,
+          owner: {
+            ownerToken: secrets.ownerToken,
+            salt: secrets.salt,
+            keep:
+              "SAVE THESE. This keepsake is private — its /k page shows only its seal, not its contents. The salt lets you verify the on-chain commitment independently (keccak256(salt || manifest)). The ownerToken is required to reveal the salt again, and to delete this keepsake. We cannot recover either for you.",
+          },
+        }
+      : {}),
     quality: pack.quality,
     // Every public boundary sanitizes. A raw provider error must never reach a buyer.
     coverageGaps: sanitizeGaps(pack.coverageGaps),
@@ -431,7 +448,7 @@ export function buildServer(ctx: ServerContext): McpServer {
         "",
         "THE GRADE IS REPRODUCIBLE. The critic runs at temperature 0 against anchored scoring bands, and a correctness axis may only fall below its floor if the critic can QUOTE the exact defect — an uncited correctness failure is discarded and the score restored. Run it twice on the same artifact and you get the same verdict. A standard that scores the identical thing 62 one day and 72 the next is not a standard, it is a mood.",
         "",
-        "YOU GET: five scored axes (composition, legibility, style fidelity, grounding, platform fit — 70 is the passing floor), every deterministic check with its evidence (does the budget sum? is the schedule physically possible? does the image match its declared size? does body text clear 4.5:1 contrast? do the links resolve?), and an ACTIONABLE repair brief written to your generator, not to you.",
+        "YOU GET: scored axes for your artifact's PROFILE (an image gets composition, legibility, style fidelity, subject fidelity, platform fit, defects; copy gets voice, specificity, factual support, structure, platform fit; a plan gets source coverage, date validity, schedule feasibility, budget consistency, contingency, uncertainty disclosure — 70 is the floor on every one), every deterministic check with its evidence (does the budget sum? is the schedule physically possible? does the image match its declared size? does body text clear 4.5:1 contrast?), and an ACTIONABLE repair brief written to your generator, not to you.",
         "",
         "EXAMPLE: kind='invitation', imageBase64=<your png>, brief='a formal wedding invitation', size='1024x1536' -> scores, hard failures with evidence, and exactly what to change.",
         "",
@@ -467,13 +484,21 @@ export function buildServer(ctx: ServerContext): McpServer {
         "",
         "EXAMPLE: keepsakeId='oce_0abc...' -> {found, signatureValid, leaf, anchored, anchorTx, explorer}.",
         "",
+        "PRIVATE KEEPSAKES: a Remember keepsake is sealed to a SALTED commitment, so the anchored leaf proves it exists without revealing anything about it — even the hash is blind. Anyone can verify the signature and the anchor; pass your ownerToken to also confirm the commitment opens to your pack.",
+        "",
         "You do not have to trust Occestra's servers for any of this: the manifest hash is recomputable from the pack itself, and the anchor is on X Layer whether we are online or not.",
       ].join("\n"),
       inputSchema: {
         keepsakeId: z.string().regex(/^oce_[0-9a-z]{22}$/).describe("The keepsake id returned with any Occestra result."),
+        ownerToken: z
+          .string()
+          .min(8)
+          .max(200)
+          .optional()
+          .describe("For a PRIVATE keepsake only: the owner token you were given at creation. It reveals the salt so you can confirm the on-chain commitment opens to your pack. Never needed for public packs."),
       },
     },
-    async ({ keepsakeId }) => {
+    async ({ keepsakeId, ownerToken }) => {
       const pack = ctx.store.getPack(keepsakeId);
       if (!pack) {
         return ok({
@@ -485,13 +510,26 @@ export function buildServer(ctx: ServerContext): McpServer {
 
       const anchor = ctx.store.anchorOf(keepsakeId);
       const explorer = chainFor(ctx.chainId).blockExplorers.default.url;
+      const isPrivate = ctx.store.isPrivate(keepsakeId);
+
+      // A private keepsake's seal is SALTED. Anyone can confirm the sealer signed it and it is on
+      // chain; only the owner, presenting their token, can confirm the commitment opens to THIS
+      // pack's manifest. Without the token we say so plainly rather than implying a full check.
+      const salt = isPrivate && ownerToken ? ctx.store.revealSalt(keepsakeId, ownerToken) : undefined;
+      const manifestVerified = isPrivate
+        ? pack.seal && salt
+          ? saltedManifestCommitment(pack, salt as `0x${string}`).toLowerCase() === pack.seal.manifestHash.toLowerCase()
+          : undefined
+        : true;
 
       return ok({
         found: true,
         keepsakeId,
         studio: pack.studio,
+        ...(isPrivate ? { private: true } : {}),
         createdAt: pack.createdAt,
-        quality: pack.quality,
+        // A private pack's quality summary counts artifacts but names none — safe to show.
+        ...(isPrivate ? {} : { quality: pack.quality }),
         seal: pack.seal
           ? {
               ...pack.seal,
@@ -502,6 +540,16 @@ export function buildServer(ctx: ServerContext): McpServer {
         anchored: Boolean(anchor?.anchoredAt),
         ...(anchor?.txHash
           ? { anchorTx: anchor.txHash, explorer: `${explorer}/tx/${anchor.txHash}` }
+          : {}),
+        ...(isPrivate
+          ? {
+              manifest:
+                manifestVerified === undefined
+                  ? "This keepsake is private and its seal is salted. Its signature and anchor are anyone's to verify; to confirm the sealed commitment opens to this pack, pass the ownerToken you were given."
+                  : manifestVerified
+                    ? "SALT VERIFIED: the salt opens the sealed commitment for this pack — the anchored leaf is provably this keepsake, and nobody without the salt could have known that."
+                    : "SALT MISMATCH: the token's salt does not open this pack's commitment.",
+            }
           : {}),
         ...(anchor && !anchor.anchoredAt
           ? { note: "Sealed and queued — the anchor worker batches leaves on chain every 30 minutes." }

@@ -381,6 +381,15 @@ export const SealSchema = z.object({
   /** Set once the anchor worker lands the leaf on chain. */
   txHash: z.string().regex(/^0x[0-9a-f]{64}$/).optional(),
   anchoredAt: z.number().int().nonnegative().optional(),
+  /**
+   * True when `manifestHash` is a SALTED commitment — keccak256(salt || canonicalManifest) —
+   * not the bare manifest hash. Private keepsakes are salted so that the on-chain leaf reveals
+   * nothing and cannot be linked back to the pack by anyone who does not hold the salt. The salt
+   * is stored with the pack and shown only to its owner; verifying the manifest match requires
+   * it. An unsalted seal (a public pack) is verifiable by anyone against the pack alone, exactly
+   * as before — this field defaults to absent/false and existing seals are unaffected.
+   */
+  salted: z.boolean().optional(),
 });
 export type Seal = z.infer<typeof SealSchema>;
 

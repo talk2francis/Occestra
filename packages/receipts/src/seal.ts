@@ -19,7 +19,14 @@ import {
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { PackKindCode, manifestHash, type Pack, type PackKind, type Seal } from "@occestra/studio-core";
+import {
+  PackKindCode,
+  manifestHash,
+  saltedManifestCommitment,
+  type Pack,
+  type PackKind,
+  type Seal,
+} from "@occestra/studio-core";
 
 /* ------------------------------------------------------------------- chains */
 
@@ -138,11 +145,19 @@ export class Sealer {
     return this.account.address;
   }
 
-  /** Sign a keepsake. Returns a NEW pack — the input is never mutated. */
-  async seal(pack: Pack, kind: PackKind = pack.studio): Promise<Pack & { seal: Seal }> {
+  /**
+   * Sign a keepsake. Returns a NEW pack — the input is never mutated.
+   *
+   * Pass a 32-byte `salt` to commit to a SALTED manifest — keccak256(salt || canonicalManifest)
+   * — instead of the bare manifest hash. Private keepsakes are sealed this way: the on-chain leaf
+   * then reveals nothing and links to nothing without the salt, which is stored with the pack and
+   * shown only to its owner. Omit the salt and the seal is public and verifiable by anyone against
+   * the pack alone, exactly as before.
+   */
+  async seal(pack: Pack, kind: PackKind = pack.studio, salt?: Hex): Promise<Pack & { seal: Seal }> {
     const input: LeafInput = {
       keepsakeId: pack.id,
-      manifestHash: manifestHash(pack),
+      manifestHash: salt ? saltedManifestCommitment(pack, salt) : manifestHash(pack),
       packKind: PackKindCode[kind],
       createdAt: Math.floor(Date.parse(pack.createdAt) / 1000),
     };
@@ -163,6 +178,7 @@ export class Sealer {
       signer: this.account.address,
       chainId: this.chainId,
       verifyingContract: this.verifyingContract,
+      ...(salt ? { salted: true } : {}),
     };
 
     return { ...pack, seal };
@@ -223,19 +239,41 @@ export async function recoverSealer(seal: Seal): Promise<Address> {
  * Full verification of a sealed pack: the manifest still hashes to what was signed, the
  * signature is real, and the signer is who we expect. Everything except the on-chain lookup,
  * which RegistryClient.anchoredAt does.
+ *
+ * A SALTED (private) seal cannot have its manifest checked without the salt — that is the whole
+ * point of salting. Pass the pack owner's `salt` to verify the manifest match; without it, the
+ * signature is still verified but the manifest check is reported as skipped, not failed. Anyone
+ * can confirm the sealer signed *some* commitment; only the owner can confirm it is THIS pack.
  */
 export async function verifyPack(
   pack: Pack,
   expectedSigner?: Address,
-): Promise<{ valid: boolean; reasons: string[] }> {
+  salt?: Hex,
+): Promise<{ valid: boolean; reasons: string[]; manifestChecked: boolean }> {
   const reasons: string[] = [];
-  if (!pack.seal) return { valid: false, reasons: ["pack carries no seal"] };
+  if (!pack.seal) return { valid: false, reasons: ["pack carries no seal"], manifestChecked: false };
 
-  const recomputed = manifestHash(pack);
-  if (recomputed.toLowerCase() !== pack.seal.manifestHash.toLowerCase()) {
-    reasons.push(
-      `manifest hash mismatch: pack hashes to ${recomputed}, seal claims ${pack.seal.manifestHash} — the pack has been altered since it was sealed`,
-    );
+  let manifestChecked = true;
+
+  if (pack.seal.salted) {
+    if (salt) {
+      const recomputed = saltedManifestCommitment(pack, salt);
+      if (recomputed.toLowerCase() !== pack.seal.manifestHash.toLowerCase()) {
+        reasons.push(
+          "salted manifest mismatch: the salt does not open the sealed commitment for this pack — either the salt is wrong or the pack has been altered",
+        );
+      }
+    } else {
+      // No salt: the signature can be checked, but not that the commitment is this manifest.
+      manifestChecked = false;
+    }
+  } else {
+    const recomputed = manifestHash(pack);
+    if (recomputed.toLowerCase() !== pack.seal.manifestHash.toLowerCase()) {
+      reasons.push(
+        `manifest hash mismatch: pack hashes to ${recomputed}, seal claims ${pack.seal.manifestHash} — the pack has been altered since it was sealed`,
+      );
+    }
   }
 
   if (!(await verifySeal(pack.seal, expectedSigner))) {
@@ -246,5 +284,5 @@ export async function verifyPack(
     reasons.push(`signed by ${pack.seal.signer}, expected ${expectedSigner}`);
   }
 
-  return { valid: reasons.length === 0, reasons };
+  return { valid: reasons.length === 0, reasons, manifestChecked };
 }

@@ -10,6 +10,8 @@
  *   PolicyGate -> generate -> Tribunal (deterministic + critic, repair up to 2x) -> pack
  *   -> seal (if a sealer key exists) -> queue the leaf -> persist.
  */
+import { randomBytes } from "node:crypto";
+import type { Hex } from "viem";
 import sharp from "sharp";
 import {
   PolicyGate,
@@ -163,6 +165,56 @@ function withPackGrade(pack: Pack, contract: OccasionContract): Pack {
   };
 }
 
+/** Remember packs are private by default — a keepsake is a personal thing. */
+const isPrivateKind = (kind: PackKind): boolean => kind === "remember";
+
+/**
+ * A private pack's secrets, handed to the OWNER once, in their own paid response. The salt lets
+ * them verify the on-chain commitment independently; the owner token authorises revealing the
+ * salt again later, and deleting the pack. Neither is ever in the public /k view.
+ */
+export interface PrivateSecrets {
+  ownerToken: string;
+  salt: Hex;
+}
+
+/**
+ * Seal a pack, store it, and queue its leaf — the one place that decides public vs. private.
+ *
+ * A private pack (any Remember pack) is sealed to a SALTED commitment so the on-chain leaf reveals
+ * nothing, and its salt + a fresh owner token are stored (the token as a hash) and returned to the
+ * owner. A public pack is sealed exactly as before. The returned object carries the secrets on a
+ * transient field the PERSISTED pack never has — savePack runs on the clean pack first.
+ */
+async function sealAndStore(
+  ctx: PipelineContext,
+  pack: Pack,
+  kind: PackKind,
+  opts: { forcePublic?: boolean } = {},
+): Promise<Pack & { privateSecrets?: PrivateSecrets }> {
+  if (!ctx.sealer) {
+    ctx.store.savePack(pack);
+    return pack;
+  }
+
+  if (isPrivateKind(kind) && !opts.forcePublic) {
+    const salt = `0x${randomBytes(32).toString("hex")}` as Hex;
+    const ownerToken = randomBytes(24).toString("base64url");
+
+    const sealed = await ctx.sealer.seal(pack, kind, salt);
+    if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
+    ctx.store.savePack(sealed);
+    ctx.store.savePrivate(sealed.id, salt, ctx.store.hashOwnerToken(ownerToken));
+
+    return { ...sealed, privateSecrets: { ownerToken, salt } };
+  }
+
+  const sealed = await ctx.sealer.seal(pack, kind);
+  if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
+  ctx.store.savePack(sealed);
+  return sealed;
+}
+
 async function assemble(
   ctx: PipelineContext,
   contract: OccasionContract,
@@ -181,7 +233,7 @@ async function assemble(
   const requested = "deliverables" in contract ? (contract as { deliverables?: string[] }).deliverables ?? [] : [];
   const packGrade = gradePack({ requested, artifacts, contract });
 
-  let pack: Pack = {
+  const pack: Pack = {
     id: newKeepsakeId(ctx.deps.clock.now()),
     contractId: contract.id,
     studio: contract.studio,
@@ -197,14 +249,8 @@ async function assemble(
     createdAt: nowIso(ctx),
   };
 
-  // Seal it if we hold a key. Unsigned packs are still delivered — honestly labelled.
-  if (ctx.sealer) {
-    pack = await ctx.sealer.seal(pack, kind);
-    if (pack.seal) ctx.store.queueSeal(leafOfSeal(pack.seal), pack.id);
-  }
-
-  ctx.store.savePack(pack);
-  return pack;
+  // Seal it if we hold a key, store it, queue the leaf — public or salted-private per its kind.
+  return sealAndStore(ctx, pack, kind);
 }
 
 /** Generate one image through the router and store the bytes. Never inlines a provider URL. */
@@ -386,15 +432,11 @@ export async function planOccasion(ctx: PipelineContext, input: PlanOccasionInpu
 
   // The pipeline is pure and does not know about sealing or the store — that is this layer's
   // job, and it must behave exactly as it did before (seal, queue the leaf, persist).
-  let sealed: Pack = withPackGrade({ ...pack, coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])] }, contract);
-
-  if (ctx.sealer) {
-    sealed = await ctx.sealer.seal(sealed, "celebrate");
-    if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
-  }
-
-  ctx.store.savePack(sealed);
-  return sealed;
+  const graded = withPackGrade(
+    { ...pack, coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])] },
+    contract,
+  );
+  return sealAndStore(ctx, graded, "celebrate");
 }
 
 /* -------------------------------------------------------- oce_design_invite */
@@ -725,6 +767,13 @@ export interface MakeKeepsakeInput {
   mediaRefs?: string[] | undefined;
   /** The owner's corrected Story Graph. When given, it is used AS-IS. */
   confirmGraph?: StoryGraph | undefined;
+  /**
+   * INTERNAL ONLY, and deliberately NOT in the public tool schema, so a real caller cannot set
+   * it. Seeding uses it to make a SHOWCASE keepsake for the gallery — public, unsalted, its art
+   * meant to be seen. A real buyer's keepsake is always private; there is no way to ask for it
+   * to be otherwise over MCP.
+   */
+  _public?: boolean;
 }
 
 /** The full REMEMBER studio (Phase 9). Privacy is enforced in code, not in a policy page. */
@@ -763,17 +812,13 @@ export async function makeKeepsake(ctx: PipelineContext, input: MakeKeepsakeInpu
     input.confirmGraph ? { confirmGraph: input.confirmGraph } : {},
   );
 
-  let sealed: Pack = withPackGrade(
+  const graded = withPackGrade(
     { ...pack, coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])] },
     contract,
   );
 
-  if (ctx.sealer) {
-    sealed = await ctx.sealer.seal(sealed, "remember");
-    if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
-  }
-
-  ctx.store.savePack(sealed);
+  // A keepsake is private: sealed to a salted commitment, its salt + owner token returned once.
+  const sealed = await sealAndStore(ctx, graded, "remember", { forcePublic: Boolean(input._public) });
 
   // Remember WHICH private uploads this pack was built from, so "delete my project" can
   // actually destroy them. Without this link the photographs would survive the delete.
@@ -847,18 +892,11 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
 
   const withCard = await deriveOgCard(ctx, pack);
 
-  let sealed: Pack = withPackGrade(
+  const graded = withPackGrade(
     { ...withCard, coverageGaps: [...new Set([...ctx.coverageGaps, ...styleGaps, ...withCard.coverageGaps])] },
     contract,
   );
-
-  if (ctx.sealer) {
-    sealed = await ctx.sealer.seal(sealed, "launch");
-    if (sealed.seal) ctx.store.queueSeal(leafOfSeal(sealed.seal), sealed.id);
-  }
-
-  ctx.store.savePack(sealed);
-  return sealed;
+  return sealAndStore(ctx, graded, "launch");
 }
 
 /* -------------------------------------------------------------- oce_critique */

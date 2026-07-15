@@ -246,6 +246,18 @@ export class Store {
         created_at  INTEGER NOT NULL
       );
 
+      -- Private keepsakes. The salt makes the on-chain commitment keccak256(salt || manifest),
+      -- so the anchored leaf reveals nothing and links to nothing without it. The salt is stored
+      -- HERE, never on chain and never in the public pack, and it is released only to a caller
+      -- who presents the pack's owner token. The token itself is stored as a hash — a leak of
+      -- this table must not hand someone the keys to every private pack.
+      CREATE TABLE IF NOT EXISTS pack_private (
+        pack_id          TEXT PRIMARY KEY,
+        salt             TEXT NOT NULL,
+        owner_token_hash TEXT NOT NULL,
+        created_at       INTEGER NOT NULL
+      );
+
       CREATE INDEX IF NOT EXISTS idx_artifacts_pack ON artifacts(pack_id);
       CREATE INDEX IF NOT EXISTS idx_seals_unanchored ON seals_pending(anchored_at);
     `);
@@ -325,6 +337,21 @@ export class Store {
     const pack = this.getPack(id);
     if (!pack) return undefined;
 
+    // A PRIVATE keepsake shows its provenance, not its contents. The point of the whole product
+    // is that a memory can be PROVEN without being PUBLISHED: anyone can confirm it was sealed and
+    // anchored, but the artifacts, the story, and the manifest belong to the owner alone. The
+    // on-chain leaf is salted, so even the hash reveals nothing.
+    if (this.isPrivate(id)) {
+      return {
+        id: pack.id,
+        studio: pack.studio,
+        createdAt: pack.createdAt,
+        private: true,
+        note: "This is a private keepsake. Its contents are shown only to its owner. Its seal, below, is anyone's to verify — the on-chain commitment is salted, so it proves the keepsake exists without revealing anything about it.",
+        seal: pack.seal ? { ...pack.seal, salted: Boolean(pack.seal.salted) } : undefined,
+      };
+    }
+
     return {
       id: pack.id,
       studio: pack.studio,
@@ -400,6 +427,7 @@ export class Store {
     this.db.transaction(() => {
       this.db.prepare("DELETE FROM artifacts WHERE pack_id = ?").run(id);
       this.db.prepare("DELETE FROM pack_uploads WHERE pack_id = ?").run(id);
+      this.db.prepare("DELETE FROM pack_private WHERE pack_id = ?").run(id);
       this.db.prepare("DELETE FROM packs WHERE id = ?").run(id);
     })();
 
@@ -448,6 +476,56 @@ export class Store {
     }
 
     return found;
+  }
+
+  /* ------------------------------------------------------------- privacy */
+
+  /** Record a private pack's salt and the hash of its owner token. */
+  savePrivate(packId: string, salt: string, ownerTokenHash: string): void {
+    this.db
+      .prepare(
+        "INSERT OR REPLACE INTO pack_private (pack_id, salt, owner_token_hash, created_at) VALUES (?, ?, ?, ?)",
+      )
+      .run(packId, salt, ownerTokenHash, Date.now());
+  }
+
+  /** Is this pack private? True iff we are holding a salt for it. */
+  isPrivate(packId: string): boolean {
+    const row = this.db.prepare("SELECT 1 FROM pack_private WHERE pack_id = ?").get(packId);
+    return Boolean(row);
+  }
+
+  /** The salt, for internal verification. Never returned over a public boundary. */
+  saltFor(packId: string): string | undefined {
+    const row = this.db.prepare("SELECT salt FROM pack_private WHERE pack_id = ?").get(packId) as
+      | { salt: string }
+      | undefined;
+    return row?.salt;
+  }
+
+  /**
+   * Does this token own this pack? Constant-time compare against the stored hash. The one gate
+   * that stands between a stranger with a keepsake id and the salt (or, in V2-2.4, deletion).
+   */
+  ownsPack(packId: string, ownerToken: string): boolean {
+    const row = this.db.prepare("SELECT owner_token_hash FROM pack_private WHERE pack_id = ?").get(packId) as
+      | { owner_token_hash: string }
+      | undefined;
+    if (!row) return false;
+
+    const expected = Buffer.from(row.owner_token_hash);
+    const given = Buffer.from(createHmac("sha256", this.urlSecret).update(ownerToken).digest("hex"));
+    return expected.length === given.length && timingSafeEqual(expected, given);
+  }
+
+  /** Hash an owner token the same way ownsPack checks it. */
+  hashOwnerToken(token: string): string {
+    return createHmac("sha256", this.urlSecret).update(token).digest("hex");
+  }
+
+  /** Release the salt to a caller who proves ownership. */
+  revealSalt(packId: string, ownerToken: string): string | undefined {
+    return this.ownsPack(packId, ownerToken) ? this.saltFor(packId) : undefined;
   }
 
   /* ----------------------------------------------------------------- orders */

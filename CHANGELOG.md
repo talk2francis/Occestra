@@ -7,6 +7,30 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-2.3: private keepsakes — proven without being published
+
+A keepsake is made from a person's own photographs and their own memory. It should be provable
+without being publishable, and until now it was not: the on-chain commitment was the bare manifest
+hash, which is DETERMINISTIC — anyone who obtains the pack can confirm it is the thing on chain,
+and two identical manifests commit to identical leaves, which is linkable.
+
+**Every Remember pack is now sealed to a SALTED commitment:** `keccak256(salt || canonicalManifest)`,
+the salt being 32 random bytes. The anchored leaf now proves the keepsake *exists* and was sealed
+by us — while revealing nothing about it and linking to nothing. The salt is stored with the pack,
+never on chain and never in the public page, and is released only to the owner, who presents an
+**owner token** (stored as a hash) handed to them once at creation.
+
+- **The public `/k` page for a private keepsake shows its seal, not its contents** — no artifacts,
+  no story, no grade summary. A stranger can verify the signature and the anchor; only the owner,
+  with the salt, can verify the commitment opens to their pack. `oce_verify_keepsake` takes an
+  optional `ownerToken` to do exactly that.
+- **Public packs are entirely unchanged** — deterministic hash, fully visible, verifiable by
+  anyone against the pack alone. Existing sealed packs are unaffected; `salted` defaults to absent.
+- **Deleting a keepsake destroys its salt too**, so a deleted private pack can never be verified
+  against later — it is gone, for real.
+- A showcase escape hatch (`_public`, internal-only, absent from the tool schema) lets the gallery
+  seed public keepsakes; a real buyer has no way to make theirs public over MCP.
+
 ## [Unreleased] — V2-2.2: style gating, and a subject-first prompt
 
 Two defences against the map incident, upstream of the critic that now catches it.

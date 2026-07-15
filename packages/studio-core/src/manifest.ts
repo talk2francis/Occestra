@@ -6,7 +6,7 @@
  * change to canonicalJson's semantics is a breaking, un-verifiable change to every seal
  * already on chain. Treat it as frozen (AGENTS.md).
  */
-import { keccak256, toBytes } from "viem";
+import { concat, keccak256, toBytes, type Hex } from "viem";
 import { PackKindCode, type Artifact, type Pack, type PackKind } from "./types.js";
 
 /**
@@ -109,6 +109,26 @@ export function manifestOf(pack: Pack): PackManifest {
 
 export function manifestHash(pack: Pack): `0x${string}` {
   return hashCanonical(manifestOf(pack));
+}
+
+/**
+ * A SALTED manifest commitment: keccak256(salt || canonicalManifest).
+ *
+ * For a private keepsake, the bare manifest hash is a problem even though it is a hash: it is
+ * DETERMINISTIC, so anyone who obtains the pack can recompute it and confirm it is the thing on
+ * chain, and two identical manifests commit to the same leaf, which is linkable. Prepending 32
+ * random bytes fixes both — the on-chain leaf reveals nothing and links to nothing without the
+ * salt, and the owner, holding the salt, can still verify the commitment independently.
+ *
+ * The salt is 32 bytes (0x-prefixed hex). It is concatenated BEFORE the canonical manifest bytes
+ * and the whole is hashed. Order matters and is frozen, exactly like canonicalJson.
+ */
+export function saltedManifestCommitment(pack: Pack, salt: Hex): `0x${string}` {
+  const saltBytes = toBytes(salt);
+  if (saltBytes.length !== 32) {
+    throw new TypeError(`salt must be 32 bytes, got ${saltBytes.length}`);
+  }
+  return keccak256(concat([saltBytes, toBytes(canonicalJson(manifestOf(pack)))]));
 }
 
 export function packKindCode(kind: PackKind): number {
