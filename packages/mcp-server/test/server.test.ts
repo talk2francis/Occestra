@@ -78,6 +78,51 @@ const parse = (result: unknown): Record<string, unknown> => {
   return JSON.parse(content[0]!.text) as Record<string, unknown>;
 };
 
+/** A real buyer proof, signed locally against the same EIP-3009 domain production uses. */
+async function paymentProof(amountUsdt: number, nonceLabel: string): Promise<string> {
+  const buyer = privateKeyToAccount(BUYER_KEY);
+  const authorization = {
+    from: buyer.address,
+    to: TREASURY,
+    value: toAtomic(amountUsdt),
+    validAfter: 0n,
+    validBefore: BigInt(Math.floor(NOW / 1000) + 300),
+    nonce: keccak256(toBytes(nonceLabel)),
+  };
+  const signature = await buyer.signTypedData({
+    domain: { name: "USD₮0", version: "1", chainId: 196, verifyingContract: DEFAULT_ASSET },
+    types: {
+      TransferWithAuthorization: [
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "value", type: "uint256" },
+        { name: "validAfter", type: "uint256" },
+        { name: "validBefore", type: "uint256" },
+        { name: "nonce", type: "bytes32" },
+      ],
+    },
+    primaryType: "TransferWithAuthorization",
+    message: authorization,
+  });
+
+  return Buffer.from(
+    JSON.stringify({
+      x402Version: 2,
+      scheme: "exact",
+      network: "eip155:196",
+      payload: {
+        signature,
+        authorization: {
+          ...authorization,
+          value: authorization.value.toString(),
+          validAfter: authorization.validAfter.toString(),
+          validBefore: authorization.validBefore.toString(),
+        },
+      },
+    }),
+  ).toString("base64");
+}
+
 afterAll(() => {
   for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
 });
@@ -302,6 +347,7 @@ describe("payment gate", () => {
     expect(accepts.network).toBe("eip155:196");
     expect(accepts.payTo).toBe(TREASURY);
     expect(accepts.amount).toBe("100000"); // 0.10 USDT at 6dp
+    expect(accepts.decimals).toBe(6);
     expect(accepts.maxTimeoutSeconds).toBe(300);
     expect(accepts.extra).toEqual({ name: "USD₮0", version: "1" });
 
@@ -575,27 +621,77 @@ describe("http surface", () => {
     expect(body).toEqual(decoded); // body and header agree
   });
 
-  it("emits an x402 challenge to a PLAIN buyer probe — GET and POST with Accept: application/json", async () => {
-    // onchainos x402-check probes with a bare GET and a POST carrying Accept: application/json,
-    // and requires an HTTP 402 with the accepts array. Our MCP transport wants text/event-stream
-    // and answered 405/406, so the checker never saw the 402 and the listing was rejected.
-    await start(new OkxGate({ store: makeCtx().store, treasury: TREASURY, chainId: 196 }));
+  it("serves the registered toast over plain x402 GET and POST replays — no MCP Accept header", async () => {
+    // This is the exact marketplace buyer contract: discover by ordinary HTTP, sign, then replay
+    // either the GET with no body or a POST with a business body. Neither request is MCP and
+    // neither accepts text/event-stream.
+    await start(new OkxGate({
+      store: makeCtx().store,
+      treasury: TREASURY,
+      chainId: 196,
+      now: () => NOW,
+    }));
 
-    // GET probe.
+    // GET discovery advertises the marketplace-registered toast fee: 0.02 USDT.
     const get = await fetch(`${base}/mcp`, { headers: { accept: "application/json" } });
     expect(get.status).toBe(402);
     const getBody = await get.json();
     expect(getBody.accepts[0].asset).toBe(DEFAULT_ASSET);
     expect(getBody.accepts[0].network).toBe("eip155:196");
+    expect(getBody.accepts[0].amount).toBe("20000");
+    expect(getBody.accepts[0].decimals).toBe(6);
     expect(get.headers.get("PAYMENT-REQUIRED")).toBeTruthy();
 
-    // POST probe with a non-MCP body.
-    const post = await fetch(`${base}/mcp`, {
+    // Attempt 1 from the review report: signed GET, no business body, legacy X-PAYMENT header.
+    const getProof = await paymentProof(0.02, "plain-get");
+    const paidGet = await fetch(`${base}/mcp`, {
+      headers: { accept: "application/json", "X-PAYMENT": getProof },
+    });
+    expect(paidGet.status).toBe(200);
+    expect(paidGet.headers.get("content-type")).toContain("application/json");
+    expect(paidGet.headers.get("content-type")).not.toContain("text/event-stream");
+    expect(paidGet.headers.get("PAYMENT-RESPONSE")).toBeTruthy();
+    const getResult = await paidGet.json();
+    expect(getResult.ok).toBe(true);
+    expect(getResult.service).toBe("oce_write_toast");
+    expect(getResult.priceUsdt).toBe(0.02);
+    expect(getResult.deliverable.artifacts[0].kind).toBe("toast");
+
+    // A network retry of the same paid GET is the same answer, never a second settlement.
+    const replayedGet = await fetch(`${base}/mcp`, {
+      headers: { accept: "application/json", "X-PAYMENT": getProof },
+    });
+    expect(replayedGet.status).toBe(200);
+    expect(replayedGet.headers.get("Idempotency-Replayed")).toBe("true");
+
+    // Attempt 2 from the review report: signed POST with a business body and JSON-only Accept.
+    const postProof = await paymentProof(0.02, "plain-post");
+    const paidPost = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "PAYMENT-SIGNATURE": postProof,
+      },
+      body: JSON.stringify({
+        subject: "my sister Mara",
+        relationship: "younger brother",
+        details: "she taught me to drive, badly",
+      }),
+    });
+    expect(paidPost.status).toBe(200);
+    const postResult = await paidPost.json();
+    expect(postResult.deliverable.artifacts[0].title).toBe("A toast for my sister Mara");
+    expect(ctx.store.orders().filter((order) => order.status === "paid")).toHaveLength(2);
+
+    // A malformed MCP client is rejected BEFORE its proof can be inspected or settled.
+    const badMcp = await fetch(`${base}/mcp`, {
       method: "POST",
       headers: { accept: "application/json", "content-type": "application/json" },
-      body: JSON.stringify({ probe: true }),
+      body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "tools/list", params: {} }),
     });
-    expect(post.status).toBe(402);
+    expect(badMcp.status).toBe(406);
+    expect((await badMcp.json()).charged).toBe(false);
 
     // A REAL MCP client asking for the event stream is NOT probe-hijacked.
     const real = await fetch(`${base}/mcp`, {

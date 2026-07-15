@@ -144,6 +144,8 @@ export interface PaymentChallenge {
     network: string;
     asset: string;
     amount: string;
+    /** Lets generic buyers render atomic amounts even when their token registry is stale. */
+    decimals: number;
     payTo: string;
     maxTimeoutSeconds: number;
     extra: { name: string; version: string };
@@ -306,6 +308,7 @@ export class OkxGate implements PaymentGate {
           network: this.network,
           asset: this.config.asset,
           amount: toAtomic(priceUsdt).toString(),
+          decimals: ASSET_DECIMALS,
           payTo: this.config.treasury,
           maxTimeoutSeconds: this.config.maxTimeoutSeconds,
           extra: { name: this.config.assetName, version: this.config.assetVersion },

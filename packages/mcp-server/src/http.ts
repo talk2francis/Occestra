@@ -13,7 +13,7 @@ import { HOUSE_STYLES } from "@occestra/providers";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { callerIp as demoCallerIp, handleDemoRun } from "./demo.js";
-import { PolicyRefusal, screenToolInput } from "./pipelines.js";
+import { PolicyRefusal, screenToolInput, writeToast, type WriteToastInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
 import {
   VERSION,
@@ -101,6 +101,67 @@ function replay(res: Response, id: unknown, stored: StoredResponse): void {
       ...(stored.isError ? { isError: true } : {}),
     },
   });
+}
+
+/** The same paid plain-HTTP answer, without wrapping it in an MCP JSON-RPC envelope. */
+function replayPlain(res: Response, stored: StoredResponse): void {
+  if (stored.paymentResponse) res.set("PAYMENT-RESPONSE", stored.paymentResponse);
+  res.set("Idempotency-Replayed", "true");
+  res.status(200).json(stored.payload);
+}
+
+/* ----------------------------------------------------- plain x402 service */
+
+const PLAIN_X402_TOOL = "oce_write_toast" as const;
+const DEFAULT_PLAIN_TOAST_SUBJECT = "the people who made this moment possible";
+
+type JsonObject = Record<string, unknown>;
+
+function isJsonObject(value: unknown): value is JsonObject {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * `task-402-pay` replays either a GET with no body or a POST carrying the service body. Accept
+ * both. A few buyers wrap the body as `arguments`, `input`, `body` or `params`; unwrap those too.
+ */
+function plainToastInput(req: Request): WriteToastInput {
+  const source = req.method === "GET" ? req.query : req.body;
+  let body: JsonObject = isJsonObject(source) ? source : {};
+
+  for (const key of ["arguments", "input", "body", "params"] as const) {
+    if (isJsonObject(body[key])) {
+      body = body[key];
+      break;
+    }
+  }
+
+  const text = (...keys: string[]): string | undefined => {
+    for (const key of keys) {
+      const value = body[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return undefined;
+  };
+
+  const rawLength = body["lengthSeconds"] ?? body["length_seconds"];
+  const lengthSeconds =
+    typeof rawLength === "number"
+      ? rawLength
+      : typeof rawLength === "string" && rawLength.trim()
+        ? Number(rawLength)
+        : undefined;
+
+  const candidate = {
+    subject: text("subject", "topic", "occasion", "for", "name") ?? DEFAULT_PLAIN_TOAST_SUBJECT,
+    relationship: text("relationship"),
+    tone: text("tone"),
+    details: text("details", "message", "prompt", "description"),
+    ...(Number.isFinite(lengthSeconds) ? { lengthSeconds } : {}),
+  };
+
+  // One schema still governs the MCP tool, the async job and this compatibility service.
+  return packToolSchema(PLAIN_X402_TOOL).parse(candidate) as WriteToastInput;
 }
 
 /* ---------------------------------------------------------------- the app */
@@ -426,23 +487,16 @@ export function buildApp(ctx: AppContext): Express {
 
   /* -------------------------------------------------------------------- mcp */
 
-  /**
-   * The x402 discovery probe.
-   *
-   * onchainos x402-check / x402-validate probe a paid endpoint with a plain GET (and a POST with
-   * a "business body"), sending `Accept: application/json`, and expect an HTTP 402 carrying the
-   * x402 `accepts` array. Our MCP transport, however, requires `Accept: text/event-stream` and
-   * answers a plain probe with 405 (on GET) or 406 (on POST) — so the checker never saw the 402,
-   * and the listing was rejected. This emits the real 402 challenge to those probes. Genuine MCP
-   * clients send `text/event-stream` and are untouched.
-   *
-   * The probe fee (OCE_X402_PROBE_FEE, default 0.02 USDT) is the amount advertised at the resource
-   * level, kept equal to the fee registered on the marketplace so the token and price line up.
-   */
+  /** The fee registered for the plain-HTTP toast service on the shared /mcp URL. */
+  const plainX402Fee = (): number => {
+    const configured = Number(process.env["OCE_X402_PROBE_FEE"] ?? 0.02);
+    return Number.isFinite(configured) && configured > 0 ? configured : 0.02;
+  };
+
+  /** The x402 challenge shared by the GET/no-body and POST/business-body buyer paths. */
   const emitX402Probe = (res: Response): boolean => {
     if (!(ctx.gate instanceof OkxGate)) return false;
-    const fee = Number(process.env["OCE_X402_PROBE_FEE"] ?? 0.02);
-    const challenge = ctx.gate.challenge("service", fee);
+    const challenge = ctx.gate.challenge(PLAIN_X402_TOOL, plainX402Fee());
     res
       .status(402)
       .set("PAYMENT-REQUIRED", Buffer.from(JSON.stringify(challenge)).toString("base64"))
@@ -451,21 +505,156 @@ export function buildApp(ctx: AppContext): Express {
     return true;
   };
 
-  /** A plain buyer probe: no payment proof, and not asking for the MCP event stream. */
-  const isX402Probe = (req: Request): boolean => {
-    const hasPayment = Boolean(req.get("payment-signature") ?? req.get("x-payment"));
-    const wantsStream = (req.get("accept") ?? "").includes("text/event-stream");
-    return !hasPayment && !wantsStream;
+  /**
+   * Complete the registered x402 service over ordinary HTTP JSON.
+   *
+   * This is deliberately NOT sent through StreamableHTTPServerTransport. `task-402-pay` is an
+   * HTTP buyer, not an MCP session: it signs the challenge and replays the original GET, or POSTs
+   * a business body, with `Accept: application/json`. Sending that replay to the MCP transport is
+   * what produced the review-blocking 406 and, worse, meant a valid authorization was never
+   * settled. Proper JSON-RPC MCP calls still take the transport path below.
+   */
+  const handlePlainX402 = async (req: Request, res: Response): Promise<void> => {
+    if (!(ctx.gate instanceof OkxGate)) {
+      res.status(405).json({ error: "The plain x402 service is available in production payment mode only." });
+      return;
+    }
+
+    let input: WriteToastInput;
+    try {
+      input = plainToastInput(req);
+      screenToolInput(input);
+    } catch (error) {
+      if (error instanceof PolicyRefusal) {
+        res.status(403).json({ error: error.politeMessage, charged: false });
+        return;
+      }
+      res.status(400).json({
+        error: "The toast request body is not valid.",
+        detail: error instanceof Error ? error.message : String(error),
+        charged: false,
+      });
+      return;
+    }
+
+    const fee = plainX402Fee();
+    const idempotencyKey = req.get("idempotency-key")?.trim() || paymentNonceOf(req.headers);
+
+    if (idempotencyKey) {
+      const requestHash = createHash("sha256")
+        .update(JSON.stringify({ service: PLAIN_X402_TOOL, input }))
+        .digest("hex");
+      const claim = ctx.store.claimIdempotencyKey(idempotencyKey, requestHash, PLAIN_X402_TOOL);
+
+      if (claim.status === "replay") {
+        replayPlain(res, claim.response as StoredResponse);
+        return;
+      }
+      if (claim.status === "in_flight") {
+        res.status(409).json({ error: "This paid request is still running — retry shortly.", charged: false });
+        return;
+      }
+      if (claim.status === "conflict") {
+        res.status(422).json({
+          error: "This payment or Idempotency-Key belongs to a different request.",
+          charged: false,
+        });
+        return;
+      }
+    }
+
+    const verdict = await ctx.gate.check({ headers: req.headers }, PLAIN_X402_TOOL, fee);
+    if (!verdict.ok) {
+      if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
+      if (verdict.status === 402) {
+        res.status(402).set("PAYMENT-REQUIRED", verdict.headerValue).json(verdict.challenge);
+        return;
+      }
+      res.status(verdict.status).json({ error: verdict.reason, charged: false });
+      return;
+    }
+
+    const order = {
+      id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      tool: PLAIN_X402_TOOL,
+      priceUsdt: fee,
+      payerRef: verdict.payerRef,
+    };
+    ctx.store.recordOrder({
+      ...order,
+      status: "paid",
+      ...(verdict.txHash ? { txHash: verdict.txHash } : {}),
+      createdAt: Date.now(),
+    });
+
+    const paymentResponse = OkxGate.settlementHeader(verdict, String(fee));
+    res.set("PAYMENT-RESPONSE", paymentResponse);
+    const requestCtx: ServerContext = { ...ctx, order };
+
+    try {
+      const pack = await writeToast(requestCtx, input);
+      const payload = {
+        ok: true,
+        service: PLAIN_X402_TOOL,
+        priceUsdt: fee,
+        deliverable: packResult(requestCtx, pack),
+      };
+
+      if (idempotencyKey) {
+        ctx.store.completeIdempotencyKey(idempotencyKey, {
+          payload,
+          isError: false,
+          paymentResponse,
+        } satisfies StoredResponse);
+      }
+
+      res.status(200).type("application/json").json(payload);
+    } catch (error) {
+      if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
+      ctx.store.oweRefund({
+        orderId: order.id,
+        payerRef: order.payerRef,
+        amountUsdt: order.priceUsdt,
+        tool: order.tool,
+        reason: "the plain x402 toast service failed after settlement",
+      });
+      res.status(500).json({
+        error: "The paid toast could not be delivered. A refund has been recorded.",
+        charged: true,
+        refundOwed: fee,
+      });
+    }
   };
 
   app.post("/mcp", async (req: Request, res: Response) => {
     const body = req.body as
-      | { method?: string; params?: { name?: string; arguments?: unknown } }
+      | { jsonrpc?: string; method?: string; params?: { name?: string; arguments?: unknown } }
       | undefined;
 
-    // An x402 discovery probe (Accept: application/json, no payment) gets the challenge, not a
-    // 406 from the MCP transport. A real MCP call — which asks for text/event-stream — proceeds.
-    if (isX402Probe(req) && emitX402Probe(res)) return;
+    // `task-402-pay` speaks plain HTTP, not MCP. Its signed replay must never reach the MCP
+    // transport (which requires text/event-stream). JSON-RPC calls remain genuine MCP traffic.
+    const isMcpRequest = body?.jsonrpc === "2.0" && typeof body.method === "string";
+    if (!isMcpRequest && ctx.gate instanceof OkxGate) {
+      await handlePlainX402(req, res);
+      return;
+    }
+    if (isMcpRequest) {
+      const accept = req.get("accept") ?? "";
+      if (!accept.includes("application/json") || !accept.includes("text/event-stream")) {
+        // Reject the transport mismatch BEFORE looking at a payment proof. Otherwise a valid
+        // authorization can settle and only then fail with the SDK's 406 — money moved, no work.
+        res.status(406).json({
+          jsonrpc: "2.0",
+          error: {
+            code: -32000,
+            message: "MCP clients must accept both application/json and text/event-stream.",
+          },
+          id: (body as { id?: unknown } | undefined)?.id ?? null,
+          charged: false,
+        });
+        return;
+      }
+    }
 
     // The context this ONE request runs under. If money moves, the order is attached to it,
     // so a tool that takes payment and then fails knows exactly what it owes and to whom.
@@ -647,10 +836,15 @@ export function buildApp(ctx: AppContext): Express {
   });
 
   // Stateless means stateless: no SSE stream to GET, no session to DELETE.
-  app.get("/mcp", (_req, res) => {
-    // A bare GET is how x402-check discovers the service: answer with the 402 challenge (in okx
-    // mode) so the endpoint validates as a real x402 resource, rather than a 405.
-    if (emitX402Probe(res)) return;
+  app.get("/mcp", async (req, res) => {
+    // `task-402-pay` first discovers with GET, then may replay that exact GET with X-PAYMENT.
+    // An unsigned GET gets the challenge; a signed one settles and receives the JSON toast.
+    if (ctx.gate instanceof OkxGate) {
+      const hasPayment = Boolean(req.get("payment-signature") ?? req.get("x-payment"));
+      if (!hasPayment && emitX402Probe(res)) return;
+      await handlePlainX402(req, res);
+      return;
+    }
     res.status(405).json({ error: "Occestra's MCP endpoint is stateless: POST only." });
   });
   app.delete("/mcp", (_req, res) => {

@@ -7,6 +7,23 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — x402 plain-HTTP buyer compatibility
+
+- The shared `/mcp` endpoint now serves the marketplace-registered 0.02-USDT toast service over
+  **plain HTTP JSON** as well as serving proper MCP clients over Streamable HTTP. An unsigned GET
+  or non-JSON-RPC POST returns the x402 challenge; the signed `X-PAYMENT` or `PAYMENT-SIGNATURE`
+  replay verifies and settles the authorization, runs the toast pipeline, and returns HTTP 200
+  with deliverable JSON and `PAYMENT-RESPONSE` settlement evidence.
+- Both `task-402-pay` replay forms are supported: GET with no body and POST with a business body.
+  Neither is passed to the MCP transport, so a JSON-only buyer can no longer receive the MCP 406
+  requiring `text/event-stream` after signing.
+- Paid plain-HTTP replays use the payment nonce as their idempotency key. A dropped connection and
+  retry returns the original deliverable and cannot settle the same authorization twice.
+- Added signed EIP-3009 regression coverage for discovery, legacy and v2 proof headers, both replay
+  methods, HTTP 200 JSON delivery, settlement headers, and duplicate replay.
+- Challenges declare the settlement token's 6 decimals explicitly, so `task-402-pay` can resolve
+  and display the 20,000-atomic-unit fee as 0.02 even when its local token registry is stale.
+
 ## [Unreleased] — V2-2.4: security sweep
 
 The launch studio opens a URL we were handed and reads photographs we were sent. Both are
