@@ -11,8 +11,9 @@ const base =
 
 const variants: Record<Variant, string> = {
   // Ink, not purple: the primary action is confident, the accent stays scarce.
+  // glow-cta is inert by day; by night the primary action blooms softly.
   primary:
-    "bg-ink text-ground shadow-lift hover:bg-plum hover:shadow-keepsake",
+    "bg-ink text-ground shadow-lift hover:bg-plum hover:shadow-keepsake glow-cta",
   outline:
     "border border-ink/20 text-ink hover:border-ink/50 hover:bg-panel",
   ghost: "text-ink/70 hover:text-ink hover:bg-panel",

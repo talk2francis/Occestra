@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Wordmark } from "@/components/site/wordmark";
+import { ThemeToggle } from "@/components/ui/theme";
 import type { StyleSwatch } from "@/lib/studio";
 import { Composer } from "./composer";
 import { PackPanel } from "./pack-panel";
@@ -92,9 +93,12 @@ export function Workspace({
           <Wordmark height={26} priority />
           <span className="text-kicker hidden text-amethyst sm:inline">The Studio</span>
         </div>
-        <p className="text-data hidden text-ink/60 md:block">
-          real pipelines · real grades · sealed on X Layer
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-data hidden text-ink/60 md:block">
+            real pipelines · real grades · sealed on X Layer
+          </p>
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="grid flex-1 lg:h-[calc(100vh-57px)] lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)_minmax(0,21rem)]">

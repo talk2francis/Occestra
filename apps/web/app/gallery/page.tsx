@@ -67,7 +67,7 @@ export default async function GalleryPage() {
               <Link
                 key={pack.id}
                 href={`/k/${pack.id}`}
-                className="group block overflow-hidden rounded-2xl border border-ink/10 bg-ground shadow-lift transition-shadow hover:shadow-keepsake"
+                className="lum-edge group block overflow-hidden rounded-2xl border border-ink/10 bg-ground shadow-lift transition-shadow hover:shadow-keepsake"
               >
                 {image && (
                   /* eslint-disable-next-line @next/next/no-img-element -- signed expiring URL */

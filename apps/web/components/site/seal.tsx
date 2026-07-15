@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion";
+import { GuillocheCorner, GuillocheRing } from "@/components/ui/guilloche";
 import { SealMark } from "@/components/ui/seal-mark";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { API_BASE, CELEBRATE, EXPLORER_REGISTRY, REGISTRY } from "@/lib/real";
@@ -11,7 +12,8 @@ export function Seal() {
   const { seal } = CELEBRATE;
 
   return (
-    <section id="seal" className="scroll-mt-20 py-20 sm:py-28">
+    <section id="seal" className="relative scroll-mt-20 overflow-hidden py-20 sm:py-28">
+      <div aria-hidden className="vignette-warm absolute inset-0" style={{ "--vig-size": "44% 55%", "--vig-pos": "50% 50%" } as React.CSSProperties} />
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
         <Reveal>
           <SectionHeading
@@ -32,7 +34,7 @@ export function Seal() {
               href={EXPLORER_REGISTRY}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-11 items-center rounded-full bg-ink px-6 text-[0.93rem] font-medium text-ground shadow-lift transition-colors hover:bg-plum"
+              className="glow-cta inline-flex h-11 items-center rounded-full bg-ink px-6 text-[0.93rem] font-medium text-ground shadow-lift transition-colors hover:bg-plum"
             >
               Verify on X Layer
             </a>
@@ -53,14 +55,20 @@ export function Seal() {
         {/* the keepsake certificate card */}
         <Reveal delay={0.12}>
           <div className="relative mx-auto max-w-md">
-            <div className="rotate-[0.6deg] rounded-2xl border border-ink/12 bg-ground p-7 shadow-keepsake sm:p-9">
+            <div className="relative overflow-hidden rotate-[0.6deg] rounded-2xl border border-ink/12 bg-ground p-7 shadow-keepsake sm:p-9">
+              {/* certificate engraving in the corners of the keepsake card */}
+              <GuillocheCorner size={104} corner="tl" className="absolute -top-1 -left-1" />
+              <GuillocheCorner size={104} corner="br" className="absolute -right-1 -bottom-1" />
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-kicker text-amethyst">Occasion Pack · Celebrate</p>
                   <p className="text-subhead mt-3">A farewell dinner for a friend moving abroad</p>
                   <p className="mt-2 text-[0.85rem] text-ink/65">Lisbon · sealed {seal.createdAt.slice(0, 10)}</p>
                 </div>
-                <SealMark size={72} className="shrink-0 text-amethyst/90" />
+                <span className="relative shrink-0">
+                  <GuillocheRing size={104} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  <SealMark size={72} className="relative text-amethyst/90" />
+                </span>
               </div>
 
               <dl className="text-data mt-8 space-y-3 border-t border-ink/10 pt-6 text-ink/60">

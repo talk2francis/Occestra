@@ -59,7 +59,7 @@ curl -s -X POST https://api.occestra.xyz/mcp \\
   -H 'Accept: application/json, text/event-stream' \\
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`}</CodeBlock>
         <p>
-          Paid tools cost between 0.01 and 0.25 USDT per call, settled x402 on X Layer. The{" "}
+          Paid tools cost between 0.01 and 1.50 USDT per call, settled x402 on X Layer. The{" "}
           <Link href={docHref("quickstart")} className="text-amethyst underline underline-offset-2">quickstart</Link>{" "}
           walks all eight tools;{" "}
           <Link href={docHref("payments")} className="text-amethyst underline underline-offset-2">payments</Link>{" "}

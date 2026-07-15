@@ -173,7 +173,7 @@ export function PackPanel({
             <div className="space-y-2 pt-1">
               <a
                 href={`/k/${pack.keepsakeId}`}
-                className="block rounded-full bg-ink px-5 py-2.5 text-center text-[0.85rem] font-medium text-ground shadow-lift transition-colors hover:bg-plum"
+                className="glow-cta block rounded-full bg-ink px-5 py-2.5 text-center text-[0.85rem] font-medium text-ground shadow-lift transition-colors hover:bg-plum"
               >
                 Open the public page
               </a>

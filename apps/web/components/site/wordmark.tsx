@@ -20,16 +20,31 @@ export function Wordmark({
   priority?: boolean;
   className?: string;
 }) {
+  // Both theme variants render; CSS on [data-theme] shows exactly one. The
+  // light asset's real alpha goes muddy on dark grounds (and vice versa), so
+  // each theme gets the lockup drawn for its own paper.
+  const width = Math.round(height * (447 / 120));
   const img = (
-    <Image
-      src="/brand/logo-horizontal.png"
-      alt="Occestra"
-      width={Math.round(height * (447 / 120))}
-      height={height}
-      priority={priority}
-      className={`w-auto ${className}`}
-      style={{ height }}
-    />
+    <>
+      <Image
+        src="/brand/logo-horizontal.png"
+        alt="Occestra"
+        width={width}
+        height={height}
+        priority={priority}
+        className={`theme-daylight-only w-auto ${className}`}
+        style={{ height }}
+      />
+      <Image
+        src="/brand/logo-horizontal-dark.png"
+        alt="Occestra"
+        width={width}
+        height={height}
+        priority={priority}
+        className={`theme-nocturne-only w-auto ${className}`}
+        style={{ height }}
+      />
+    </>
   );
 
   if (!href) return img;

@@ -31,7 +31,7 @@ export function SealMark({
       viewBox="0 0 120 120"
       role="img"
       aria-label={title}
-      className={className}
+      className={`glow-seal ${className}`}
     >
       <defs>
         <path id={`${id}-ring`} d="M 60,60 m -44,0 a 44,44 0 1,1 88,0 a 44,44 0 1,1 -88,0" />

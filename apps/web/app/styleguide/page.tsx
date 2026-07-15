@@ -13,38 +13,42 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+/** name, Amethyst Daylight value, Amethyst Nocturne value */
 const TOKENS = [
-  ["ground", "#FAF7F2"],
-  ["panel", "#F1ECE4"],
-  ["ink", "#17141A"],
-  ["plum", "#2D1B4E"],
-  ["amethyst", "#6B3FA0"],
-  ["lilac", "#C8B4FF"],
-  ["silver", "#8E8A94"],
-  ["pass", "#2FA96B"],
-  ["repair", "#D9822B"],
-  ["fail", "#C24141"],
-  ["info", "#5BA8FF"],
+  ["ground", "#FAF7F2", "#17131C"],
+  ["panel", "#F1ECE4", "#201A28"],
+  ["ink", "#17141A", "#F2EDE6"],
+  ["plum", "#2D1B4E", "#D6C5F0"],
+  ["amethyst", "#6B3FA0", "#9D6FD8"],
+  ["lilac", "#C8B4FF", "#C8B4FF"],
+  ["silver", "#8E8A94", "#8E8A94"],
+  ["pass", "#2FA96B", "#4CC98A"],
+  ["repair", "#D9822B", "#EA9E52"],
+  ["fail", "#C24141", "#E76A6A"],
+  ["info", "#5BA8FF", "#7DBCFF"],
 ] as const;
 
 export default function Styleguide() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-16 space-y-16">
       <SectionHeading
-        kicker="Amethyst Daylight"
-        lede="The working set: tokens, type, and every primitive the product pages compose from. Internal page — not linked, not indexed."
+        kicker="Amethyst Daylight · Amethyst Nocturne"
+        lede="The working set: tokens, type, and every primitive the product pages compose from. One system, two faces — Daylight reflects, Nocturne glows. Internal page — not linked, not indexed."
       >
         Design system
       </SectionHeading>
 
       <section className="space-y-4">
-        <h3 className="text-kicker text-ink/50">Tokens</h3>
+        <h3 className="text-kicker text-ink/50">Tokens — day / night pairs</h3>
         <div className="flex flex-wrap gap-3">
-          {TOKENS.map(([name, hex]) => (
+          {TOKENS.map(([name, day, night]) => (
             <div key={name} className="flex items-center gap-2 rounded-full border border-ink/10 bg-panel/60 py-1 pr-3 pl-1">
-              <span className="size-6 rounded-full border border-ink/10" style={{ background: hex }} />
+              <span className="flex overflow-hidden rounded-full border border-ink/10">
+                <span className="size-6" style={{ background: day }} />
+                <span className="size-6" style={{ background: night }} />
+              </span>
               <span className="text-data text-ink/70">
-                {name} {hex}
+                {name} {day} / {night}
               </span>
             </div>
           ))}

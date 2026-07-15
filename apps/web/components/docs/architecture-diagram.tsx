@@ -2,20 +2,21 @@
  * The system, drawn by hand in the house palette. One SVG, no library —
  * boxes are the real package names, arrows are the real data flow.
  */
-const INK = "#17141A";
-const AMETHYST = "#6B3FA0";
-const SILVER = "#8E8A94";
-const PANEL = "#F1ECE4";
-const PASS = "#2FA96B";
-const REPAIR = "#D9822B";
+// token-driven so the diagram redraws itself in both themes
+const INK = "var(--color-ink)";
+const AMETHYST = "var(--color-amethyst)";
+const SILVER = "var(--color-silver)";
+const PANEL = "var(--color-panel)";
+const PASS = "var(--color-pass)";
+const REPAIR = "var(--color-repair)";
 
 function Box({
   x, y, w, h, title, sub, accent,
 }: { x: number; y: number; w: number; h: number; title: string; sub?: string; accent?: boolean }) {
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx={10} fill={accent ? "#FAF7F2" : PANEL}
-        stroke={accent ? AMETHYST : "rgba(23,20,26,0.18)"} strokeWidth={accent ? 1.6 : 1} />
+      <rect x={x} y={y} width={w} height={h} rx={10} fill={accent ? "var(--color-ground)" : PANEL}
+        stroke={accent ? AMETHYST : "color-mix(in srgb, var(--color-ink) 18%, transparent)"} strokeWidth={accent ? 1.6 : 1} />
       <text x={x + w / 2} y={y + (sub ? h / 2 - 4 : h / 2 + 4)} textAnchor="middle"
         fontSize="12.5" fontWeight="600" fill={INK} style={{ fontFamily: "var(--font-sans)" }}>
         {title}

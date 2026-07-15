@@ -13,6 +13,9 @@ import { join } from "node:path";
 
 const BASE = process.env.AUDIT_BASE ?? "http://localhost:3010";
 const ROUTES = process.argv.slice(2).length ? process.argv.slice(2) : ["/"];
+// Both faces of the design system are audited unless narrowed: AUDIT_THEMES=nocturne
+const THEMES = (process.env.AUDIT_THEMES ?? "daylight,nocturne").split(",");
+const REDUCED_MOTION = process.env.AUDIT_REDUCED === "1";
 const WIDTHS = [
   { name: "desktop", width: 1440, height: 900 },
   { name: "tablet", width: 768, height: 1024 },
@@ -30,22 +33,26 @@ let failures = 0;
 
 for (const route of ROUTES) {
   for (const vp of WIDTHS) {
-    const context = await browser.newContext({
-      viewport: { width: vp.width, height: vp.height },
-      deviceScaleFactor: vp.name === "mobile" ? 2 : 1,
-    });
-    const page = await context.newPage();
+    for (const theme of THEMES) {
+      const context = await browser.newContext({
+        viewport: { width: vp.width, height: vp.height },
+        deviceScaleFactor: vp.name === "mobile" ? 2 : 1,
+        reducedMotion: REDUCED_MOTION ? "reduce" : "no-preference",
+      });
+      // the pre-hydration theme script reads this before first paint
+      await context.addInitScript(`try{localStorage.setItem("oce-theme",${JSON.stringify(theme)})}catch(e){}`);
+      const page = await context.newPage();
 
-    const consoleErrors = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
-    });
-    page.on("pageerror", (err) => consoleErrors.push(String(err)));
+      const consoleErrors = [];
+      page.on("console", (msg) => {
+        if (msg.type() === "error") consoleErrors.push(msg.text());
+      });
+      page.on("pageerror", (err) => consoleErrors.push(String(err)));
 
-    const url = new URL(route, BASE).href;
-    const problems = [];
+      const url = new URL(route, BASE).href;
+      const problems = [];
 
-    try {
+      try {
       const res = await page.goto(url, { waitUntil: "networkidle", timeout: 45_000 });
       if (!res || res.status() >= 400) problems.push(`HTTP ${res ? res.status() : "no response"}`);
 
@@ -73,6 +80,11 @@ for (const route of ROUTES) {
         // deliberate scroll container — that's a layout bug even when clipped.
         const offenders = [];
         for (const el of document.querySelectorAll("body *")) {
+          // SVG geometry is clipped by its root viewport. A rotated <use> may
+          // have a large mathematical bounding box while zero pixels escape;
+          // auditing it as an HTML box creates false overflow failures for
+          // guilloche linework. The root <svg> itself is still checked.
+          if (el instanceof SVGElement && el.ownerSVGElement) continue;
           const r = el.getBoundingClientRect();
           if (r.right <= window.innerWidth + 1 && r.left >= -1) continue;
           let parent = el.parentElement;
@@ -112,16 +124,18 @@ for (const route of ROUTES) {
         problems.push(`console errors: ${[...new Set(consoleErrors)].join(" | ")}`);
       }
 
-      const file = join(OUT, `${slug(route)}-${vp.name}-${vp.width}.png`);
+      const motionSuffix = REDUCED_MOTION ? "-reduced" : "";
+      const file = join(OUT, `${slug(route)}-${theme}-${vp.name}-${vp.width}${motionSuffix}.png`);
       await page.screenshot({ path: file, fullPage: true });
-      report.push({ route, viewport: vp.name, width: vp.width, screenshot: file, problems });
-    } catch (err) {
-      problems.push(`navigation failed: ${err.message}`);
-      report.push({ route, viewport: vp.name, width: vp.width, screenshot: null, problems });
-    }
+      report.push({ route, theme, reducedMotion: REDUCED_MOTION, viewport: vp.name, width: vp.width, screenshot: file, problems });
+      } catch (err) {
+        problems.push(`navigation failed: ${err.message}`);
+        report.push({ route, theme, reducedMotion: REDUCED_MOTION, viewport: vp.name, width: vp.width, screenshot: null, problems });
+      }
 
-    if (problems.length) failures += 1;
-    await context.close();
+      if (problems.length) failures += 1;
+      await context.close();
+    }
   }
 }
 
@@ -130,7 +144,7 @@ await writeFile(join(OUT, "report.json"), JSON.stringify({ base: BASE, when: new
 
 for (const entry of report) {
   const status = entry.problems.length ? "FAIL" : "ok";
-  console.log(`[${status}] ${entry.route} @ ${entry.width}px${entry.problems.length ? "\n       - " + entry.problems.join("\n       - ") : ""}`);
+  console.log(`[${status}] ${entry.route} (${entry.theme}) @ ${entry.width}px${entry.problems.length ? "\n       - " + entry.problems.join("\n       - ") : ""}`);
 }
 console.log(`\n${report.length} checks, ${failures} with problems. Screenshots in playwright-report/.`);
 process.exit(failures ? 1 : 0);

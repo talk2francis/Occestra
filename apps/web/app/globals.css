@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 /*
- * Amethyst Daylight — the only theme. Tokens are law (AGENTS.md).
- * Purple <= 15% of any viewport. Lilac ONLY for active/generating states.
+ * Amethyst Daylight + Amethyst Nocturne. Tokens are law (AGENTS.md).
+ * Same structure, different light physics. Purple <= 15% of any viewport;
+ * lilac remains reserved for active/generating states.
  */
 @theme {
   --color-ground: #faf7f2;
@@ -17,6 +18,17 @@
   --color-repair: #d9822b;
   --color-fail: #c24141;
   --color-info: #5ba8ff;
+  /* Grade fills/dots keep the published palette. Small text needs a darker
+     ink on Daylight; using the fill color as text was only 2.5–2.7:1. */
+  --color-pass-ink: #176b43;
+  --color-repair-ink: #87450b;
+  --color-fail-ink: #9b2c2c;
+  --color-info-ink: #1d6297;
+
+  /* Terminal/code panes are night-colored in BOTH themes — a code block that
+     flips light on Nocturne reads as a hole in the page. Theme-invariant. */
+  --color-night: #141019;
+  --color-night-fg: #f2ede6;
 
   --font-serif: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--font-grotesk), "Helvetica Neue", Arial, sans-serif;
@@ -33,6 +45,118 @@
   color-scheme: light;
 }
 
+/*
+ * Amethyst Nocturne — the second face of the same system. Identical structure,
+ * inverted physics: Daylight REFLECTS (paper, shadow), Nocturne GLOWS (soft
+ * outer blooms on seal marks, CTAs and live states; luminous edges on artifact
+ * cards). Every token here was contrast-checked: grade colors hold >= 4.5:1
+ * on the panel AND on their own 8% chip fills (scripts/theme-contrast.mjs).
+ */
+[data-theme="nocturne"] {
+  color-scheme: dark;
+
+  --color-ground: #17131c;
+  --color-panel: #201a28;
+  --color-ink: #f2ede6; /* "ink" is the semantic text token; on night paper it is light */
+  --color-plum: #d6c5f0; /* emphasis: pale wisteria (plum's negative) — 11.4:1 on ground */
+  --color-amethyst: #9d6fd8;
+  --color-lilac: #c8b4ff; /* unchanged — live states only, and it already glows */
+  --color-silver: #8e8a94;
+
+  --color-pass: #4cc98a;
+  --color-repair: #ea9e52;
+  --color-fail: #e76a6a;
+  --color-info: #7dbcff;
+  --color-pass-ink: #4cc98a;
+  --color-repair-ink: #ea9e52;
+  --color-fail-ink: #e76a6a;
+  --color-info-ink: #7dbcff;
+
+  /* Shadows keep their depth role but gain a faint amethyst bloom: light
+     escaping the object, not light blocked by it. */
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -8px rgb(0 0 0 / 0.55);
+  --shadow-keepsake:
+    0 2px 4px rgb(0 0 0 / 0.5), 0 24px 48px -16px rgb(0 0 0 / 0.65),
+    0 0 40px -10px rgb(157 111 216 / 0.3);
+}
+
+/* ------------------------------------------------ theme-conditional pieces */
+
+/* Show exactly one brand asset per theme (the un-matted light logo goes wrong
+   on dark surfaces — the alpha is real; use the dark sources). */
+[data-theme="nocturne"] .theme-daylight-only {
+  display: none;
+}
+:root:not([data-theme="nocturne"]) .theme-nocturne-only {
+  display: none;
+}
+
+/* Nocturne GLOWS. These classes are inert in Daylight on purpose — the same
+   markup carries both physics. */
+[data-theme="nocturne"] .glow-seal {
+  filter: drop-shadow(0 0 12px rgb(157 111 216 / 0.42));
+}
+[data-theme="nocturne"] .glow-cta {
+  box-shadow:
+    0 0 26px -6px rgb(200 180 255 / 0.38),
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 8px 24px -8px rgb(0 0 0 / 0.55);
+}
+[data-theme="nocturne"] .glow-live {
+  box-shadow: 0 0 10px rgb(200 180 255 / 0.6);
+}
+/* Artifact cards: a faint luminous edge, as if the work is backlit. */
+[data-theme="nocturne"] .lum-edge {
+  box-shadow:
+    0 0 0 1px rgb(200 180 255 / 0.1),
+    0 0 28px -8px rgb(157 111 216 / 0.24);
+}
+
+/* The paper grain flips physics with the theme: pigment pressed into paper by
+   day (multiply), starlight caught by the surface at night (screen). */
+[data-theme="nocturne"] .grain-overlay {
+  mix-blend-mode: screen;
+  opacity: 0.04;
+}
+
+/* ------------------------------------------------------- engraving + light */
+
+/* Guilloché linework: engraved ink by day, luminous lilac by night.
+   Always decorative, always faint — body text never sits ON it. */
+.guilloche {
+  color: var(--color-ink);
+  opacity: 0.05;
+  pointer-events: none;
+  user-select: none;
+}
+[data-theme="nocturne"] .guilloche {
+  color: var(--color-lilac);
+  opacity: 0.07;
+}
+
+/* Soft radial warm light behind heroes and section heads — depth, not decor.
+   Day: afternoon sun through a window. Night: a warm lamp in a dark study. */
+/* Always laid out inset-0 in its section (never wider than the viewport);
+   shape and placement of the light come from the two custom properties. */
+.vignette-warm {
+  pointer-events: none;
+  --vig-size: 55% 55%;
+  --vig-pos: 50% 40%;
+  background: radial-gradient(
+    ellipse var(--vig-size) at var(--vig-pos),
+    rgb(255 241 222 / 0.6),
+    rgb(255 241 222 / 0) 70%
+  );
+}
+[data-theme="nocturne"] .vignette-warm {
+  background: radial-gradient(
+      ellipse var(--vig-size) at var(--vig-pos),
+      rgb(157 111 216 / 0.1),
+      rgb(157 111 216 / 0) 70%
+    ),
+    radial-gradient(ellipse 33% 33% at var(--vig-pos), rgb(255 205 160 / 0.045), transparent 65%);
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -40,6 +164,55 @@ html {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* Runtime-free motion for editorial page structure. Stateful product motion
+   stays in the Studio; laying a sheet on a desk does not need a JS library. */
+@keyframes route-sheet-settle {
+  from { transform: translateY(10px); }
+  to { transform: translateY(0); }
+}
+@keyframes reveal-rise-in {
+  from { opacity: 0; transform: translateY(var(--reveal-distance, 24px)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hero-enter-rise {
+  from { transform: translateY(26px); }
+  to { transform: translateY(0); }
+}
+@keyframes hero-enter-fade-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes prism-fallback-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(4deg); }
+  75% { transform: translateY(-3px) rotate(-4deg); }
+}
+/* Do not animate the full page or every below-fold section at startup. A
+   12,000px composited route layer and a dozen simultaneous reveal timelines
+   cost more than the motion communicates. V2-5 adds interaction-local motion. */
+.route-sheet,
+.reveal-rise {
+  opacity: 1;
+  transform: none;
+}
+.hero-enter {
+  animation: hero-enter-rise 0.85s var(--ease-editorial) var(--hero-delay, 0s) both;
+}
+.hero-enter-fade {
+  animation-name: hero-enter-fade-rise;
+}
+.hero-prism-fallback {
+  animation: prism-fallback-float 14s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-sheet,
+  .reveal-rise,
+  .hero-enter,
+  .hero-prism-fallback {
+    animation: none;
   }
 }
 

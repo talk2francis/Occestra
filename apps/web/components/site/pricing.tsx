@@ -28,9 +28,9 @@ export function Pricing() {
                   {tool.price === null ? (
                     // A job costs what the tool it runs costs. Printing a number here would be
                     // inventing one.
-                    <span className="text-ink/55">at cost</span>
+                    <span className="text-ink/70">at cost</span>
                   ) : tool.price === 0 ? (
-                    <span className="font-medium text-pass">free</span>
+                    <span className="font-medium text-pass-ink">free</span>
                   ) : (
                     <>{tool.price.toFixed(2)} <span className="text-ink/60">USDT</span></>
                   )}

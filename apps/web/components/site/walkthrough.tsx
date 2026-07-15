@@ -67,7 +67,15 @@ const rise = {
 export function Walkthrough() {
   const reduced = useReducedMotion();
   const [inView, setInView] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // The server cannot know prefers-reduced-motion. Keep the first client
+  // render identical to SSR, then jump (without animation) to the completed
+  // static frame. Choosing the completed frame during hydration made every
+  // line of walkthrough text disagree with the server.
+  useEffect(() => setMounted(true), []);
+  const motionReduced = Boolean(reduced && mounted);
 
   // Only run the clock while visible — no work while scrolled away.
   useEffect(() => {
@@ -82,7 +90,7 @@ export function Walkthrough() {
 
   const t = useClock(inView && !reduced);
   // Static frame for reduced motion: everything visible, seal applied.
-  const now = reduced ? DURATION - 0.1 : t;
+  const now = motionReduced ? DURATION - 0.1 : t;
 
   const gradeCount = Math.max(0, Math.min(CELEBRATE.artifacts.length, Math.floor((now - AT.grades) / 0.7) + 1));
   const venueCount = Math.max(0, Math.min(CELEBRATE.venues.length, Math.floor((now - AT.venues) / 0.9) + 1));
@@ -107,7 +115,7 @@ export function Walkthrough() {
                 <motion.span
                   aria-hidden
                   className="size-1.5 rounded-full bg-plum"
-                  animate={reduced ? {} : { opacity: [1, 0.3, 1] }}
+                  animate={motionReduced ? {} : { opacity: [1, 0.3, 1] }}
                   transition={{ duration: 1.4, repeat: Infinity }}
                 />
                 working
@@ -117,7 +125,7 @@ export function Walkthrough() {
         </div>
 
         {/* progress hairline */}
-        {!reduced && (
+        {!motionReduced && (
           <div className="h-px bg-ink/8">
             <div
               className="h-px bg-amethyst/70 transition-[width] duration-300 ease-linear"
@@ -166,7 +174,7 @@ export function Walkthrough() {
                     className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-panel/70 px-2.5 py-1 text-[0.75rem] text-ink/90"
                   >
                     {venue.name}
-                    <span className="text-data text-ink/70">osm</span>
+                    <span className="text-data text-ink/80">osm</span>
                   </motion.span>
                 ))}
               </AnimatePresence>
@@ -242,7 +250,7 @@ export function Walkthrough() {
               {now >= AT.sealStart && (
                 <motion.div
                   key="seal"
-                  initial={reduced ? { opacity: 1 } : { opacity: 0, scale: 1.5 }}
+                  initial={motionReduced ? { opacity: 1 } : { opacity: 0, scale: 1.5 }}
                   animate={{ opacity: 1, scale: 1, transition: { duration: 0.55, ease: EASE } }}
                   exit={{ opacity: 0 }}
                   className="absolute right-4 bottom-4 sm:right-6 sm:bottom-5"

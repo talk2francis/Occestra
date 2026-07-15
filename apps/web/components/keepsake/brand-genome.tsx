@@ -110,7 +110,7 @@ export function BrandGenome({ markdown }: { markdown: string }) {
                 <summary className="cursor-pointer text-[0.8rem] font-medium text-ink/60 hover:text-ink">
                   The genome as JSON
                 </summary>
-                <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-ink p-3 font-mono text-[0.7rem] leading-relaxed text-ground/85">
+                <pre className="mt-2 max-h-72 overflow-auto rounded-lg bg-night p-3 font-mono text-[0.7rem] leading-relaxed text-night-fg/85">
                   {section.code}
                 </pre>
               </details>

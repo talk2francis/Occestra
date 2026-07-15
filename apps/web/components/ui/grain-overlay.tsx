@@ -9,7 +9,7 @@ export function GrainOverlay() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-50 opacity-[0.05] mix-blend-multiply"
+      className="grain-overlay pointer-events-none fixed inset-0 z-50 opacity-[0.04] mix-blend-multiply"
       style={{ backgroundImage: NOISE, backgroundSize: "160px 160px" }}
     />
   );

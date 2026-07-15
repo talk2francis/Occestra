@@ -8,10 +8,10 @@
 export type Verdict = "pass" | "repair" | "fail" | "info";
 
 const chipTone: Record<Verdict, string> = {
-  pass: "text-pass border-pass/30 bg-pass/8",
-  repair: "text-repair border-repair/30 bg-repair/8",
-  fail: "text-fail border-fail/30 bg-fail/8",
-  info: "text-info border-info/35 bg-info/8",
+  pass: "text-pass-ink border-pass/30 bg-pass/8",
+  repair: "text-repair-ink border-repair/30 bg-repair/8",
+  fail: "text-fail-ink border-fail/30 bg-fail/8",
+  info: "text-info-ink border-info/35 bg-info/8",
 };
 
 const dotTone: Record<Verdict, string> = {

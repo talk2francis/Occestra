@@ -1,148 +1,124 @@
-"use client";
-
-import { motion, useReducedMotion } from "framer-motion";
-import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { ButtonLink } from "@/components/ui/button";
-import { EASE } from "@/components/motion";
-import { Walkthrough } from "./walkthrough";
+import { GuillocheRosette } from "@/components/ui/guilloche";
+import { SealMark } from "@/components/ui/seal-mark";
+import { CELEBRATE } from "@/lib/real";
+import { HeroStone, HeroWalkthrough } from "./hero-enhancements";
 
-/**
- * The SVG prism: the fallback face of the 3D stone — reduced motion, missing
- * WebGL, and the beat before the lazy chunk lands.
- */
-function Prism() {
-  const reduced = useReducedMotion();
+function PrismFallback() {
   return (
-    <motion.svg
-      viewBox="0 0 120 140"
-      className="h-24 w-auto sm:h-32"
-      aria-hidden
-      animate={reduced ? {} : { rotate: [0, 4, 0, -4, 0], y: [0, -6, 0] }}
-      transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-    >
+    <svg viewBox="0 0 120 140" className="hero-prism-fallback h-24 w-auto sm:h-32" aria-hidden>
       <g strokeLinejoin="round">
-        <polygon points="60,4 112,52 60,136 8,52" fill="#6B3FA0" opacity="0.16" />
-        <polygon points="60,4 112,52 60,78" fill="#6B3FA0" opacity="0.5" />
-        <polygon points="60,4 8,52 60,78" fill="#2D1B4E" opacity="0.55" />
-        <polygon points="8,52 60,78 60,136" fill="#6B3FA0" opacity="0.75" />
-        <polygon points="112,52 60,78 60,136" fill="#2D1B4E" opacity="0.8" />
-        <polygon points="60,4 84,30 60,42 36,30" fill="#C8B4FF" opacity="0.55" />
-        <polygon points="60,4 112,52 60,78 8,52" fill="none" stroke="#2D1B4E" strokeWidth="1" opacity="0.35" />
-        <polygon points="8,52 60,136 112,52" fill="none" stroke="#2D1B4E" strokeWidth="1" opacity="0.35" />
+        <polygon points="60,4 112,52 60,136 8,52" fill="var(--color-amethyst)" opacity="0.16" />
+        <polygon points="60,4 112,52 60,78" fill="var(--color-amethyst)" opacity="0.5" />
+        <polygon points="60,4 8,52 60,78" fill="var(--color-plum)" opacity="0.55" />
+        <polygon points="8,52 60,78 60,136" fill="var(--color-amethyst)" opacity="0.75" />
+        <polygon points="112,52 60,78 60,136" fill="var(--color-plum)" opacity="0.8" />
+        <polygon points="60,4 84,30 60,42 36,30" fill="var(--color-lilac)" opacity="0.55" />
+        <polygon points="60,4 112,52 60,78 8,52" fill="none" stroke="var(--color-plum)" strokeWidth="1" opacity="0.35" />
+        <polygon points="8,52 60,136 112,52" fill="none" stroke="var(--color-plum)" strokeWidth="1" opacity="0.35" />
       </g>
-    </motion.svg>
+    </svg>
   );
 }
 
-const PrismCanvas = dynamic(() => import("./prism-3d"), {
-  ssr: false,
-  loading: () => <Prism />,
-});
-
-function supportsWebgl(): boolean {
-  try {
-    const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
-  } catch {
-    return false;
-  }
+function WalkthroughPreview() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-ink/12 bg-ground shadow-keepsake">
+      <div className="flex items-center justify-between border-b border-ink/10 bg-panel/80 px-4 py-2.5 sm:px-5">
+        <div className="min-w-0">
+          <span className="text-kicker text-amethyst">Celebrate studio</span>
+          <span className="text-data ml-3 hidden text-ink/60 sm:inline">{CELEBRATE.id}</span>
+        </div>
+        <span className="rounded-full border border-pass/30 bg-pass/8 px-2.5 py-0.5 text-[0.68rem] font-semibold tracking-[0.1em] text-pass-ink uppercase">
+          sealed
+        </span>
+      </div>
+      <div className="grid min-h-[20rem] sm:grid-cols-[10.5rem_1fr]">
+        <div className="border-b border-ink/10 px-4 py-4 sm:border-r sm:border-b-0 sm:px-5">
+          <p className="text-kicker text-[0.6rem] text-ink/70">The syndicate</p>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 sm:block sm:space-y-2">
+            {["Planner", "Cartographer", "Art Director", "Writer", "Critic", "Archivist"].map((role) => (
+              <p key={role} className="flex items-center gap-2 text-[0.78rem] text-ink/65">
+                <span className="size-1.5 rounded-full bg-pass" />
+                {role}
+              </p>
+            ))}
+          </div>
+        </div>
+        <div className="relative p-5 sm:p-6">
+          <p className="text-subhead max-w-[27em]">“{CELEBRATE.brief}”</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-ink/10 bg-panel/60 p-4">
+              <p className="text-kicker text-[0.6rem] text-ink/70">Grounded research</p>
+              <p className="mt-2 text-[0.82rem] leading-relaxed text-ink/70">
+                {CELEBRATE.venues.length} real venues · live forecast · schedule · exact budget
+              </p>
+            </div>
+            <div className="rounded-xl border border-ink/10 bg-panel/60 p-4">
+              <p className="text-kicker text-[0.6rem] text-ink/70">Tribunal</p>
+              <p className="mt-2 text-[0.82rem] leading-relaxed text-ink/70">
+                {CELEBRATE.artifacts.length} artifacts graded · provenance anchored on X Layer
+              </p>
+            </div>
+          </div>
+          <SealMark size={78} className="absolute right-5 bottom-5 text-amethyst/80" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
-/**
- * The real stone when the machine can afford it; the drawing when it can't.
- * The three.js chunk waits for post-load idle — eagerly evaluating it during
- * hydration cost 1.4s of main-thread time on a throttled phone.
- */
-function HeroPrism() {
-  const reduced = useReducedMotion();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    if (reduced) return;
-    // Arm on the first real user input (or a long fallback) — the chunk is
-    // heavy enough to dent a throttled phone's main thread if it evaluates
-    // during load, and nobody misses the stone before they've even moved.
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const arm = () => {
-      if (supportsWebgl()) setReady(true);
-      cleanup();
-    };
-    const cleanup = () => {
-      for (const type of ["pointermove", "scroll", "touchstart", "keydown"]) {
-        window.removeEventListener(type, arm);
-      }
-      if (timer) clearTimeout(timer);
-    };
-    for (const type of ["pointermove", "scroll", "touchstart", "keydown"]) {
-      window.addEventListener(type, arm, { once: true, passive: true });
-    }
-    timer = setTimeout(arm, 8000);
-    return cleanup;
-  }, [reduced]);
-
-  return ready && !reduced ? <PrismCanvas /> : <Prism />;
-}
+const heroDelay = (value: string) => ({ "--hero-delay": value }) as CSSProperties;
 
 export function Hero() {
-  const reduced = useReducedMotion();
-  // Transform-only entrance for the text: fading the headline/subline from 0
-  // pushes the LCP paint out by a full second. The rise still reads as an
-  // entrance; the words are just never invisible.
-  const enter = (delay: number) => ({
-    initial: { y: reduced ? 0 : 26 },
-    animate: { y: 0 },
-    transition: { duration: 0.85, ease: EASE, delay },
-  });
-  const fade = (delay: number) => ({
-    initial: { opacity: 0, y: reduced ? 0 : 26 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.85, ease: EASE, delay },
-  });
-
   return (
     <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-24">
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <div
+          className="vignette-warm absolute inset-0"
+          style={{ "--vig-size": "48% 65%", "--vig-pos": "50% 18%" } as CSSProperties}
+        />
+        <GuillocheRosette
+          size={640}
+          crop={{ x: 0, y: 0.42, w: 0.58, h: 0.58 }}
+          className="absolute top-0 right-0 hidden md:block"
+        />
+      </div>
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <div className="flex items-end justify-between gap-8">
           <div className="max-w-3xl">
-            <motion.p {...enter(0)} className="text-kicker flex items-center gap-3 text-amethyst">
+            <p className="hero-enter text-kicker flex items-center gap-3 text-amethyst" style={heroDelay("0s")}>
               <span aria-hidden className="h-px w-8 bg-amethyst/50" />
               The Occasion Studio · Agent #5213 on X Layer
-            </motion.p>
-            <motion.h1 {...enter(0.08)} className="text-display mt-6 text-balance">
+            </p>
+            <h1 className="hero-enter text-display mt-6 text-balance" style={heroDelay("0.08s")}>
               Every moment, made&nbsp;monumental.
-            </motion.h1>
-            <motion.p {...enter(0.18)} className="prose-measure mt-6 text-[1.08rem] leading-relaxed text-ink/65">
+            </h1>
+            <p className="hero-enter prose-measure mt-6 text-[1.08rem] leading-relaxed text-ink/65" style={heroDelay("0.18s")}>
               Give it a birthday next Saturday, a product launching Friday, a trip just taken. A
               syndicate of studio roles plans it, designs it, writes it — then grades every artifact
               against a published standard, repairs what fails, and seals the finished pack on
               X&nbsp;Layer.
-            </motion.p>
-            <motion.div {...enter(0.28)} className="mt-9 flex flex-wrap items-center gap-4">
-              <ButtonLink
-                href="/studio"
-                size="lg"
-                onMouseEnter={() => window.dispatchEvent(new Event("oce-cta-press"))}
-                onMouseLeave={() => window.dispatchEvent(new Event("oce-cta-release"))}
-              >
-                Open the Studio
-              </ButtonLink>
+            </p>
+            <div className="hero-enter mt-9 flex flex-wrap items-center gap-4" style={heroDelay("0.28s")}>
+              <ButtonLink href="/studio" size="lg">Open the Studio</ButtonLink>
               <a
                 href="#tribunal"
                 className="text-[0.92rem] font-medium text-ink/60 underline decoration-ink/25 underline-offset-4 transition-colors hover:text-ink"
               >
                 See how work gets graded
               </a>
-            </motion.div>
+            </div>
           </div>
-          <motion.div {...fade(0.3)} className="hidden shrink-0 pb-4 md:block" aria-hidden>
-            <HeroPrism />
-          </motion.div>
+          <div className="hero-enter hero-enter-fade hidden shrink-0 pb-4 md:block" style={heroDelay("0.3s")} aria-hidden>
+            <HeroStone fallback={<PrismFallback />} />
+          </div>
         </div>
 
-        <motion.div {...fade(0.42)} className="mt-16 sm:mt-20 md:ml-[8%] lg:ml-[14%]">
-          <Walkthrough />
-        </motion.div>
+        <div className="hero-enter hero-enter-fade mt-16 sm:mt-20 md:ml-[8%] lg:ml-[14%]" style={heroDelay("0.42s")}>
+          <HeroWalkthrough fallback={<WalkthroughPreview />} />
+        </div>
       </div>
     </section>
   );

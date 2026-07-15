@@ -107,8 +107,8 @@ export default async function ForAgentsPage() {
 
       <section className="mt-12">
         <h2 className="text-kicker text-ink/60">Your first call</h2>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-ink/70 bg-ink shadow-keepsake">
-          <pre className="overflow-x-auto p-5 font-mono text-[0.74rem] leading-relaxed text-ground/85">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-night-fg/12 bg-night shadow-keepsake">
+          <pre className="overflow-x-auto p-5 font-mono text-[0.74rem] leading-relaxed text-night-fg/85">
             <code>{EXAMPLE}</code>
           </pre>
         </div>

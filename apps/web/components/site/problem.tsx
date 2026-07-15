@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion";
+import { GuillocheCorner } from "@/components/ui/guilloche";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const SCATTER = [
@@ -12,7 +13,9 @@ const SCATTER = [
 
 export function Problem() {
   return (
-    <section className="border-y border-ink/8 bg-panel/50 py-20 sm:py-28">
+    <section className="relative overflow-hidden border-y border-ink/8 bg-panel/50 py-20 sm:py-28">
+      <GuillocheCorner size={130} corner="tl" className="absolute top-0 left-0 hidden lg:block" />
+      <GuillocheCorner size={130} corner="br" className="absolute right-0 bottom-0 hidden lg:block" />
       <div className="mx-auto grid max-w-6xl gap-12 px-5 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
         <Reveal>
           <SectionHeading

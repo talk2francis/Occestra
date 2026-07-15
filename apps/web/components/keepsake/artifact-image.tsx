@@ -31,7 +31,7 @@ export function ArtifactImage({ src, alt }: { src: string; alt: string }) {
       src={src}
       alt={alt}
       onError={() => setFailed(true)}
-      className="mt-4 w-full rounded-xl border border-ink/10 shadow-lift"
+      className="lum-edge mt-4 w-full rounded-xl border border-ink/10 shadow-lift"
     />
   );
 }

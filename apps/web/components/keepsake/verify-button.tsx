@@ -58,7 +58,7 @@ export function VerifyButton({ seal }: { seal: PublicSeal }) {
           disabled={state.step === "checking"}
           className={`inline-flex h-11 items-center gap-2 rounded-full px-6 text-[0.9rem] font-medium shadow-lift transition-colors ${
             state.step === "verified"
-              ? "bg-pass text-white"
+              ? "bg-pass text-night"
               : "bg-ink text-ground hover:bg-plum disabled:opacity-60"
           }`}
         >

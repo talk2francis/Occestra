@@ -7,6 +7,30 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-4: Amethyst Nocturne and certificate texture
+
+- Added a complete dark theme on an aubergine ground with WCAG-AA typography and brightened
+  Tribunal states. The same components now reflect in Daylight and glow in Nocturne: seals,
+  primary actions, live states and artifact edges receive restrained theme-only blooms.
+- Added a pre-paint, system-aware theme decision with a persisted sun/moon toggle across the
+  public site, docs and Studio. Brand lockups have dedicated transparent Daylight/Nocturne
+  sources; Open Graph imagery remains theme-stable.
+- Rebuilt the texture language as zero-download code: fixed inline-SVG turbulence grain,
+  parametric guilloché rosettes/rings/certificate corners, and warm radial section lighting.
+- Added an executable Nocturne contrast proof and expanded the Playwright audit loop to both
+  themes at desktop, tablet and mobile viewports.
+- Kept the premium pass inside its performance budget by replacing startup-wide Framer/CSS
+  motion with runtime-free editorial structure and interaction-gating the detailed walkthrough.
+  Landing first-load JS fell from 173 kB to 128 kB; the animated real-pack replay and 3D stone
+  still activate on the visitor's first pointer, scroll, touch or keyboard intent.
+- Closed the production performance gate on Lighthouse 13.4 at 86 performance / 100
+  accessibility / 100 best practices / 100 SEO (mobile simulation; LCP 2.6s, TBT 400ms,
+  CLS 0), while preserving the server-rendered run preview and no-WebGL fallback.
+- Fixed a reduced-motion hydration mismatch in the 25-second walkthrough and Daylight contrast
+  failures in Tribunal chips, free-price labels and the static run preview.
+- Restored production after an interrupted bare Next build left the running standalone server
+  without matching CSS/public assets; the controlled deploy path now serves one coherent build.
+
 ## [Unreleased] — x402 plain-HTTP buyer compatibility
 
 - The shared `/mcp` endpoint now serves the marketplace-registered 0.02-USDT toast service over

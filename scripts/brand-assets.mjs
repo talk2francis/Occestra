@@ -15,8 +15,13 @@ import sharp from "sharp";
 const SRC = join(process.cwd(), "assets", "brand");
 const OUT = join(process.cwd(), "apps", "web", "public", "brand");
 
-/** Solve the flat ground back out of a light-ground asset, returning RGBA. */
-async function unmatte(file, { trim = true, pad = 0 } = {}) {
+/**
+ * Solve the flat ground back out of an asset, returning RGBA.
+ * mode "light": dark foreground on a light ground (the daylight sources).
+ * mode "dark":  light foreground on a dark ground (the nocturne sources) —
+ * the same algebra with the drop measured upward instead of downward.
+ */
+async function unmatte(file, { trim = true, pad = 0, mode = "light" } = {}) {
   let img = sharp(join(SRC, file));
   const { width, height } = await img.metadata();
   const raw = await img.ensureAlpha().raw().toBuffer();
@@ -31,16 +36,21 @@ async function unmatte(file, { trim = true, pad = 0 } = {}) {
     const p = i * 4;
     const P = [raw[p], raw[p + 1], raw[p + 2]];
 
-    // Assume every foreground element is darker than the ground in some channel
-    // (true here: ink wordmark + amethyst arcs on cream). Take the strongest
-    // normalised drop as the coverage, then un-premultiply to recover colour.
+    // Take the strongest normalised deviation from the ground as coverage,
+    // then un-premultiply to recover colour. Direction depends on the mode.
     let a = 0;
-    for (let c = 0; c < 3; c++) a = Math.max(a, (B[c] - P[c]) / B[c]);
+    for (let c = 0; c < 3; c++) {
+      const dev = mode === "dark" ? (P[c] - B[c]) / (255 - B[c] || 1) : (B[c] - P[c]) / (B[c] || 1);
+      a = Math.max(a, dev);
+    }
     a = Math.min(1, Math.max(0, a));
 
     // The ground has a faint gradient; feather anything within a few levels of
     // it to zero so we don't bake in a haze of 1-2% alpha across the canvas.
-    const drop = Math.max(B[0] - P[0], B[1] - P[1], B[2] - P[2]);
+    const drop =
+      mode === "dark"
+        ? Math.max(P[0] - B[0], P[1] - B[1], P[2] - B[2])
+        : Math.max(B[0] - P[0], B[1] - P[1], B[2] - P[2]);
     a *= Math.min(1, Math.max(0, (drop - 3) / 6));
 
     if (a <= 0.004) {
@@ -132,6 +142,13 @@ await sharp(mark).resize({ height: 256 }).png({ compressionLevel: 9 }).toFile(jo
 // 2. the horizontal lockup, transparent — README/nav use, 3x for retina
 const horiz = await (await unmatte("horizontal-light.png")).toBuffer();
 await sharp(horiz).resize({ height: 120 }).png({ compressionLevel: 9 }).toFile(join(OUT, "logo-horizontal.png"));
+
+// 2b. the nocturne pair — un-matted from the dark sources (the light assets'
+// real alpha goes muddy on dark surfaces; these are drawn FOR the dark ground)
+const markDark = await (await unmatte("mark-dark.png", { mode: "dark" })).toBuffer();
+await sharp(markDark).resize({ height: 256 }).png({ compressionLevel: 9 }).toFile(join(OUT, "mark-dark.png"));
+const horizDark = await (await unmatte("horizontal-dark.png", { mode: "dark" })).toBuffer();
+await sharp(horizDark).resize({ height: 120 }).png({ compressionLevel: 9 }).toFile(join(OUT, "logo-horizontal-dark.png"));
 
 // 3. favicon + app icons, on the brand cream (opaque: iOS masks transparency to black)
 const glyph = await faviconGlyph(mark);

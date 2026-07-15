@@ -84,6 +84,25 @@ export default function ArchitectureDoc() {
         />
       </Section>
 
+      <Section id="design-system" title="Design system — reflected by day, luminous by night">
+        <p>
+          The product has one editorial system and two light conditions. <strong>Amethyst
+          Daylight</strong> uses warm ivory paper, ink typography and restrained reflected
+          amethyst. <strong>Amethyst Nocturne</strong> keeps the same hierarchy on an aubergine
+          ground, brightens grade colors to WCAG AA, and lets seals, active states and primary
+          actions emit a soft bloom. The setting defaults to the operating-system preference,
+          is applied before first paint, and persists locally.
+        </p>
+        <p>
+          Texture is code, not downloadable decoration: a fixed inline-SVG turbulence layer
+          reads as paper grain (multiply in Daylight, screen in Nocturne); parametric guilloché
+          rosettes and certificate borders mark provenance moments; warm radial vignettes give
+          section heads depth without sitting behind body copy. All motion collapses under
+          <InlineCode>prefers-reduced-motion</InlineCode>, while Open Graph images remain
+          theme-stable so a shared pack never changes identity with the viewer&apos;s preference.
+        </p>
+      </Section>
+
       <Callout tone="good">
         Definition of done, enforced every phase: typecheck + build + full test suite green at
         every checkpoint, live smoke against real providers before anything ships, and every

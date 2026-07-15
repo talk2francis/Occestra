@@ -7,6 +7,7 @@ import { TribunalReport } from "@/components/keepsake/tribunal-report";
 import { VerifyButton } from "@/components/keepsake/verify-button";
 import { Badge } from "@/components/ui/badge";
 import { GradeChip } from "@/components/ui/grade-chip";
+import { GuillocheRing } from "@/components/ui/guilloche";
 import { SealMark } from "@/components/ui/seal-mark";
 import { EXPLORER_TX, STYLE_NAMES, fetchPack, type PublicPack } from "@/lib/pack";
 
@@ -78,7 +79,12 @@ export default async function KeepsakePage({ params }: { params: Promise<{ id: s
               <GradeChip verdict="info">OQS v{pack.quality.oqsVersion}</GradeChip>
             </div>
           </div>
-          {pack.seal && <SealMark size={110} className="shrink-0 text-amethyst/90" />}
+          {pack.seal && (
+            <span className="relative hidden shrink-0 sm:block">
+              <GuillocheRing size={158} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <SealMark size={110} className="relative text-amethyst/90" />
+            </span>
+          )}
         </div>
 
         {pack.seal ? (

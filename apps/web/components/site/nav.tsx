@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ButtonLink } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme";
 import { Wordmark } from "@/components/site/wordmark";
 
 const LINKS = [
@@ -58,10 +59,12 @@ export function Nav() {
           >
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amethyst/70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amethyst" />
+              <span className="glow-live relative inline-flex h-1.5 w-1.5 rounded-full bg-amethyst" />
             </span>
             Live stats
           </Link>
+
+          <ThemeToggle className="-ml-1" />
 
           <ButtonLink href="/studio" size="sm">
             Open the Studio

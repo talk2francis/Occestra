@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/motion";
+import { GuillocheCorner } from "@/components/ui/guilloche";
 import { AxisChip, GradeChip } from "@/components/ui/grade-chip";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { API_BASE, OQS_VERSION, TRIBUNAL_CASE } from "@/lib/real";
@@ -12,7 +13,10 @@ export function Tribunal() {
   const { before, after, passCase } = TRIBUNAL_CASE;
 
   return (
-    <section id="tribunal" className="scroll-mt-20 border-y border-ink/8 bg-panel/50 py-20 sm:py-28">
+    <section id="tribunal" className="relative scroll-mt-20 overflow-hidden border-y border-ink/8 bg-panel/50 py-20 sm:py-28">
+      <GuillocheCorner size={130} corner="tr" className="absolute top-0 right-0 hidden lg:block" />
+      <GuillocheCorner size={130} corner="bl" className="absolute bottom-0 left-0 hidden lg:block" />
+      <div aria-hidden className="vignette-warm absolute inset-0" style={{ "--vig-size": "42% 34%", "--vig-pos": "50% 10%" } as React.CSSProperties} />
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <Reveal>
           <SectionHeading

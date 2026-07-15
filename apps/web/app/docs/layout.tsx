@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DocsSidebar } from "@/components/docs/sidebar";
 import { Wordmark } from "@/components/site/wordmark";
+import { ThemeToggle } from "@/components/ui/theme";
 
 export const metadata: Metadata = {
   title: { default: "Docs", template: "%s · Occestra Docs" },
@@ -35,6 +36,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             >
               GitHub
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </header>

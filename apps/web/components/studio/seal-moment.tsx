@@ -18,6 +18,7 @@ import {
 } from "framer-motion";
 import { useEffect, useState } from "react";
 import { GradeChip } from "@/components/ui/grade-chip";
+import { GuillocheRing } from "@/components/ui/guilloche";
 import { SealMark } from "@/components/ui/seal-mark";
 
 const NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
@@ -128,11 +129,22 @@ export function SealMoment({
 
             {/* the stamp comes down */}
             <motion.div
+              className="relative"
               initial={reduced ? { opacity: 0 } : { scale: 1.15, rotate: -7, opacity: 0, y: -14 }}
               animate={reduced ? { opacity: 1 } : { scale: 1, rotate: 0, opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.12, ease: PRESS_EASE }}
             >
-              <SealMark size={176} className="text-amethyst drop-shadow-[0_10px_28px_rgba(45,27,78,0.28)]" />
+              {/* the engraving plate the stamp presses into */}
+              <motion.span
+                aria-hidden
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                initial={reduced ? undefined : { rotate: -14 }}
+                animate={reduced ? undefined : { rotate: 0 }}
+                transition={{ duration: 1.1, delay: 0.12, ease: PRESS_EASE }}
+              >
+                <GuillocheRing size={248} />
+              </motion.span>
+              <SealMark size={176} className="relative text-amethyst drop-shadow-[0_10px_28px_rgba(45,27,78,0.28)]" />
             </motion.div>
 
             <motion.p

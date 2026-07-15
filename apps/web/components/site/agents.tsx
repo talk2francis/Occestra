@@ -79,17 +79,17 @@ export function Agents() {
         </Reveal>
 
         <Reveal delay={0.12} className="min-w-0">
-          <div className="min-w-0 overflow-hidden rounded-2xl border border-ink/70 bg-ink shadow-keepsake">
-            <div className="flex items-center justify-between border-b border-ground/10 px-4 py-2.5">
-              <p className="text-data text-ground/70">one paid call, end to end</p>
+          <div className="min-w-0 overflow-hidden rounded-2xl border border-night-fg/12 bg-night shadow-keepsake">
+            <div className="flex items-center justify-between border-b border-night-fg/10 px-4 py-2.5">
+              <p className="text-data text-night-fg/70">one paid call, end to end</p>
               <button
                 onClick={copy}
-                className="rounded-full border border-ground/20 px-3 py-1 text-[0.72rem] font-medium text-ground/70 transition-colors hover:border-ground/50 hover:text-ground"
+                className="rounded-full border border-night-fg/20 px-3 py-1 text-[0.72rem] font-medium text-night-fg/70 transition-colors hover:border-night-fg/50 hover:text-night-fg"
               >
                 {copied ? "copied" : "copy"}
               </button>
             </div>
-            <pre className="overflow-x-auto p-5 font-mono text-[0.74rem] leading-relaxed text-ground/85">
+            <pre className="overflow-x-auto p-5 font-mono text-[0.74rem] leading-relaxed text-night-fg/85">
               <code>{EXAMPLE}</code>
             </pre>
           </div>

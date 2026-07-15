@@ -156,6 +156,21 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
 
+- 2026-07-15 (V2-4) — **REDUCED MOTION IS ALSO AN SSR INPUT, AND THE SERVER CANNOT SEE IT.**
+  The walkthrough rendered second 0 on the server and its completed second-25 frame on a client
+  with `prefers-reduced-motion`, then conditionally removed its progress bar before hydration.
+  React correctly rejected both trees. Any preference that changes HTML must use an SSR-stable
+  first client render, then switch after mount; animation props alone may vary, element structure
+  may not. The audit now has `AUDIT_REDUCED=1`, and the landing, Studio and `/k` surfaces are run
+  through it in both themes.
+- 2026-07-15 (V2-4) — **A 12,000PX PAGE IS NOT ONE ANIMATION TARGET.** Replacing Framer with CSS
+  was not automatically cheaper: animating the full route wrapper created a page-sized composite
+  layer, and starting every below-fold reveal at load spent style/layout work on invisible content.
+  Route structure is now static; only the small hero entrance moves at startup. The real 25-second
+  run replay and Three.js hero load on actual pointer/scroll/touch/keyboard intent, never a timer.
+  Landing first-load JS dropped 173 kB → 128 kB. Motion belongs to the local interaction that
+  communicates it, not to every container because an animation helper is available.
+
 - 2026-07-15 (listing blocker) — **AN x402 RESOURCE IS NOT AUTOMATICALLY AN MCP CALL.** The first
   compatibility patch made plain `x402-check` probes return a valid 402, but the signed
   `task-402-pay` replay still fell into `StreamableHTTPServerTransport`, which requires clients to

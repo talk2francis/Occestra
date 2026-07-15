@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans, Spline_Sans_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { GrainOverlay } from "@/components/ui/grain-overlay";
+import { THEME_SCRIPT } from "@/components/ui/theme";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -53,23 +54,36 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FAF7F2",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAF7F2" },
+    { media: "(prefers-color-scheme: dark)", color: "#17131C" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${grotesk.variable} ${dataMono.variable}`}>
+    <html
+      lang="en"
+      className={`${fraunces.variable} ${grotesk.variable} ${dataMono.variable}`}
+      // the inline theme script writes data-theme before hydration, on purpose
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Blocking by design: the root theme exists before CSS paints. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         {children}
         <GrainOverlay />
         <Toaster
           position="bottom-right"
           toastOptions={{
+            // token-driven so toasts follow the active theme
             style: {
-              background: "#FAF7F2",
-              color: "#17141A",
-              border: "1px solid rgb(23 20 26 / 0.14)",
-              boxShadow: "0 8px 24px -8px rgb(23 20 26 / 0.16)",
+              background: "var(--color-ground)",
+              color: "var(--color-ink)",
+              border: "1px solid color-mix(in srgb, var(--color-ink) 14%, transparent)",
+              boxShadow: "var(--shadow-lift)",
               fontFamily: "var(--font-grotesk)",
             },
           }}
