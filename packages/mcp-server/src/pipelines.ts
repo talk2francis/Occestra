@@ -41,7 +41,7 @@ import {
   imageQualityFor,
   isUndelivered,
 } from "@occestra/studio-core";
-import { OQS_VERSION, runTribunal, type TribunalReport } from "@occestra/tribunal";
+import { OQS_VERSION, gradePack, runTribunal, type TribunalReport } from "@occestra/tribunal";
 import { HOUSE_STYLES, styleSystemPrompt, type CostGovernor } from "@occestra/providers";
 import { Sealer, leafOfSeal } from "@occestra/receipts";
 import { PRICES } from "./gate.js";
@@ -149,6 +149,19 @@ async function gradeAll(
   return { artifacts: graded, reports, gaps };
 }
 
+/**
+ * Attach the pack-level grade. The pure studio pipelines (celebrate/remember/launch) build their
+ * packs inside studio-core, which cannot import the Tribunal — so the whole-pack grade is added
+ * here, at the one layer that has both the pack and the standard, before the pack is sealed.
+ */
+function withPackGrade(pack: Pack, contract: OccasionContract): Pack {
+  const requested = "deliverables" in contract ? (contract as { deliverables?: string[] }).deliverables ?? [] : [];
+  return {
+    ...pack,
+    quality: { ...pack.quality, packGrade: gradePack({ requested, artifacts: pack.artifacts, contract }) },
+  };
+}
+
 async function assemble(
   ctx: PipelineContext,
   contract: OccasionContract,
@@ -162,6 +175,11 @@ async function assemble(
 
   const gaps = [...new Set([...ctx.coverageGaps, ...extraGaps])];
 
+  // The pack graded as a whole — did every requested deliverable ship, do the artifacts agree
+  // with each other, did the delivered ones pass. Computed, cheap, reproducible.
+  const requested = "deliverables" in contract ? (contract as { deliverables?: string[] }).deliverables ?? [] : [];
+  const packGrade = gradePack({ requested, artifacts, contract });
+
   let pack: Pack = {
     id: newKeepsakeId(ctx.deps.clock.now()),
     contractId: contract.id,
@@ -173,6 +191,7 @@ async function assemble(
       passRate: reports.length > 0 ? passed / reports.length : 1,
       repairedCount: repaired,
       undeliveredCount: artifacts.filter(isUndelivered).length,
+      packGrade,
     },
     createdAt: nowIso(ctx),
   };
@@ -366,7 +385,7 @@ export async function planOccasion(ctx: PipelineContext, input: PlanOccasionInpu
 
   // The pipeline is pure and does not know about sealing or the store — that is this layer's
   // job, and it must behave exactly as it did before (seal, queue the leaf, persist).
-  let sealed: Pack = { ...pack, coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])] };
+  let sealed: Pack = withPackGrade({ ...pack, coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])] }, contract);
 
   if (ctx.sealer) {
     sealed = await ctx.sealer.seal(sealed, "celebrate");
@@ -743,10 +762,10 @@ export async function makeKeepsake(ctx: PipelineContext, input: MakeKeepsakeInpu
     input.confirmGraph ? { confirmGraph: input.confirmGraph } : {},
   );
 
-  let sealed: Pack = {
-    ...pack,
-    coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])],
-  };
+  let sealed: Pack = withPackGrade(
+    { ...pack, coverageGaps: [...new Set([...ctx.coverageGaps, ...pack.coverageGaps])] },
+    contract,
+  );
 
   if (ctx.sealer) {
     sealed = await ctx.sealer.seal(sealed, "remember");
@@ -819,10 +838,10 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
 
   const withCard = await deriveOgCard(ctx, pack);
 
-  let sealed: Pack = {
-    ...withCard,
-    coverageGaps: [...new Set([...ctx.coverageGaps, ...withCard.coverageGaps])],
-  };
+  let sealed: Pack = withPackGrade(
+    { ...withCard, coverageGaps: [...new Set([...ctx.coverageGaps, ...withCard.coverageGaps])] },
+    contract,
+  );
 
   if (ctx.sealer) {
     sealed = await ctx.sealer.seal(sealed, "launch");

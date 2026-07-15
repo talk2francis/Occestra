@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Artifact } from "@occestra/studio-core";
 import {
-  AXES,
   CHECKS,
   MAX_REPAIRS,
   OQS_VERSION,
+  PROFILES,
   rubricAsJson,
   rubricAsMarkdown,
   runTribunal,
@@ -35,7 +35,7 @@ describe("runTribunal", () => {
 
   it("repairs once when the critic fails an axis, then passes — repairs === 1", async () => {
     const critique = new FakeCritique([
-      { axes: { composition: 41 } as never, issues: ["centred blob"], repairBrief: "Rebuild the composition around a single focal point." },
+      { axes: { contingency: 41 }, issues: ["no real rain plan"], repairBrief: "Rebuild the contingency around the actual forecast." },
     ]);
 
     let regenerated = 0;
@@ -45,7 +45,7 @@ describe("runTribunal", () => {
       deps: { critique },
       regenerate: async (brief, previous) => {
         regenerated += 1;
-        expect(brief).toContain("focal point");
+        expect(brief).toContain("contingency");
         return { ...previous, id: `${previous.id}_r${regenerated}` };
       },
     });
@@ -57,7 +57,7 @@ describe("runTribunal", () => {
   });
 
   it("caps repairs at 2 and still ships an honest failing report", async () => {
-    const critique = new FakeCritique([], { axes: { composition: 10 } as never, issues: ["still bad"] });
+    const critique = new FakeCritique([], { axes: { contingency: 10 }, issues: ["still bad"] });
 
     let regenerated = 0;
     const { artifact: out, report } = await runTribunal({
@@ -101,7 +101,7 @@ describe("runTribunal", () => {
       deps: { critique: new FakeCritique([]) }, // every axis 84+
     });
 
-    expect(report.axes!.composition).toBeGreaterThanOrEqual(70);
+    expect(report.axes!.budget_consistency).toBeGreaterThanOrEqual(70);
     expect(report.pass).toBe(false);
     expect(report.issues.join(" ")).toContain("BUDGET_SUM_MISMATCH");
   });
@@ -120,7 +120,7 @@ describe("runTribunal", () => {
   });
 
   it("survives a regenerate() that itself throws, recording the failure honestly", async () => {
-    const critique = new FakeCritique([], { axes: { composition: 10 } as never });
+    const critique = new FakeCritique([], { axes: { contingency: 10 } });
 
     const { report } = await runTribunal({
       artifact: artifact(),
@@ -137,10 +137,10 @@ describe("runTribunal", () => {
   });
 
   it("grades without repairing when no regenerate() is supplied", async () => {
-    // Fails on COMPOSITION — a craft axis. A correctness axis would need a citation to
+    // Fails on CONTINGENCY — a craft axis. A correctness axis would need a citation to
     // stand (see "a correctness failure that cannot be quoted"), and this test is about
     // the repair loop, not about the citation rule.
-    const critique = new FakeCritique([], { axes: { composition: 12 } as never });
+    const critique = new FakeCritique([], { axes: { contingency: 12 } });
     const { report } = await runTribunal({
       artifact: artifact(),
       contract: contract(),
@@ -152,11 +152,15 @@ describe("runTribunal", () => {
 });
 
 describe("the published rubric IS the shipped rubric", () => {
-  it("rubricAsMarkdown names every check id, every axis, and the version", () => {
+  it("rubricAsMarkdown names every check id, every axis in every profile, and the version", () => {
     const md = rubricAsMarkdown();
     expect(md).toContain(`v${OQS_VERSION}`);
     for (const check of CHECKS) expect(md).toContain(check.id);
-    for (const axis of AXES) expect(md).toContain(axis.title);
+    for (const profile of Object.values(PROFILES)) {
+      for (const axis of profile.axes) expect(md).toContain(axis.title);
+    }
+    // The map-incident axis must be published, by name.
+    expect(md).toContain("Subject fidelity");
     expect(md).toContain("at most **2 repair passes**");
   });
 
@@ -165,14 +169,11 @@ describe("the published rubric IS the shipped rubric", () => {
     expect(json.oqsVersion).toBe(OQS_VERSION);
     expect(json.maxRepairs).toBe(MAX_REPAIRS);
     expect(json.checks).toHaveLength(13);
-    expect(json.axes.map((a) => a.id)).toEqual([
-      "composition",
-      "legibility",
-      "style_fidelity",
-      "grounding",
-      "platform_fit",
-    ]);
-    expect(json.axes.every((a) => a.threshold === 70)).toBe(true);
+    expect(json.profiles.map((p) => p.id)).toEqual(["visual", "written", "plan", "pack"]);
+    // The visual profile carries subject_fidelity — the axis the map incident needed.
+    const visual = json.profiles.find((p) => p.id === "visual")!;
+    expect(visual.axes.map((a) => a.id)).toContain("subject_fidelity");
+    expect(json.profiles.every((p) => p.axes.every((a) => a.threshold === 70))).toBe(true);
     expect(json.checks.filter((c) => c.hard).map((c) => c.id)).toEqual([
       "SCHEMA_INVALID",
       "POLICY_VIOLATION",

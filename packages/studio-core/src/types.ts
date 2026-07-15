@@ -357,6 +357,20 @@ export const PackQualitySchema = z.object({
   repairedCount: z.number().int().nonnegative(),
   /** Artifacts the studio owed you and could not produce. Read this next to passRate. */
   undeliveredCount: z.number().int().nonnegative().default(0),
+  /**
+   * The pack graded as a WHOLE, under the pack profile — computed, not model-judged. A set of
+   * individually-passing artifacts is not automatically a good pack: it can be missing a
+   * deliverable, or contradict itself on the date. These three axes catch that.
+   */
+  packGrade: z
+    .object({
+      completeness: z.number().min(0).max(100),
+      cross_artifact_consistency: z.number().min(0).max(100),
+      brief_satisfaction: z.number().min(0).max(100),
+      pass: z.boolean(),
+      notes: z.array(z.string()).default([]),
+    })
+    .optional(),
 });
 export type PackQuality = z.infer<typeof PackQualitySchema>;
 
@@ -442,17 +456,75 @@ export interface ImageModelPort {
   generate(request: ImageGenerationRequest): Promise<ImageGenerationResult>;
 }
 
+/**
+ * Every axis any profile can score.
+ *
+ * The standard used to grade EVERYTHING on the same five axes, and it produced nonsense at the
+ * edges: a map rendered as a software brand mark passed, because "is the content what was
+ * commissioned?" was not a question the five axes asked. So the axes are now grouped into
+ * PROFILES (visual / written / plan / pack), and an artifact is graded only on the axes that
+ * mean something for what it is. This union is the full pool; a profile draws its own subset.
+ *
+ * The map incident lives here as `subject_fidelity`: an axis that asks, independent of how
+ * beautiful the rendering is, whether the artifact depicts the thing the brief asked for.
+ */
 export type CritiqueAxis =
+  // visual — images
   | "composition"
   | "legibility"
   | "style_fidelity"
-  | "grounding"
-  | "platform_fit";
+  | "subject_fidelity"
+  | "platform_fit"
+  | "defects"
+  // written — copy and documents
+  | "voice"
+  | "specificity"
+  | "factual_support"
+  | "structure"
+  // plan — grounded, structured occasion work
+  | "source_coverage"
+  | "date_validity"
+  | "schedule_feasibility"
+  | "budget_consistency"
+  | "contingency"
+  | "uncertainty_disclosure"
+  // pack — the whole delivery, graded once
+  | "completeness"
+  | "cross_artifact_consistency"
+  | "brief_satisfaction";
+
+/** Truth vs. taste. A correctness failure must be quotable; a craft failure is allowed to be a judgement. */
+export type AxisClass = "correctness" | "craft";
+
+/**
+ * One axis, as the standard defines it. This is plain data on purpose: it crosses the port
+ * from the Tribunal (which owns the standard) to the critic (which owns nothing), so the critic
+ * can build its schema and its prompt from the profile it is handed WITHOUT importing the
+ * standard. Published == shipped survives, because the same specs render `/standard`.
+ */
+export interface CritiqueAxisSpec {
+  id: CritiqueAxis;
+  title: string;
+  class: AxisClass;
+  description: string;
+  threshold: number;
+  /** Scoring-anchor guidance shown to the critic. Keeps the judge a measuring instrument. */
+  guidance?: string;
+}
+
+/** The set of axes an artifact is graded on, chosen by what the artifact IS. */
+export interface CritiqueProfile {
+  id: string;
+  title: string;
+  axes: readonly CritiqueAxisSpec[];
+}
 
 export interface CritiqueRequest {
   artifact: Artifact;
   contract: OccasionContract;
-  style: HouseStyle;
+  style?: HouseStyle;
+  /** Which axes to score, and how. The engine chooses it from the artifact; the critic obeys. */
+  profile: CritiqueProfile;
 }
 
 /**
@@ -472,13 +544,16 @@ export interface CritiqueCitation {
 }
 
 export interface CritiqueResult {
-  axes: Record<CritiqueAxis, number>;
+  /** Only the profile's axes are present — an artifact carries scores for what it IS, nothing else. */
+  axes: Partial<Record<CritiqueAxis, number>>;
   issues: string[];
   /** One per axis scored below its floor. See CritiqueCitation. */
   citations?: CritiqueCitation[];
   /** Concrete, actionable instructions for the regeneration pass. */
   repairBrief: string;
   model: string;
+  /** Which profile these scores were produced against, recorded so a report is self-describing. */
+  profileId?: string;
 }
 
 export interface CritiquePort {

@@ -4,6 +4,7 @@ import type {
   CelebrateContract,
   CritiqueAxis,
   CritiquePort,
+  CritiqueRequest,
   CritiqueResult,
   HouseStyle,
 } from "@occestra/studio-core";
@@ -71,15 +72,14 @@ export async function png(
   return new Uint8Array(buffer);
 }
 
-export const PASSING_AXES: Record<CritiqueAxis, number> = {
-  composition: 88,
-  legibility: 91,
-  style_fidelity: 84,
-  grounding: 95,
-  platform_fit: 87,
-};
-
-/** Scripted critic: yields the next queued verdict, or throws if constructed to. */
+/**
+ * Scripted critic: yields the next queued verdict, or throws if constructed to.
+ *
+ * Profile-aware. It scores exactly the axes of whatever profile the engine hands it, all
+ * passing by default; an override in the queue (e.g. `{ source_coverage: 40 }`) drops one.
+ * An override naming an axis the profile does not have is simply ignored, which is the same
+ * thing the real engine does — you cannot fail an artifact on an axis it is not graded on.
+ */
 export class FakeCritique implements CritiquePort {
   public calls = 0;
   constructor(
@@ -87,16 +87,21 @@ export class FakeCritique implements CritiquePort {
     private readonly fallback: Partial<CritiqueResult> = {},
   ) {}
 
-  async judge(): Promise<CritiqueResult> {
+  async judge(request: CritiqueRequest): Promise<CritiqueResult> {
     const next = this.queue[this.calls] ?? this.fallback;
     this.calls += 1;
     if (next instanceof Error) throw next;
+
+    const base: Partial<Record<CritiqueAxis, number>> = {};
+    for (const axis of request.profile.axes) base[axis.id] = 88;
+
     return {
-      axes: { ...PASSING_AXES, ...(next.axes ?? {}) },
+      axes: { ...base, ...(next.axes ?? {}) },
       issues: next.issues ?? [],
       ...(next.citations ? { citations: next.citations } : {}),
       repairBrief: next.repairBrief ?? "",
       model: next.model ?? "fake-critic-1",
+      profileId: request.profile.id,
     };
   }
 }

@@ -7,6 +7,44 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — OQS 1.2: rubric profiles, and the axis the map incident needed
+
+Grading everything on the same five axes was a category error, and it shipped a real defect: a
+map rendered in a brand-mark House Style **passed**, because none of the five axes asked "is the
+content what the brief commissioned?" An invitation is not judged like a budget, and a budget is
+not judged like a toast.
+
+**So the standard now has PROFILES.** An artifact is graded on the axes that mean something for
+what it *is*:
+
+- **visual** — composition, legibility, style_fidelity, **subject_fidelity**, platform_fit, defects
+- **written** — voice, specificity, factual_support, structure, platform_fit
+- **plan** — source_coverage, date_validity, schedule_feasibility, budget_consistency, contingency, uncertainty_disclosure
+- **pack** — completeness, cross_artifact_consistency, brief_satisfaction (computed, not model-judged)
+
+`subject_fidelity` is the map-incident fix, and it is a **correctness** axis: it asks, ignoring
+how good the rendering looks, whether the artifact depicts the thing that was asked for. A map
+where a software brand mark was commissioned now fails on it — and, being correctness, the critic
+must be able to *quote* what it depicts instead.
+
+The architecture keeps the critic ignorant of the standard: the engine chooses the profile from
+the artifact and passes it, as plain data, across the critique port. The critic builds its schema
+and its scoring anchors **from the profile it is handed**, so an off-profile answer is impossible
+rather than merely discouraged, and the same anchors render at `/standard`. An invitation's PNG
+plate is graded visual; its markdown copy, written — both from one `oce_design_invite` call.
+
+**The pack profile** grades the delivery as a whole, deterministically: did every requested
+deliverable ship, do the artifacts agree with each other on the date, did the delivered ones pass.
+A set of individually-passing artifacts is not automatically a good pack, and now the standard can
+say so.
+
+**OQS → 1.2.0.** Note: this is 1.2.0, not the 1.1.0 the phase brief named — 1.1.0 was already
+taken by the V2-1.0 determinism work (axis classes + the citation rule), and adding profiles and a
+new axis on top is a real rubric change, so the honest semver is a further bump. Stored reports are
+self-describing: each carries the version and profile it was graded under, and old packs display
+exactly as they were graded. `/standard`, the docs, and the machine manifest regenerate from the
+profiles — published is still shipped, by construction.
+
 ## [Unreleased] — V2-1.6/1.7: measure it, split the promise, and the bug that only measuring found
 
 **The SLOs are measured, not asserted — and published split in two**, because a single table

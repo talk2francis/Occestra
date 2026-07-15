@@ -10,7 +10,9 @@ import { createHash } from "node:crypto";
 import sharp from "sharp";
 import type {
   ClockPort,
+  CritiqueAxis,
   CritiquePort,
+  CritiqueRequest,
   CritiqueResult,
   ImageGenerationRequest,
   ImageGenerationResult,
@@ -88,18 +90,24 @@ export class FakeImageModel implements ImageModelPort {
 export class FakeCritique implements CritiquePort {
   constructor(private readonly axes = 75) {}
 
-  async judge(): Promise<CritiqueResult> {
+  async judge(request?: CritiqueRequest): Promise<CritiqueResult> {
+    // Score exactly the axes of whichever profile it was handed, so it stays valid as the
+    // standard's profiles change. With no request (older tests), fall back to a plausible set.
+    const axisIds = request?.profile.axes.map((axis) => axis.id) ?? [
+      "composition",
+      "legibility",
+      "style_fidelity",
+      "platform_fit",
+    ];
+    const axes: Partial<Record<CritiqueAxis, number>> = {};
+    for (const id of axisIds) axes[id] = this.axes;
+
     return {
-      axes: {
-        composition: this.axes,
-        legibility: this.axes,
-        style_fidelity: this.axes,
-        grounding: this.axes,
-        platform_fit: this.axes,
-      },
+      axes,
       issues: ["No model critic was configured; this artifact was not judged by a model."],
       repairBrief: "",
       model: "fake-critic-1",
+      ...(request ? { profileId: request.profile.id } : {}),
     };
   }
 }

@@ -258,10 +258,12 @@ export function buildApp(ctx: AppContext): Express {
         standard: "Occestra Quality Standard",
         version: rubricAsJson().oqsVersion,
         published: `${ctx.publicBaseUrl}/standard`,
-        axes: rubricAsJson().axes.map((axis) => axis.id),
+        // Grading is profile-based: an artifact is scored on the axes that mean something for
+        // what it is, and the visual profile carries subject_fidelity (the map-incident axis).
+        profiles: rubricAsJson().profiles.map((p) => ({ id: p.id, axes: p.axes.map((a) => a.id) })),
         checks: rubricAsJson().checks.map((check) => check.id),
         maxRepairs: rubricAsJson().maxRepairs,
-        note: "Every artifact is graded before you get it, and the report ships with it — pass or fail.",
+        note: "Every artifact is graded before you get it, against the profile for its kind, and the report ships with it — pass or fail.",
       },
       provenance: {
         chainId: ctx.chainId,

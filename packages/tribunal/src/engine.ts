@@ -14,14 +14,25 @@ import type {
   HouseStyle,
   OccasionContract,
 } from "@occestra/studio-core";
+import type { CritiqueAxisSpec } from "@occestra/studio-core";
 import { runChecks, sortFindings, type CheckDeps, type CheckResult } from "./checks.js";
-import { AXES, MAX_REPAIRS, OQS_VERSION, failureClass, passes, type FailureClass } from "./rubric.js";
+import {
+  MAX_REPAIRS,
+  OQS_VERSION,
+  failureClass,
+  passes,
+  profileFor,
+  type FailureClass,
+  type Profile,
+} from "./rubric.js";
 
 export interface TribunalReport {
   oqsVersion: string;
+  /** Which profile this artifact was graded under — a report is self-describing. */
+  profile: string;
   deterministic: CheckResult[];
   /** Undefined when the critique provider was unavailable — see notes + coverageGaps. */
-  axes?: Record<CritiqueAxis, number>;
+  axes?: Partial<Record<CritiqueAxis, number>>;
   issues: string[];
   pass: boolean;
   /**
@@ -61,8 +72,9 @@ export interface TribunalOutcome {
 }
 
 interface Graded {
+  profile: Profile;
   deterministic: CheckResult[];
-  axes?: Record<CritiqueAxis, number>;
+  axes?: Partial<Record<CritiqueAxis, number>>;
   issues: string[];
   repairBrief?: string;
   notes: string[];
@@ -92,14 +104,15 @@ interface Graded {
  * allowed to be taste.
  */
 function requireCitations(
-  axes: Record<CritiqueAxis, number>,
+  axes: Partial<Record<CritiqueAxis, number>>,
   citations: ReadonlyArray<{ axis: CritiqueAxis; quote: string }>,
+  profileAxes: readonly CritiqueAxisSpec[],
   notes: string[],
-): Record<CritiqueAxis, number> {
+): Partial<Record<CritiqueAxis, number>> {
   const cited = new Set(citations.filter((c) => c.quote.trim().length > 0).map((c) => c.axis));
   const adjusted = { ...axes };
 
-  for (const axis of AXES) {
+  for (const axis of profileAxes) {
     if (axis.class !== "correctness") continue;
 
     const score = adjusted[axis.id] ?? 0;
@@ -135,6 +148,9 @@ async function gradeOnce(args: {
   const notes: string[] = [];
   const coverageGaps: string[] = [];
 
+  // What KIND of thing is this, and therefore which axes mean anything for it.
+  const profile = profileFor(artifact.kind, artifact.format);
+
   const checkCtx = {
     artifact,
     contract,
@@ -147,7 +163,7 @@ async function gradeOnce(args: {
     coverageGaps.push(`${skipped.id}: ${skipped.detail}`);
   }
 
-  let axes: Record<CritiqueAxis, number> | undefined;
+  let axes: Partial<Record<CritiqueAxis, number>> | undefined;
   const issues: string[] = [];
   let repairBrief: string | undefined;
 
@@ -156,12 +172,13 @@ async function gradeOnce(args: {
       artifact,
       contract,
       ...(style ? { style } : {}),
-    } as Parameters<CritiquePort["judge"]>[0]);
+      profile,
+    });
 
-    axes = requireCitations(critique.axes, critique.citations ?? [], notes);
+    axes = requireCitations(critique.axes, critique.citations ?? [], profile.axes, notes);
     issues.push(...critique.issues);
     if (critique.repairBrief) repairBrief = critique.repairBrief;
-    notes.push(`Critique by ${critique.model}.`);
+    notes.push(`Critique by ${critique.model}, ${profile.id} profile.`);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     notes.push(
@@ -176,15 +193,16 @@ async function gradeOnce(args: {
   }
 
   const hard = hardFailures(deterministic).length;
-  const pass = passes(axes, hard);
-  const failedOn = pass ? null : failureClass(axes, hard);
+  const pass = passes(axes, hard, profile.axes);
+  const failedOn = pass ? null : failureClass(axes, hard, profile.axes);
 
   // Even a silent critic must hand the repair loop something actionable.
   if (!pass && !repairBrief) {
-    repairBrief = buildRepairBrief(deterministic, axes);
+    repairBrief = buildRepairBrief(deterministic, profile, axes);
   }
 
   return {
+    profile,
     deterministic,
     ...(axes ? { axes } : {}),
     issues,
@@ -199,7 +217,8 @@ async function gradeOnce(args: {
 /** A concrete, actionable brief — never "try harder". */
 export function buildRepairBrief(
   deterministic: CheckResult[],
-  axes?: Record<CritiqueAxis, number>,
+  profile: Profile,
+  axes?: Partial<Record<CritiqueAxis, number>>,
 ): string {
   const lines: string[] = ["Fix the following, then regenerate:"];
 
@@ -213,7 +232,7 @@ export function buildRepairBrief(
     // polishing a lie — and a writer handed a mixed list will reach for the easy note.
     // The order of this brief is the order the work should be done in.
     const failing = (cls: "correctness" | "craft") =>
-      AXES.filter((axis) => axis.class === cls && (axes[axis.id] ?? 0) < axis.threshold);
+      profile.axes.filter((axis) => axis.class === cls && (axes[axis.id] ?? 0) < axis.threshold);
 
     for (const axis of failing("correctness")) {
       lines.push(
@@ -242,7 +261,7 @@ export async function runTribunal(args: RunTribunalArgs): Promise<TribunalOutcom
   const coverageGaps: string[] = [...graded.coverageGaps];
 
   while (!graded.pass && regenerate && repairs < maxRepairs) {
-    const brief = graded.repairBrief ?? buildRepairBrief(graded.deterministic, graded.axes);
+    const brief = graded.repairBrief ?? buildRepairBrief(graded.deterministic, graded.profile, graded.axes);
     try {
       artifact = await regenerate(brief, artifact);
     } catch (error) {
@@ -265,6 +284,7 @@ export async function runTribunal(args: RunTribunalArgs): Promise<TribunalOutcom
 
   const report: TribunalReport = {
     oqsVersion: OQS_VERSION,
+    profile: graded.profile.id,
     deterministic: graded.deterministic,
     ...(graded.axes ? { axes: graded.axes } : {}),
     issues: graded.issues,

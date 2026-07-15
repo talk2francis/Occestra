@@ -520,7 +520,9 @@ describe("http surface", () => {
 
     // The manifest is what a buying agent reads BEFORE it can sign anything, and the standard,
     // the styles and the refund policy are the three things it cannot get anywhere else.
-    expect(manifest.quality.axes).toHaveLength(5);
+    expect(manifest.quality.profiles).toHaveLength(4);
+    const visualProfile = manifest.quality.profiles.find((p: { id: string }) => p.id === "visual");
+    expect(visualProfile.axes).toContain("subject_fidelity"); // the map-incident axis, published
     expect(manifest.quality.checks.length).toBeGreaterThanOrEqual(13);
     expect(manifest.styles[0].bestFor).toBeTruthy();
     expect(manifest.refunds.policy).toContain("settles before the work runs");
@@ -536,7 +538,11 @@ describe("http surface", () => {
     const rubric = await (await fetch(`${base}/standard`, { headers: { accept: "application/json" } })).json();
     expect(rubric.oqsVersion).toBe(OQS_VERSION);
     expect(rubric.checks).toHaveLength(13);
-    expect(rubric.axes.every((axis: { threshold: number }) => axis.threshold === 70)).toBe(true);
+    expect(
+      rubric.profiles.every((p: { axes: { threshold: number }[] }) =>
+        p.axes.every((axis) => axis.threshold === 70),
+      ),
+    ).toBe(true);
   });
 
   it("402s an unpaid paid tool with the challenge in the PAYMENT-REQUIRED header", async () => {
