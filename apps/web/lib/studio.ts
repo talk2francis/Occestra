@@ -11,6 +11,9 @@ export interface StyleSwatch {
   name: string;
   version: number;
   palette: string[];
+  /** Which studios this style is appropriate for — drives the picker's grouping. */
+  appliesTo?: string[];
+  bestFor?: string;
 }
 
 export type DemoEvent =

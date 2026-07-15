@@ -130,16 +130,23 @@ export function Composer({
         ))}
       </div>
 
-      {/* house style */}
+      {/* house style — recommended for this studio first, the rest below the rule */}
       <div>
         <p className="text-kicker text-[0.62rem] text-ink/60">House Style</p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {styles.map((style) => (
+
+        {(() => {
+          // A style with no appliesTo (older manifest) is treated as universally applicable.
+          const suits = (style: StyleSwatch) => !style.appliesTo || style.appliesTo.includes(studio);
+          const recommended = styles.filter(suits);
+          const others = styles.filter((style) => !suits(style));
+
+          const swatch = (style: StyleSwatch) => (
             <button
               key={style.id}
               onClick={() => setStyleId(styleId === style.id ? undefined : style.id)}
               disabled={running}
               aria-pressed={styleId === style.id}
+              title={style.bestFor}
               className={`rounded-lg border p-2 text-left transition-colors ${
                 styleId === style.id ? "border-amethyst bg-lilac/15" : "border-ink/12 bg-ground hover:border-ink/30"
               }`}
@@ -152,8 +159,22 @@ export function Composer({
               <span className="mt-1.5 block text-[0.72rem] font-medium text-ink/80">{style.name}</span>
               <span className="text-data block text-[0.6rem] text-ink/60">v{style.version} · {style.id}</span>
             </button>
-          ))}
-        </div>
+          );
+
+          return (
+            <>
+              <p className="mt-2 text-[0.64rem] text-ink/45">Recommended for {studio}</p>
+              <div className="mt-1 grid grid-cols-2 gap-2">{recommended.map(swatch)}</div>
+              {others.length > 0 && (
+                <>
+                  <p className="mt-3 text-[0.64rem] text-ink/45">Other styles</p>
+                  <div className="mt-1 grid grid-cols-2 gap-2 opacity-75">{others.map(swatch)}</div>
+                </>
+              )}
+            </>
+          );
+        })()}
+
         <p className="mt-1.5 text-[0.7rem] text-ink/60">Optional — each studio has a sensible default.</p>
       </div>
 
