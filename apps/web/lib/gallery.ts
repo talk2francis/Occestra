@@ -23,6 +23,14 @@ export interface GalleryEntry {
 
 /** The portfolio. Editorial order: image-led packs spread through the flow. */
 export const GALLERY: GalleryEntry[] = [
+  // V2-3 reseed: the new House Styles, in real work, led up front so the gallery opens in colour.
+  { id: "oce_01kxjbhzf54e41nx2j05xy", note: "celebrate — Isabel's black-tie 40th (jazz_age; art-deco gold on emerald, passRate 1.0)" },
+  { id: "oce_01kxjbrwaafanhk1pst4qy", note: "remember — our week in Tuscany (terra_fresco; ochre plaster fresco, passRate 1.0)" },
+  { id: "oce_01kxjbfhhdzdmt8ga49mtb", note: "celebrate — a midsummer garden lunch (solstice_bloom; pressed-flower botanicals)" },
+  { id: "oce_01kxjbkz2na4r5q5hsw821", note: "remember — grandmother's blue tea set (porcelain_garden; cobalt on porcelain white)" },
+  { id: "oce_01kxjbkq7af9grd1bgt3pb", note: "celebrate — a Lunar New Year reunion (paper_lantern; festival paper-cut)" },
+  { id: "oce_01kxjc0ftg7kkkj0bjcxjf", note: "celebrate — a speakeasy 10th anniversary (jazz_age; deco geometry, passRate 1.0)" },
+
   { id: "oce_01kxcafnsd2ty4ew7tc8jx", note: "remember — the night Occestra went live (sunprint, repaired x1 then pass)" },
   {
     id: "oce_01kxdwxwdj8gxkgvbm5943",
@@ -47,6 +55,11 @@ export const GALLERY: GalleryEntry[] = [
  * of the record — but not presented as the portfolio.
  */
 export const BUILD_DIARY: GalleryEntry[] = [
+  // The moodboards the reseed graded as a fail: the 2×2 collage form fights a single-focal style,
+  // and the Tribunal said so. Kept, because a gallery that hides its own fails is exactly the
+  // portfolio move this product argues against. (The moodboard generator was fixed afterward.)
+  { id: "oce_01kxjbrp36xed1vq95190d", note: "celebrate — a midnight launch mood (neon_reverie; the moodboard grid fought the 'one luminous mark' style and failed composition — honestly)." },
+  { id: "oce_01kxjbx239j17tsm2yzb25", note: "celebrate — a coral-and-marigold wedding mood (solstice_bloom; same grid-vs-focal fail, disclosed not hidden)." },
   { id: "oce_01kxc1fs5t73wf0ncs18he", note: "launch — the recursive demo, repaired x2 and STILL marked fail. Honest, and the reason the anti-slop filter exists." },
   { id: "oce_01kxc0y01b39652sjt4wjy", note: "launch — the second dogfood run of the same brief." },
   { id: "oce_01kxcch7m2vhrfw1rv22jd", note: "launch — the run where the image provider hit its billing cap mid-pack; the failures are disclosed, not hidden." },

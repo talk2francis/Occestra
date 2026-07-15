@@ -95,7 +95,11 @@ by studio recommendation (via `appliesTo`), showing the styles that suit the cur
 first. `oce_style_catalog` serves all ten with real swatches and a real passing example.
 
 **Gallery reseeded** with real packs across the new styles — real images, real grades, real seals
-— so `/gallery` is visibly colourful and diverse rather than four-tone.
+— so `/gallery` is visibly colourful and diverse rather than four-tone. Six lead the portfolio;
+two moodboards the Tribunal failed (the 2×2 collage form fighting a single-focal style) are kept
+in the build diary, disclosed not hidden. The moodboard generator was then fixed: its art-direction
+sheet is written per-occasion rather than pasted from the style spec, and its image asks for a
+composed board with hierarchy rather than a rigid grid.
 
 ## [Unreleased] — OQS 1.2: rubric profiles, and the axis the map incident needed
 

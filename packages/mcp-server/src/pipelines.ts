@@ -663,10 +663,12 @@ export async function moodboard(ctx: PipelineContext, input: MoodboardInput): Pr
   // generation, which is why this tool can be five cents and still be worth making.
   const tile = await makeImage(ctx, {
     subject: [
-      `A moodboard sheet for: ${input.subject}.`,
+      `A moodboard for: ${input.subject}.`,
       input.notes ? `Notes: ${input.notes}.` : "",
-      "Four distinct vignettes arranged in a 2x2 grid, each a different facet of the mood:",
-      "a material or texture close-up, a wider scene, a detail of light, and an object.",
+      "Four facets of the mood — a material or texture close-up, a wider scene, a detail of light, and an object —",
+      "arranged as a CONSIDERED board with clear hierarchy: one facet larger as the anchor, the others supporting it,",
+      "with breathing space between them. Not a rigid grid of four equal panels competing for attention.",
+      "Every facet must be true to the House Style — one coherent world, not a collage of clashing motifs.",
       "No text, no lettering anywhere.",
     ]
       .filter(Boolean)
@@ -727,6 +729,41 @@ export async function moodboard(ctx: PipelineContext, input: MoodboardInput): Pr
     spec: { size: `${boardWidth}x${1024 + stripHeight}` },
   });
 
+  // The art-direction sheet is WRITTEN, not stamped from the style spec.
+  //
+  // It used to be `style.promptSystem` pasted verbatim — the raw rulebook, identical for every
+  // moodboard in the style, specific to nothing. Measuring the gallery reseed caught it: the
+  // critic failed it on specificity, correctly, because it "hands back the rulebook" rather than
+  // translating the brief. A directed moodboard proposes a focal element, names the singing
+  // colours for THIS mood, and reads like a person briefed a photographer — so a person writes it.
+  const dirSystem = [
+    `You are an art director writing a one-page direction sheet for a moodboard, in the ${style.name} House Style.`,
+    "You translate a specific brief into specific, actionable direction — what a photographer or designer would do next. You do NOT recite the house style; assume the reader knows it.",
+    "",
+    `The House Style, for your reference (do NOT copy it back): ${style.promptSystem}`,
+    `Its palette: ${style.palette.join(", ")}. Its type direction: ${style.typeDirection}.`,
+    "",
+    "Rules:",
+    "- Every line must be specific to THIS subject. Propose a focal element, name which of the palette colours should sing for this mood, suggest a scene, a texture, a quality of light — concrete choices, not the style's generic vocabulary.",
+    "- No filler. 'Evoke a sense of occasion' says nothing. Cut it.",
+    "- Return markdown with these sections: a one-line **Concept**, **Focal element**, **Palette in play** (which hexes lead, for this subject), **Texture & light**, **What to avoid** (specific to this subject, not the generic style list).",
+  ].join("\n");
+
+  const dirPrompt = [
+    `Subject: ${input.subject}`,
+    input.notes ? `Notes: ${input.notes}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const writtenDirection = await ctx.deps.text.complete({
+    role: "art_director",
+    system: dirSystem,
+    prompt: dirPrompt,
+    maxTokens: 700,
+    temperature: 0.7,
+  });
+
   const direction = artifact({
     id: "direction",
     kind: "moodboard",
@@ -737,12 +774,7 @@ export async function moodboard(ctx: PipelineContext, input: MoodboardInput): Pr
       "",
       `**Palette.** ${style.palette.join("  ·  ")}`,
       "",
-      `**Typography.** ${style.typeDirection}`,
-      "",
-      "**Direction.**",
-      style.promptSystem,
-      "",
-      `**Avoid.** ${style.negativePrompt}`,
+      writtenDirection.text,
     ].join("\n"),
   });
 
