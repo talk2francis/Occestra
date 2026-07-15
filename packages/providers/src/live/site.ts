@@ -9,6 +9,7 @@ import { chromium, type Browser } from "playwright";
 import sharp from "sharp";
 import type { SiteInspection, SitePort, SourceTag, StoragePort } from "@occestra/studio-core";
 import { TTL, TtlCache } from "../cache.js";
+import { assertPublicUrl, blockedHostSync, guardedFetch } from "./ssrf.js";
 
 export const SITE_BUDGET_MS = 45_000;
 
@@ -43,6 +44,10 @@ export class PlaywrightSite implements SitePort {
     const deadline = this.now() + SITE_BUDGET_MS;
     const remaining = (): number => Math.max(1_000, deadline - this.now());
 
+    // GUARD THE ENTRY URL BEFORE WE LAUNCH ANYTHING. "Read my site" is a confused deputy unless
+    // the target is proven public first — no metadata service, no localhost, no private network.
+    await assertPublicUrl(url);
+
     try {
       browser = await chromium.launch({ args: ["--no-sandbox"] });
       const context = await browser.newContext({
@@ -50,9 +55,26 @@ export class PlaywrightSite implements SitePort {
         userAgent:
           "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36 Occestra/0.1",
       });
+
+      // And guard every request the page makes — redirects and subresources included. A public
+      // page that 302s into 169.254.169.254 is the classic SSRF bypass; the browser must not
+      // follow it. This is the cheap synchronous check (literal IPs, localhost, non-http); the
+      // entry URL already passed the full DNS-resolving guard above.
+      await context.route("**/*", (route) => {
+        const blocked = blockedHostSync(route.request().url());
+        if (blocked) {
+          void route.abort("blockedbyclient");
+        } else {
+          void route.continue();
+        }
+      });
+
       const page = await context.newPage();
 
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: remaining() });
+
+      // Belt and braces: after any redirects, the URL we actually landed on must still be public.
+      await assertPublicUrl(page.url());
       await page.waitForTimeout(600); // let webfonts and hero imagery settle
 
       const meta = await page.evaluate(() => {
@@ -168,14 +190,24 @@ export async function dominantColors(png: Buffer, count = 5): Promise<string[]> 
     });
 }
 
-/** Feeds the Tribunal's LINK_DEAD check. HEAD first, GET as a fallback for servers that refuse HEAD. */
-export function makeLinkChecker(fetchImpl: typeof fetch = fetch) {
+/**
+ * Feeds the Tribunal's LINK_DEAD check. HEAD first, GET as a fallback for servers that refuse HEAD.
+ *
+ * `guard` is injectable only so the unit tests can run offline against a fake fetch; in production
+ * it is the real SSRF guard, which resolves DNS and refuses private ranges on every redirect hop.
+ */
+export function makeLinkChecker(
+  fetchImpl: typeof fetch = fetch,
+  guard: (url: string) => Promise<void> = assertPublicUrl,
+) {
   return async (url: string): Promise<boolean> => {
     const attempt = async (method: "HEAD" | "GET"): Promise<boolean> => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 8_000);
       try {
-        const response = await fetchImpl(url, { method, signal: controller.signal, redirect: "follow" });
+        // guardedFetch checks the SSRF ranges on the initial URL AND on every redirect hop —
+        // a link that resolves fine but 302s into the private network is not "alive", it is bait.
+        const response = await guardedFetch(url, { method, signal: controller.signal }, fetchImpl, guard);
         return response.status < 400;
       } finally {
         clearTimeout(timer);
@@ -194,8 +226,9 @@ export function makeLinkChecker(fetchImpl: typeof fetch = fetch) {
 export async function checkLinks(
   urls: string[],
   fetchImpl: typeof fetch = fetch,
+  guard: (url: string) => Promise<void> = assertPublicUrl,
 ): Promise<Record<string, boolean>> {
-  const check = makeLinkChecker(fetchImpl);
+  const check = makeLinkChecker(fetchImpl, guard);
   const entries = await Promise.all(urls.map(async (url) => [url, await check(url)] as const));
   return Object.fromEntries(entries);
 }

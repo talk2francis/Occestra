@@ -22,6 +22,15 @@ import type { Store } from "./store.js";
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const MAX_FILES = 8;
 
+/**
+ * IMAGE-BOMB DEFENCE. A 40 KB PNG can declare itself 60,000 × 60,000 pixels and decode to
+ * tens of gigabytes of RAM — a denial of service that walks straight past the byte-size cap,
+ * because the bytes on the wire are tiny. sharp decodes lazily, so the guard has to be explicit:
+ * refuse the declared pixel count BEFORE decoding, and cap it in the decoder as a backstop.
+ */
+export const MAX_PIXELS = 40_000_000; // 40 MP — larger than any phone camera, smaller than a bomb
+export const MAX_DIMENSION = 12_000; // and no single side absurdly long
+
 const ALLOWED = new Set(["jpeg", "jpg", "png", "webp", "heif", "avif", "gif", "tiff"]);
 
 export interface IngestedUpload {
@@ -59,9 +68,11 @@ export async function sanitizeImage(
     throw new UploadRejected(`that file is larger than ${MAX_FILE_BYTES / 1024 / 1024} MB`);
   }
 
+  // limitInputPixels caps the decoder at metadata time too: a header claiming a gigapixel image
+  // is refused here, before any large allocation, rather than after.
   let meta: sharp.Metadata;
   try {
-    meta = await sharp(Buffer.from(input)).metadata();
+    meta = await sharp(Buffer.from(input), { limitInputPixels: MAX_PIXELS }).metadata();
   } catch {
     throw new UploadRejected("that file is not an image we can read");
   }
@@ -73,12 +84,21 @@ export async function sanitizeImage(
     throw new UploadRejected("that image has no readable dimensions");
   }
 
+  // Refuse the declared size explicitly — a clearer message than the decoder's, and it runs
+  // before we allocate anything for the re-encode.
+  if (meta.width > MAX_DIMENSION || meta.height > MAX_DIMENSION || meta.width * meta.height > MAX_PIXELS) {
+    throw new UploadRejected(
+      `that image is too large to process (${meta.width}×${meta.height}); the limit is ${MAX_DIMENSION}px per side and ${MAX_PIXELS / 1_000_000} megapixels`,
+    );
+  }
+
   // Did it carry anything identifying? We report this honestly rather than silently binning it.
   const hadMetadata = Boolean(meta.exif ?? meta.xmp ?? meta.iptc ?? meta.icc);
 
   // The re-encode IS the strip: sharp writes no metadata unless withMetadata() is called.
   // .rotate() first, so we honour the EXIF orientation before discarding the EXIF that said it.
-  const bytes = await sharp(Buffer.from(input))
+  // The pixel cap is re-asserted on the decode path as a backstop.
+  const bytes = await sharp(Buffer.from(input), { limitInputPixels: MAX_PIXELS })
     .rotate()
     .png({ compressionLevel: 9 })
     .toBuffer();
@@ -158,6 +178,8 @@ export async function handleUpload(ctx: UploadRoutesContext, req: Request, res: 
       // The key is random. It carries nothing about the file, the person, or the moment.
       const key = `uploads/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}.png`;
       await ctx.store.storage.put(key, safe.bytes, "image/png");
+      // Track it so an upload that never becomes a keepsake gets swept, not kept forever.
+      ctx.store.recordUpload(key);
 
       uploaded.push({
         key,
@@ -195,7 +217,13 @@ export async function handleUpload(ctx: UploadRoutesContext, req: Request, res: 
 }
 
 /**
- * Delete my project. It has to actually delete, or it is a lie with a button on it.
+ * Delete my project. It has to actually delete, or it is a lie with a button on it — AND it has
+ * to check that the caller is the owner, or it is a delete button for strangers.
+ *
+ * Knowing a keepsake id is not permission to destroy it: ids appear in URLs, in logs, in a shared
+ * link. Deletion requires the OWNER TOKEN handed to the buyer once at creation — the same token
+ * that reveals the private salt. A pack with no owner token on file (a public gallery pack) is not
+ * a personal project and cannot be deleted here at all.
  */
 export function handleDelete(ctx: UploadRoutesContext, req: Request, res: Response): void {
   const raw = req.params["id"];
@@ -207,9 +235,35 @@ export function handleDelete(ctx: UploadRoutesContext, req: Request, res: Respon
     return;
   }
 
-  // store.deletePack removes the pack, its artifacts, AND the linked private uploads.
+  const headerToken = req.get("x-owner-token");
+  const bodyToken = (req.body as { ownerToken?: unknown } | undefined)?.ownerToken;
+  const ownerToken = headerToken ?? (typeof bodyToken === "string" ? bodyToken : undefined);
+
+  if (!ctx.store.isPrivate(id)) {
+    // No owner token exists for this pack — it is not a personal project. Refuse rather than let
+    // anyone with the id delete a public pack.
+    res.status(403).json({
+      error: "this keepsake is not a personal project and cannot be deleted here",
+    });
+    return;
+  }
+
+  if (!ownerToken || !ctx.store.ownsPack(id, ownerToken)) {
+    // Do not distinguish "no token" from "wrong token" — both are simply not authorised.
+    res.status(403).json({
+      error: "deleting a keepsake requires its owner token (the one you were given when it was made). Pass it as the x-owner-token header.",
+    });
+    return;
+  }
+
   const uploadCount = ctx.store.uploadsFor(id).length;
   const deleted = ctx.store.deletePack(id);
+  // The record of the deletion is kept — the id and the actor, never the content, which is gone.
+  ctx.store.audit("keepsake_deleted", {
+    packId: id,
+    actor: ctx.store.actorHash(ownerToken),
+    detail: `${uploadCount} upload(s) removed`,
+  });
 
   res.json({
     deleted,

@@ -498,13 +498,16 @@ describe("site helpers", () => {
         ? new Response("", { status: 404 })
         : new Response("", { status: 200 })) as unknown as typeof fetch;
 
-    const results = await checkLinks(["https://x.test/alive", "https://x.test/dead"], impl);
+    // A no-op guard so the dead/alive logic is tested offline; the SSRF guard has its own tests.
+    const allow = async () => undefined;
+
+    const results = await checkLinks(["https://x.test/alive", "https://x.test/dead"], impl, allow);
     expect(results).toEqual({ "https://x.test/alive": true, "https://x.test/dead": false });
 
     const exploding = (async () => {
       throw new Error("DNS is on fire");
     }) as unknown as typeof fetch;
-    expect(await checkLinks(["https://x.test/a"], exploding)).toEqual({ "https://x.test/a": false });
+    expect(await checkLinks(["https://x.test/a"], exploding, allow)).toEqual({ "https://x.test/a": false });
   });
 });
 

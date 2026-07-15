@@ -516,6 +516,8 @@ export function buildServer(ctx: ServerContext): McpServer {
       // chain; only the owner, presenting their token, can confirm the commitment opens to THIS
       // pack's manifest. Without the token we say so plainly rather than implying a full check.
       const salt = isPrivate && ownerToken ? ctx.store.revealSalt(keepsakeId, ownerToken) : undefined;
+      // A private salt was released to a proven owner — recorded, without the salt or any content.
+      if (salt) ctx.store.audit("salt_revealed", { packId: keepsakeId, actor: ctx.store.actorHash(ownerToken!) });
       const manifestVerified = isPrivate
         ? pack.seal && salt
           ? saltedManifestCommitment(pack, salt as `0x${string}`).toLowerCase() === pack.seal.manifestHash.toLowerCase()

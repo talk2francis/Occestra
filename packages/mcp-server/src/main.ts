@@ -133,6 +133,22 @@ if (sealerKey && registryAddress) {
   void worker.drain(); // catch up on anything queued while we were down
 }
 
+/* -------------------------------------------------- abandoned upload sweep */
+
+// A stranger's photograph that was uploaded but never turned into a keepsake must not live on
+// our disk forever. Sweep unlinked uploads older than OCE_UPLOAD_TTL_DAYS (default 3), hourly.
+const UPLOAD_TTL_DAYS = Number(env["OCE_UPLOAD_TTL_DAYS"] ?? 3);
+const sweepUploads = (): void => {
+  const removed = store.purgeAbandonedUploads(UPLOAD_TTL_DAYS * 24 * 60 * 60 * 1000);
+  if (removed.length > 0) {
+    store.audit("uploads_purged", { detail: `${removed.length} abandoned upload(s) older than ${UPLOAD_TTL_DAYS}d` });
+    console.log(`[occestra] purged ${removed.length} abandoned upload(s)`);
+  }
+};
+sweepUploads();
+const uploadSweep = setInterval(sweepUploads, 60 * 60 * 1000);
+uploadSweep.unref();
+
 /* ------------------------------------------------------------------ start */
 
 app.listen(PORT, () => {

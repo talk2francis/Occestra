@@ -258,6 +258,29 @@ export class Store {
         created_at       INTEGER NOT NULL
       );
 
+      -- Every upload, with when it arrived. Used to auto-purge uploads that were never turned
+      -- into a keepsake: a stranger's photograph must not linger on our disk forever because
+      -- they changed their mind after the /uploads call and never finished.
+      CREATE TABLE IF NOT EXISTS uploads (
+        key        TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_uploads_age ON uploads(created_at);
+
+      -- Audit log for the events that touch private data or provenance: a private salt reveal,
+      -- a deletion, a seal anchored. NO PRIVATE CONTENT lands here — only the event, the pack id,
+      -- and a hash of the caller's address. It is the record of who touched what, kept so that a
+      -- deletion or an access can be accounted for without itself becoming a privacy leak.
+      CREATE TABLE IF NOT EXISTS audit_log (
+        seq     INTEGER PRIMARY KEY AUTOINCREMENT,
+        at      INTEGER NOT NULL,
+        event   TEXT NOT NULL,
+        pack_id TEXT,
+        actor   TEXT,
+        detail  TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_pack ON audit_log(pack_id, at);
+
       CREATE INDEX IF NOT EXISTS idx_artifacts_pack ON artifacts(pack_id);
       CREATE INDEX IF NOT EXISTS idx_seals_unanchored ON seals_pending(anchored_at);
     `);
@@ -476,6 +499,67 @@ export class Store {
     }
 
     return found;
+  }
+
+  /* -------------------------------------------------------------- uploads */
+
+  /** Record an upload's arrival, so an abandoned one can be swept later. */
+  recordUpload(key: string, at = Date.now()): void {
+    this.db.prepare("INSERT OR REPLACE INTO uploads (key, created_at) VALUES (?, ?)").run(key, at);
+  }
+
+  /**
+   * Purge uploads older than `olderThanMs` that were never linked to a pack. A finished keepsake
+   * links its uploads (see linkUploads), so a linked key is safe; an unlinked key past the cutoff
+   * is someone who uploaded and walked away, and it does not get to live on our disk indefinitely.
+   * Returns the keys removed, for the audit log.
+   */
+  purgeAbandonedUploads(olderThanMs: number, now = Date.now()): string[] {
+    const cutoff = now - olderThanMs;
+    const rows = this.db
+      .prepare(
+        `SELECT u.key AS key FROM uploads u
+         WHERE u.created_at < ?
+           AND NOT EXISTS (SELECT 1 FROM pack_uploads p WHERE p.key = u.key)`,
+      )
+      .all(cutoff) as Array<{ key: string }>;
+
+    const removed: string[] = [];
+    for (const { key } of rows) {
+      try {
+        rmSync(this.pathFor(key), { force: true });
+      } catch {
+        // already gone
+      }
+      this.db.prepare("DELETE FROM uploads WHERE key = ?").run(key);
+      removed.push(key);
+    }
+    return removed;
+  }
+
+  /* ---------------------------------------------------------------- audit */
+
+  /**
+   * Record an event that touched private data or provenance. `actor` is expected to be an
+   * ALREADY-HASHED caller reference — this method never sees a raw address — and `detail` must
+   * never carry private content: an id and a category, never a name or a photograph.
+   */
+  audit(event: string, opts: { packId?: string; actor?: string; detail?: string } = {}): void {
+    this.db
+      .prepare("INSERT INTO audit_log (at, event, pack_id, actor, detail) VALUES (?, ?, ?, ?, ?)")
+      .run(Date.now(), event, opts.packId ?? null, opts.actor ?? null, opts.detail ?? null);
+  }
+
+  auditFor(packId: string): Array<{ at: number; event: string; detail?: string }> {
+    const rows = this.db
+      .prepare("SELECT at, event, detail FROM audit_log WHERE pack_id = ? ORDER BY at")
+      .all(packId) as Array<{ at: number; event: string; detail: string | null }>;
+    return rows.map((row) => ({ at: row.at, event: row.event, ...(row.detail ? { detail: row.detail } : {}) }));
+  }
+
+  /** A short hash of a caller reference, so the audit log records WHO without recording an address. */
+  actorHash(reference: string): string {
+    return createHmac("sha256", this.urlSecret).update(`actor:${reference}`).digest("hex").slice(0, 16);
   }
 
   /* ------------------------------------------------------------- privacy */
@@ -964,8 +1048,14 @@ export class Store {
     const update = this.db.prepare(
       "UPDATE seals_pending SET tx_hash = ?, anchored_at = ? WHERE leaf = ?",
     );
+    const packIdOf = this.db.prepare("SELECT keepsake_id FROM seals_pending WHERE leaf = ?");
     this.db.transaction(() => {
-      for (const leaf of leaves) update.run(txHash, anchoredAt, leaf);
+      for (const leaf of leaves) {
+        update.run(txHash, anchoredAt, leaf);
+        const row = packIdOf.get(leaf) as { keepsake_id: string } | undefined;
+        // Provenance event — the tx and the pack id, nothing private.
+        this.audit("seal_anchored", { ...(row ? { packId: row.keepsake_id } : {}), detail: txHash });
+      }
     })();
   }
 

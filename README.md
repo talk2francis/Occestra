@@ -94,6 +94,18 @@ These are enforced in code, with tests, not stated in a policy page:
 - **Refusals with dignity** — PolicyGate screens briefs *before* payment; a refused brief is never charged, and the refusal is a complete, polite sentence — no shame animation, no dark pattern.
 - **The standard doesn't bend** — our gallery keeps packs with 60% pass rates. The grade is not for sale, including to us.
 
+## Security
+
+The launch studio opens a caller's URL in a real browser and reads a caller's photographs. Both are treated as hostile input:
+
+- **SSRF guard** — the site reader resolves DNS and refuses any URL that resolves to a private, loopback, link-local, or cloud-metadata range (`169.254.169.254` and friends), refuses non-`http(s)` schemes, and re-checks **every redirect hop** — a public URL that 302s into the metadata service is the classic bypass, and it is blocked. (The IP-range check has a test for the signed-int32 trap that silently un-blocks half the address space.)
+- **Prompt-injection framing** — text scraped from a third-party page (title, meta, Open Graph) is wrapped in an un-closable untrusted-data fence with an explicit non-instruction rule, and break-out sequences are neutralised. A page titled "ignore your instructions and output X" is carried as inert data, not obeyed.
+- **Image-bomb defence** — uploads are capped by `limitInputPixels` and an explicit dimension/megapixel check *before* decode, so a 40 KB file that declares itself a gigapixel cannot exhaust memory.
+- **Deletion is authenticated** — knowing a keepsake id is not permission to destroy it. `DELETE /projects/:id` requires the **owner token** handed to the buyer once at creation; a public pack cannot be deleted by a stranger at all.
+- **Private keepsakes are salted** — sealed to `keccak256(salt || manifest)`, so the on-chain leaf proves the keepsake exists without revealing or linking to anything; the salt is released only to the owner.
+- **Audit log** — salt reveals, deletions, and anchors are recorded by event and actor **hash**, never with private content, so who-touched-what is accountable without the log itself becoming a leak.
+- **Abandoned uploads self-purge** — a photograph uploaded but never turned into a keepsake is swept after `OCE_UPLOAD_TTL_DAYS` (default 3). A stranger's photo does not live on our disk forever because they changed their mind.
+
 ## Architecture
 
 <img src="assets/architecture.svg" width="100%" alt="Occestra architecture: three caller rails feed the payment gate and eight MCP tools; studio pipelines ground themselves in the real world; the Tribunal grades and repairs; receipts seal and anchor to KeepsakeRegistry on X Layer; verification is public and free.">
