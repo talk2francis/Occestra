@@ -65,6 +65,15 @@ The judge-facing proof table is committed as `EVALUATION.md` and live at
 - EIP-712 signature valid and leaf anchored in
   [`0xc648…45bc`](https://www.oklink.com/x-layer/tx/0xc648edcd26b3fd55bb8c2116fd6e81f0126778554b29f7af50175bce5fca45bc).
 
+## Marketplace price alignment — 2026-07-16
+
+- Agent #5213's six paid creative services now display the same V2 fees charged by the live x402
+  endpoint: plan 0.30 · invite 0.75 · keepsake 0.75 · toast 0.10 · moodboard 0.30 · launch 1.50 USDT.
+- Critique remains the deliberate 0.01-USDT ecosystem wedge; verification remains free.
+- OKX identity update transaction:
+  [`0x7a5f…d323`](https://www.oklink.com/x-layer/tx/0x7a5f1123297736504f42b5e52cdfa31c3dc0fff27dfeba28d5a197ac3053d323).
+- The marketplace service list was read back after the write; every fee and endpoint matched.
+
 ## Owner's non-code checklist (nothing here can be done by the repo)
 
 - [ ] Extended deadline **in writing** (see banner above).

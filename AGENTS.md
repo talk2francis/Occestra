@@ -145,6 +145,8 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 - OKX.AI Agent ID: #5213 (ASP "Occestra"), registered on X Layer 196
   register tx 0xe80a05287f5902e104c1c5525e8d651eb518ec0eaf598378ad6af186d3a819af
   listing status re-checked 2026-07-16 — **Listed — eligible for task recommendations**
+  V2 marketplace prices aligned 2026-07-16, update tx
+  0x7a5f1123297736504f42b5e52cdfa31c3dc0fff27dfeba28d5a197ac3053d323
 - Agent identity wallet: 0x1c823cca15ae0e8506c58280f83a50c7615bb6dc (email chatwithnonso01@gmail.com)
   NOTE: this is DELIBERATELY a different agentic wallet from Sigil's (francisokafor2001@gmail.com,
   0x2067b192..., ASP #4943). The onchainos CLI holds ONE email session at a time — to manage Sigil's

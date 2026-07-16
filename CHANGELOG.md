@@ -9,6 +9,9 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Updated all six repriced OKX.AI marketplace services so their displayed fees match the live x402
+  challenges. The update landed on X Layer in `0x7a5f…d323` and was read back service-by-service;
+  Critique stayed 0.01 USDT and Verification stayed free.
 - Fixed a production-only Studio completion crash: public coverage gaps are structured
   `{code, note}` records, while the pack pane still treated them as strings. Runs with a gap were
   finishing, sealing and anchoring correctly on the ASP, then crashing React at final assembly.
