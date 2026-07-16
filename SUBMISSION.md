@@ -10,8 +10,8 @@
 |---|---|
 | ASP name | **Occestra** |
 | Agent ID | **#5213** (register tx `0xe80a05287f5902e104c1c5525e8d651eb518ec0eaf598378ad6af186d3a819af`, X Layer 196) |
-| Type | ASP — A2MCP (13 tools: 8 creative/verification + 5 job/style controls) + A2A negotiated packages |
-| Description | Use the submitted marketplace copy in `LISTING.md`, verbatim. Short form: *"The Occasion Studio. Any real moment in, finished quality-graded work out: grounded plans, private keepsakes, launch kits — every artifact graded against a published standard (occestra.xyz/standard), repaired when it fails, and sealed with EIP-712 provenance on X Layer. Verification is free, forever."* |
+| Type | **A2MCP** (the form is single-choice; the listed services are A2MCP, while negotiated A2A packages remain an additional rail) |
+| Description | Use the comprehensive, paste-ready answer in `OKX-AI-GENESIS-FORM.md`. Short form: *"The Occasion Studio. Any real moment in, finished quality-graded work out: grounded plans, private keepsakes, launch kits — every artifact graded against a published standard (occestra.xyz/standard), repaired when it fails, and sealed with EIP-712 provenance on X Layer. Verification is free, forever."* |
 | Endpoint | `https://api.occestra.xyz/mcp` |
 | Site / docs | `https://occestra.xyz` · `https://occestra.xyz/docs` |
 | Repo | `https://github.com/talk2francis/Occestra` |
@@ -20,7 +20,7 @@
 | X handle | **@occestrastudio** |
 | X post link | *(the ≤90s demo thread — post per `demo/X-THREAD.md`, paste the post-1 URL here)* |
 | Telegram handle | **@Franciscco1** (owner, personal) |
-| Form link | *(from the hackathon channel — owner pastes when opening it)* |
+| Form link | `https://docs.google.com/forms/d/e/1FAIpQLSfIAgP_WmMGtZ5qyW_LnKZonsjyfOYwV3bduRwiuN4oBmcqjQ/viewform` |
 
 ## VERIFY-DAY runbook — the 10 checks, morning of the deadline
 
@@ -68,7 +68,7 @@ The judge-facing proof table is committed as `EVALUATION.md` and live at
 ## Owner's non-code checklist (nothing here can be done by the repo)
 
 - [ ] Extended deadline **in writing** (see banner above).
-- [ ] OKX listing review cleared — watch chatwithnonso01@gmail.com; chase on Telegram if silent.
+- [x] OKX listing review cleared — Agent #5213 reports **Listed — eligible for task recommendations** (re-checked 2026-07-16).
 - [ ] Record the video per `demo/VIDEO-SCRIPT.md` (after confirming OpenAI credits + ≥2 demo credits).
 - [ ] Post the thread per `demo/X-THREAD.md` from **@occestrastudio**; paste the link above.
 - [x] X + Telegram handles filled (2026-07-13).

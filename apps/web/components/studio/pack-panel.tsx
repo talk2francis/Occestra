@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { EASE } from "@/components/motion";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { SealMark } from "@/components/ui/seal-mark";
-import type { DemoEvent, FinishedPack } from "@/lib/studio";
+import type { DemoEvent, FinishedGap, FinishedPack } from "@/lib/studio";
 import type { RunStatus } from "./use-run";
 
 /**
@@ -112,9 +112,9 @@ export function PackPanel({
                   <p className="text-kicker text-[0.55rem] text-info">disclosed gaps</p>
                   <ul className="mt-1 space-y-0.5">
                     {/* headline only — the full text ships in the manifest */}
-                    {pack.coverageGaps.map((gap) => (
-                      <li key={gap.slice(0, 40)} className="truncate">
-                        · {gap.split("—")[0]?.split(":").slice(0, 2).join(":").trim() ?? gap}
+                    {pack.coverageGaps.map((gap, index) => (
+                      <li key={gapKey(gap, index)} className="leading-relaxed">
+                        · {gapLabel(gap)}
                       </li>
                     ))}
                   </ul>
@@ -197,4 +197,13 @@ export function PackPanel({
       </div>
     </div>
   );
+}
+
+function gapKey(gap: FinishedGap, index: number): string {
+  return typeof gap === "string" ? `${gap.slice(0, 80)}-${index}` : `${gap.code}-${index}`;
+}
+
+function gapLabel(gap: FinishedGap): string {
+  if (typeof gap !== "string") return `${gap.code} — ${gap.note}`;
+  return gap.split("—")[0]?.split(":").slice(0, 2).join(":").trim() || gap;
 }

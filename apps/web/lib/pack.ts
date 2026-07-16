@@ -14,6 +14,8 @@ export interface PublicSeal {
   signer: string;
   chainId: number;
   verifyingContract: Hex;
+  /** Private keepsakes seal a salted commitment rather than a public manifest. */
+  salted?: boolean;
 }
 
 /**
@@ -62,6 +64,22 @@ export interface PublicPack {
   seal?: PublicSeal;
 }
 
+/** The deliberately sparse shape returned for a private Remember pack. */
+export interface PrivatePack {
+  id: string;
+  studio: "remember";
+  createdAt: string;
+  private: true;
+  note: string;
+  seal?: PublicSeal;
+}
+
+export type KeepsakePack = PublicPack | PrivatePack;
+
+export function isPrivatePack(pack: KeepsakePack): pack is PrivatePack {
+  return "private" in pack && pack.private === true;
+}
+
 const INTERNAL = process.env.OCE_INTERNAL_API ?? "http://127.0.0.1:8412";
 
 export interface RecentPublicPack {
@@ -88,11 +106,17 @@ export async function fetchRecentPublicPacks(limit = 8): Promise<RecentPublicPac
 
 /** Server-side fetch; signed artifact URLs are minted per request. */
 export async function fetchPack(id: string): Promise<PublicPack | undefined> {
+  const pack = await fetchKeepsake(id);
+  return pack && !isPrivatePack(pack) ? pack : undefined;
+}
+
+/** Fetch either a public pack or the provenance-only shell of a private one. */
+export async function fetchKeepsake(id: string): Promise<KeepsakePack | undefined> {
   if (!/^oce_[0-9a-z]{22}$/.test(id)) return undefined;
   try {
     const res = await fetch(`${INTERNAL}/k/${id}`, { cache: "no-store" });
     if (!res.ok) return undefined;
-    return (await res.json()) as PublicPack;
+    return (await res.json()) as KeepsakePack;
   } catch {
     return undefined;
   }

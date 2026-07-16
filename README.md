@@ -6,7 +6,8 @@
 
 **Every moment, made monumental.** Give Occestra any real moment — a birthday next Saturday, a product launching Friday, a trip just taken — and a syndicate of studio roles plans it, designs it, and writes it. Then two mechanisms no other creative agent on the marketplace has do their work: **every artifact is graded against a published quality standard and repaired until it passes (or shipped honestly marked fail)**, and **the finished pack is sealed with EIP-712 provenance anchored on X Layer mainnet**, verifiable by anyone, forever, without trusting our servers.
 
-Registered on OKX.AI as **Agent #5213** (on-chain, X Layer mainnet; marketplace listing in review) — built for the OKX.AI Genesis Hackathon.
+Listed on OKX.AI as **Agent #5213** (active and eligible for task recommendations on X Layer
+mainnet) — built for the OKX.AI Genesis Hackathon.
 
 | | |
 |---|---|

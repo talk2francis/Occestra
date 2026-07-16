@@ -58,6 +58,12 @@ export interface FinishedArtifact {
   undelivered?: { code: string; reason: string };
 }
 
+/**
+ * Public boundaries return structured gaps, but older deployments returned one flat string.
+ * Keep the reader tolerant during rolling deploys; both shapes are safe, buyer-facing text.
+ */
+export type FinishedGap = { code: string; note: string } | string;
+
 export interface FinishedPack {
   keepsakeId: string;
   studio: StudioId;
@@ -67,7 +73,7 @@ export interface FinishedPack {
     repairedCount: number;
     undeliveredCount?: number;
   };
-  coverageGaps: string[];
+  coverageGaps: FinishedGap[];
   artifacts: FinishedArtifact[];
   seal?: {
     keepsakeId: string;

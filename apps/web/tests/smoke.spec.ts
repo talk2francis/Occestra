@@ -64,6 +64,17 @@ test("the nav is reachable on a phone-sized screen", async ({ page }) => {
   await expect(page).toHaveURL(/\/standard/);
 });
 
+test("the landing navigation stays pinned while the page scrolls", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(BASE, { waitUntil: "networkidle" });
+
+  const nav = page.locator("header.fixed").first();
+  await expect(nav).toBeVisible();
+  await page.evaluate(() => window.scrollTo({ top: 2_400, behavior: "instant" }));
+  await expect(nav).toHaveCSS("position", "fixed");
+  await expect.poll(() => nav.evaluate((element) => element.getBoundingClientRect().top)).toBe(0);
+});
+
 test("the published standard names its own version and checks", async ({ page }) => {
   await page.goto(`${BASE}/standard`, { waitUntil: "networkidle" });
   // The standard is generated from the same constants the engine runs; the version must show.
@@ -112,7 +123,12 @@ test("Studio restores an interrupted run only with its browser capability", asyn
     keepsakeId: "oce_01kxmnzaj4c27qz3y9gjx8",
     studio: "launch",
     quality: { oqsVersion: "1.2.0", passRate: 1, repairedCount: 0 },
-    coverageGaps: [],
+    coverageGaps: [
+      {
+        code: "MODEL_ROUTER",
+        note: "A preferred model was unavailable, so another was used. The work was still graded.",
+      },
+    ],
     artifacts: [],
     publicPage: "/k/oce_01kxmnzaj4c27qz3y9gjx8",
   };
@@ -144,7 +160,11 @@ test("Studio restores an interrupted run only with its browser capability", asyn
   await expect(page.getByText("Your Studio run is back")).toBeVisible();
   await expect(page.getByText("Launch room", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("oce_01kxmnzaj4c27qz3y9gjx8", { exact: true })).toBeVisible();
+  await expect(page.getByText(/MODEL_ROUTER.*preferred model was unavailable/i)).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem("oce-active-studio-run"))).toBeNull();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("oce-recent-studio-run")))
+    .not.toBeNull();
 });
 
 test("Studio mobile controls keep every pane and room reachable", async ({ page }) => {

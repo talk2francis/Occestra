@@ -144,7 +144,7 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 - Landing Lighthouse (mobile, production 2026-07-13): perf 89 / a11y 100 / bp 96 / seo 100, LCP 2.5s, CLS 0
 - OKX.AI Agent ID: #5213 (ASP "Occestra"), registered on X Layer 196
   register tx 0xe80a05287f5902e104c1c5525e8d651eb518ec0eaf598378ad6af186d3a819af
-  listing submitted 2026-07-12 — OKX AI quality review "suggested pass", human review <=24h
+  listing status re-checked 2026-07-16 — **Listed — eligible for task recommendations**
 - Agent identity wallet: 0x1c823cca15ae0e8506c58280f83a50c7615bb6dc (email chatwithnonso01@gmail.com)
   NOTE: this is DELIBERATELY a different agentic wallet from Sigil's (francisokafor2001@gmail.com,
   0x2067b192..., ASP #4943). The onchainos CLI holds ONE email session at a time — to manage Sigil's
@@ -155,6 +155,27 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
+
+- 2026-07-16 (Studio recovery) — **A SUCCESSFUL PIPELINE CAN STILL LOOK LIKE A FAILED PRODUCT AT
+  THE FINAL REACT RENDER.** `sanitizeGaps()` deliberately changed public gaps from raw strings to
+  `{code, note}`, but the Studio's completed-pack pane still called string methods on them. Any run
+  with a disclosed gap finished, sealed and queued its anchor, then crashed the browser exactly at
+  pack assembly; clean-gap runs appeared fine. Production `demo_runs` proved all four reported runs
+  were `done`. The client now accepts the structured contract (with legacy-string tolerance), tests
+  a real gap shape, and retains the finished run's random capability for 48 hours instead of
+  deleting recovery at the most failure-sensitive moment.
+- 2026-07-16 (landing navigation) — **`POSITION: FIXED` IS NOT VIEWPORT-FIXED INSIDE A TRANSFORMED
+  ROUTE SHEET.** The restored route entrance used `animation-fill-mode: both`, which retained a
+  no-op transform matrix after arrival. That matrix made the sheet the containing block for the
+  fixed header, so the nav scrolled away with the page. The entrance now fills backwards and
+  releases its transform after 550ms; a production browser test scrolls 2,400px and asserts the
+  header remains at viewport top.
+- 2026-07-16 (private `/k`) — **WITHHOLDING PRIVATE FIELDS CHANGES THE RESPONSE UNION; THE PAGE
+  MUST MODEL THAT UNION.** `publicPack()` correctly returned only id, studio, date, note and salted
+  seal for a private Remember pack, while the web route cast every response to the full public
+  artifact shape and returned HTTP 500. The fetch layer now distinguishes public packs from private
+  provenance shells, and `/k` renders a purpose-built verifier that never dereferences or hints at
+  withheld contents.
 
 - 2026-07-15 (V2-5) — **A SOFTWARE WEBGL CONTEXT IS NOT A CAPABLE WEBGL CONTEXT.** Headless
   Chromium on this VPS exposes WebGL through SwiftShader, then renders the cluster in single-digit

@@ -9,6 +9,18 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Fixed a production-only Studio completion crash: public coverage gaps are structured
+  `{code, note}` records, while the pack pane still treated them as strings. Runs with a gap were
+  finishing, sealing and anchoring correctly on the ASP, then crashing React at final assembly.
+  The UI now renders both current structured gaps and legacy strings, and retains a 48-hour
+  completed-run capability so a reload can restore the finished pack after any browser failure.
+  A Studio-specific error boundary replaces Next's generic dead-end page with a safe reconnect
+  action backed by that durable run log.
+- Raised the landing certificate rosette one restrained step above watermark opacity while keeping
+  it behind the copy, and re-verified the fixed navigation treatment across scroll positions.
+- Fixed private Remember `/k` pages: the API correctly returned a provenance-only shell, but the
+  web route treated it as a public pack and dereferenced withheld artifacts. Private pages now
+  render a dedicated salted-commitment verifier without leaking or pretending the contents exist.
 - Removed the amethyst WebGL cluster and its Three.js/drei/postprocessing dependency tree. The
   hero now gives its full visual budget to Occestra's actual product flow instead of a decorative
   GPU scene.

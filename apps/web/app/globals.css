@@ -209,8 +209,8 @@ html {
   to { transform: rotate(360deg); }
 }
 @keyframes ambient-guilloche-breathe {
-  0%, 100% { transform: rotate(-7deg) scale(0.98); opacity: 0.035; }
-  50% { transform: rotate(5deg) scale(1.035); opacity: 0.065; }
+  0%, 100% { transform: rotate(-7deg) scale(0.98); opacity: 0.046; }
+  50% { transform: rotate(5deg) scale(1.035); opacity: 0.085; }
 }
 @keyframes toast-settle {
   from { opacity: 0; transform: translateY(12px) scale(0.985); }
@@ -233,7 +233,11 @@ html {
   animation: route-cue-travel 0.72s var(--ease-editorial) both;
 }
 .route-sheet {
-  animation: route-sheet-arrive 0.55s var(--ease-editorial) both;
+  /* `both` kept the final transform matrix forever. A transformed ancestor becomes the
+     containing block for position:fixed descendants, so the landing nav scrolled away despite
+     being fixed. `backwards` preserves the arrival frame before/during animation and releases
+     the transform at completion; section/hero flow motion remains unchanged. */
+  animation: route-sheet-arrive 0.55s var(--ease-editorial) backwards;
 }
 .route-sheet:has(> .studio-room) {
   height: 100dvh;

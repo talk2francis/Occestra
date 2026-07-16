@@ -28,7 +28,8 @@ export interface StudioRun {
   start: (tool: string, args: Record<string, unknown>) => Promise<void>;
 }
 
-const STORAGE_KEY = "oce-active-studio-run";
+const ACTIVE_STORAGE_KEY = "oce-active-studio-run";
+const RECENT_STORAGE_KEY = "oce-recent-studio-run";
 const RECOVERY_WINDOW = 48 * 60 * 60 * 1000;
 
 function newRun(): StoredRun {
@@ -40,16 +41,17 @@ function newRun(): StoredRun {
 }
 
 function remember(run: StoredRun): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(run));
+  window.localStorage.setItem(ACTIVE_STORAGE_KEY, JSON.stringify(run));
 }
 
-function forget(): void {
-  window.localStorage.removeItem(STORAGE_KEY);
+function rememberCompleted(run: StoredRun): void {
+  window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(run));
+  window.localStorage.removeItem(ACTIVE_STORAGE_KEY);
 }
 
-function savedRun(): StoredRun | undefined {
+function parsedRun(key: string): StoredRun | undefined {
   try {
-    const run = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<StoredRun> | null;
+    const run = JSON.parse(window.localStorage.getItem(key) ?? "null") as Partial<StoredRun> | null;
     if (
       !run ||
       typeof run.runId !== "string" ||
@@ -57,14 +59,28 @@ function savedRun(): StoredRun | undefined {
       typeof run.createdAt !== "number" ||
       Date.now() - run.createdAt > RECOVERY_WINDOW
     ) {
-      forget();
+      window.localStorage.removeItem(key);
       return undefined;
     }
     return run as StoredRun;
   } catch {
-    forget();
+    window.localStorage.removeItem(key);
     return undefined;
   }
+}
+
+function savedRun(): StoredRun | undefined {
+  return parsedRun(ACTIVE_STORAGE_KEY) ?? parsedRun(RECENT_STORAGE_KEY);
+}
+
+function discard(run: StoredRun): void {
+  for (const key of [ACTIVE_STORAGE_KEY, RECENT_STORAGE_KEY]) {
+    if (parsedRun(key)?.runId === run.runId) window.localStorage.removeItem(key);
+  }
+}
+
+function forgetActive(): void {
+  window.localStorage.removeItem(ACTIVE_STORAGE_KEY);
 }
 
 const pause = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -100,7 +116,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
               await pause(750);
               continue;
             }
-            forget();
+            discard(run);
             busy.current = false;
             setStatus("failed");
             setError("That Studio run is no longer recoverable. Nothing was charged.");
@@ -118,7 +134,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
             setPack(body.pack);
             setStatus("done");
             busy.current = false;
-            forget();
+            rememberCompleted(run);
             onFinished?.();
             return;
           }
@@ -126,7 +142,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
             setStatus("failed");
             setError(body.error ?? "the run failed");
             busy.current = false;
-            forget();
+            forgetActive();
             onFinished?.();
             return;
           }
@@ -189,7 +205,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
           const body = (await res.json()) as { cap?: number };
           const message =
             `Today's ${body.cap ?? ""} demo credits are spent. Agents can still pay per call on OKX.AI — the paid endpoint has no such limit.`;
-          forget();
+          forgetActive();
           busy.current = false;
           setError(message);
           setStatus("failed");
@@ -197,7 +213,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
         }
         if (!res.ok || !res.body) {
           const body = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
-          forget();
+          forgetActive();
           busy.current = false;
           setError(body.detail ?? body.error ?? `the studio declined (${res.status})`);
           setStatus("failed");
@@ -228,14 +244,16 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
               setPack(event.pack);
               setStatus("done");
               busy.current = false;
-              forget();
+              // Keep a 48-hour capability for the most recent finished run. If React, the tab,
+              // or the network fails during final pack assembly, a reload can still restore it.
+              rememberCompleted(run);
               onFinished?.();
             } else if (event.type === "run_failed") {
               terminal = true;
               setError(event.message);
               setStatus("failed");
               busy.current = false;
-              forget();
+              forgetActive();
               onFinished?.();
             }
           }

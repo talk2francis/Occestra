@@ -9,7 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { GuillocheRing } from "@/components/ui/guilloche";
 import { SealMark } from "@/components/ui/seal-mark";
-import { EXPLORER_TX, STYLE_NAMES, fetchPack, type PublicPack } from "@/lib/pack";
+import {
+  STYLE_NAMES,
+  fetchKeepsake,
+  isPrivatePack,
+  type PrivatePack,
+  type PublicPack,
+} from "@/lib/pack";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +25,19 @@ function headline(pack: PublicPack): string {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const pack = await fetchPack(id);
+  const pack = await fetchKeepsake(id);
   if (!pack) return { title: "Keepsake not found" };
+  if (isPrivatePack(pack)) {
+    const title = "A private Remember keepsake";
+    const description =
+      "Its contents remain private. Its salted provenance seal can still be verified on X Layer without revealing the memory.";
+    return {
+      title,
+      description,
+      openGraph: { title, description },
+      twitter: { card: "summary_large_image", title, description },
+    };
+  }
   const title = headline(pack);
   const description = pack.seal
     ? `Made by Occestra's ${pack.studio} studio, graded against OQS v${pack.quality.oqsVersion}, sealed on X Layer. Verify it yourself.`
@@ -35,8 +52,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function KeepsakePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const pack = await fetchPack(id);
+  const pack = await fetchKeepsake(id);
   if (!pack) notFound();
+  if (isPrivatePack(pack)) return <PrivateKeepsakePage pack={pack} />;
 
   const styleId = pack.artifacts.find((artifact) => artifact.styleId)?.styleId;
   const created = pack.createdAt.slice(0, 10);
@@ -159,6 +177,77 @@ export default async function KeepsakePage({ params }: { params: Promise<{ id: s
           </Link>{" "}
           — every moment, made monumental. Anything here can be independently verified
           {pack.seal ? "; the seal above is on X Layer mainnet" : ""}.
+        </p>
+      </footer>
+    </main>
+  );
+}
+
+function PrivateKeepsakePage({ pack }: { pack: PrivatePack }) {
+  const created = pack.createdAt.slice(0, 10);
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-4xl flex-col px-5 py-10 sm:px-8 sm:py-14">
+      <Link href="/" className="text-[0.85rem] text-ink/60 transition-colors hover:text-ink">
+        ← Occestra
+      </Link>
+
+      <header className="relative mt-8 overflow-hidden rounded-3xl border border-ink/12 bg-ground p-7 shadow-keepsake sm:p-10">
+        <GuillocheRing
+          aria-hidden
+          size={360}
+          className="absolute -top-24 -right-24 opacity-[0.045]"
+        />
+        <div className="relative flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0 max-w-xl">
+            <Badge tone="amethyst">private remember pack</Badge>
+            <h1 className="text-headline mt-4 text-balance">A memory kept private, a seal kept public.</h1>
+            <p className="text-data mt-3 text-ink/60">
+              {pack.id} · created {created}
+            </p>
+            <p className="mt-5 text-[0.95rem] leading-relaxed text-ink/65">{pack.note}</p>
+          </div>
+          {pack.seal && (
+            <span className="relative hidden shrink-0 sm:block">
+              <GuillocheRing size={158} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <SealMark size={110} className="glow-seal relative text-amethyst/90" />
+            </span>
+          )}
+        </div>
+
+        {pack.seal ? (
+          <div className="relative mt-8 space-y-4 border-t border-ink/10 pt-6">
+            <VerifyButton seal={pack.seal} />
+            <dl className="text-data grid gap-x-8 gap-y-2 text-ink/60 sm:grid-cols-2">
+              <div>
+                <dt className="text-ink/45">salted commitment</dt>
+                <dd className="break-all">{pack.seal.manifestHash}</dd>
+              </div>
+              <div>
+                <dt className="text-ink/45">signed by · EIP-712</dt>
+                <dd className="break-all">{pack.seal.signer}</dd>
+              </div>
+            </dl>
+          </div>
+        ) : (
+          <p className="relative mt-8 border-t border-ink/10 pt-6 text-[0.85rem] text-ink/60">
+            This private pack has no public seal. Its contents remain withheld.
+          </p>
+        )}
+      </header>
+
+      <section className="mt-10 rounded-2xl border border-ink/10 bg-panel/55 p-6 sm:p-8">
+        <p className="text-kicker text-amethyst">What privacy means here</p>
+        <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-ink/65">
+          No artwork, story, upload or predictable unsalted manifest is published on this page.
+          The owner keeps the contents and salt; everyone else can only verify that the signed,
+          salted commitment was anchored by Occestra on X Layer.
+        </p>
+      </section>
+
+      <footer className="mt-auto border-t border-ink/8 pt-6">
+        <p className="text-data text-ink/60">
+          Privacy is part of the artifact, not a missing state. The proof above remains independently verifiable.
         </p>
       </footer>
     </main>
