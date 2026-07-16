@@ -84,8 +84,15 @@ test("Studio is a fixed three-pane workbench and remembers brief depth", async (
   await page.goto(`${BASE}/studio`, { waitUntil: "networkidle" });
 
   await expect(page.getByText("The room is quiet.")).toBeVisible();
+  await expect(page.locator('img[src*="celebrate.jpg"]')).toBeVisible();
   await expect(page.getByText("The pack", { exact: true })).toBeVisible();
-  await expect(page.getByText("Celebrate room")).toBeVisible();
+  await expect(page.getByText("Celebrate room", { exact: true }).first()).toBeVisible();
+
+  // Ten styles no longer consume most of the brief pane until someone asks to browse them.
+  const styleCatalogue = page.locator("details").filter({ hasText: /Studio default.*browse all 10/i });
+  await expect(styleCatalogue).not.toHaveAttribute("open", "");
+  await styleCatalogue.locator("summary").click();
+  await expect(styleCatalogue.locator("button")).toHaveCount(10);
 
   const detailed = page.getByRole("button", { name: /Detailed brief/i });
   await detailed.click();
@@ -100,6 +107,46 @@ test("Studio is a fixed three-pane workbench and remembers brief depth", async (
   expect(geometry.body).toBeLessThanOrEqual(geometry.viewport + 1);
 });
 
+test("Studio restores an interrupted run only with its browser capability", async ({ page }) => {
+  const pack = {
+    keepsakeId: "oce_01kxmnzaj4c27qz3y9gjx8",
+    studio: "launch",
+    quality: { oqsVersion: "1.2.0", passRate: 1, repairedCount: 0 },
+    coverageGaps: [],
+    artifacts: [],
+    publicPage: "/k/oce_01kxmnzaj4c27qz3y9gjx8",
+  };
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "oce-active-studio-run",
+      JSON.stringify({
+        runId: "demo_1234567890abcdef1234567890abcdef",
+        recoveryToken: "browser-only-capability-token-12345678901234567890",
+        createdAt: Date.now(),
+      }),
+    );
+  });
+  await page.route("**/api/demo?runId=*", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        state: "done",
+        events: [
+          { type: "run_started", tool: "oce_launch_kit", studio: "launch" },
+          { type: "run_complete", pack },
+        ],
+        pack,
+      }),
+    });
+  });
+
+  await page.goto(`${BASE}/studio`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Your Studio run is back")).toBeVisible();
+  await expect(page.getByText("Launch room", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("oce_01kxmnzaj4c27qz3y9gjx8", { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("oce-active-studio-run"))).toBeNull();
+});
+
 test("Studio mobile controls keep every pane and room reachable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${BASE}/studio`, { waitUntil: "networkidle" });
@@ -109,5 +156,5 @@ test("Studio mobile controls keep every pane and room reachable", async ({ page 
   await expect(page.getByText(/Finished artifacts assemble here/)).toBeVisible();
   await page.getByRole("button", { name: "Launch" }).click();
   await page.getByRole("button", { name: "Brief", exact: true }).click();
-  await expect(page.getByText("Launch room")).toBeVisible();
+  await expect(page.getByText("Launch room", { exact: true }).first()).toBeVisible();
 });

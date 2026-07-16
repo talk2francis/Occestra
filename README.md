@@ -132,7 +132,7 @@ The launch studio opens a caller's URL in a real browser and reads a caller's ph
                     /k/:id · /standard · /stats · oce_verify_keepsake — all public, all free
 ```
 
-**Monorepo** (npm workspaces, Node 22, TypeScript strict + `exactOptionalPropertyTypes`; 417 automated tests green at the V2-6 checkpoint — run `npm test` to reproduce):
+**Monorepo** (npm workspaces, Node 22, TypeScript strict + `exactOptionalPropertyTypes`; 418 automated tests green at the V2-6 checkpoint — run `npm test` to reproduce):
 
 | package | what it owns |
 |---|---|
@@ -151,7 +151,7 @@ Self-hosted: Node + systemd + Caddy on a VPS. Health checks every 5 minutes with
 
 **Amethyst Daylight + Amethyst Nocturne** — the same editorial product under two different light physics. Daylight reflects on warm ivory; Nocturne glows on aubergine-black with luminous seal, live-state, and artifact edges. The preference defaults to the operating system, persists, and is installed before hydration so there is no wrong-theme flash. Fine paper grain, certificate guilloché and warm vignettes give both modes depth at near-zero asset weight. The hero deliberately has no WebGL object: the product's richer route, section, Studio-role, repair, pack-settle and seal-flow motion gets the visual budget. Every animation has a `prefers-reduced-motion` fallback.
 
-The Studio is a fixed three-pane workbench with independent scroll, a real auto-following event feed, and mobile pane controls. Celebrate, Remember and Launch are three visually distinct rooms. Quick Brief stays a 20-second path; Detailed Brief adds first-party facts, accessibility/dietary needs, do/don&apos;t boundaries, references and tone, persists the user&apos;s preference, and flows as validated structured context into the real pipelines.
+The Studio is a fixed three-pane workbench with independent scroll, a real auto-following event feed, and mobile pane controls. Celebrate, Remember and Launch are three visually distinct rooms with quiet, identity-specific room portraits that clear as soon as work begins. Quick Brief stays a 20-second path; Detailed Brief adds first-party facts, accessibility/dietary needs, do/don&apos;t boundaries, references and tone, persists the user&apos;s preference, and flows as validated structured context into the real pipelines. If a tab reloads or the network drops, the pipeline continues and the browser reattaches through a short-lived random capability—never through IP-based identity.
 
 Measured reliability is published at [`/evaluation`](https://occestra.xyz/evaluation) and [`/docs/evaluation`](https://occestra.xyz/docs/evaluation): deterministic guarantees are separated from provider-dependent medians and ranges, with sample size and spend shown. [`EVALUATION.md`](EVALUATION.md) maps every judge-facing claim to a command or live URL.
 

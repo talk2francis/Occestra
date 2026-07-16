@@ -34,6 +34,21 @@ export interface JobRow {
   finishedAt?: number;
 }
 
+export type DemoRunState = "running" | "done" | "failed";
+
+export interface DemoRunRow {
+  id: string;
+  tokenHash: string;
+  tool: string;
+  state: DemoRunState;
+  events: Array<{ at: number; body: unknown }>;
+  packId?: string;
+  error?: string;
+  createdAt: number;
+  updatedAt: number;
+  finishedAt?: number;
+}
+
 export interface RefundRow {
   orderId: string;
   payerRef: string;
@@ -60,6 +75,19 @@ const toJobRow = (row: Record<string, unknown>): JobRow => ({
   cancelling: row["cancelling"] === 1,
   createdAt: row["created_at"] as number,
   ...(row["started_at"] ? { startedAt: row["started_at"] as number } : {}),
+  ...(row["finished_at"] ? { finishedAt: row["finished_at"] as number } : {}),
+});
+
+const toDemoRunRow = (row: Record<string, unknown>): DemoRunRow => ({
+  id: row["id"] as string,
+  tokenHash: row["token_hash"] as string,
+  tool: row["tool"] as string,
+  state: row["state"] as DemoRunState,
+  events: JSON.parse(String(row["events"] ?? "[]")) as Array<{ at: number; body: unknown }>,
+  ...(row["pack_id"] ? { packId: row["pack_id"] as string } : {}),
+  ...(row["error"] ? { error: row["error"] as string } : {}),
+  createdAt: row["created_at"] as number,
+  updatedAt: row["updated_at"] as number,
   ...(row["finished_at"] ? { finishedAt: row["finished_at"] as number } : {}),
 });
 
@@ -189,6 +217,23 @@ export class Store {
         at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_demo_hits ON demo_hits(ip, at);
+
+      -- Browser-recoverable Studio runs. The raw recovery token never reaches disk; a random
+      -- capability held in localStorage is the only way to read the event log back. This is not
+      -- keyed by IP: households share IPs, mobile networks rotate them, and neither is identity.
+      CREATE TABLE IF NOT EXISTS demo_runs (
+        id          TEXT PRIMARY KEY,
+        token_hash  TEXT NOT NULL,
+        tool        TEXT NOT NULL,
+        state       TEXT NOT NULL,
+        events      TEXT NOT NULL DEFAULT '[]',
+        pack_id     TEXT,
+        error       TEXT,
+        created_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL,
+        finished_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_demo_runs_created ON demo_runs(created_at);
 
       -- Replay protection for x402: an EIP-3009 nonce is single-use, forever.
       CREATE TABLE IF NOT EXISTS payment_nonces (
@@ -329,6 +374,63 @@ export class Store {
       .prepare("SELECT COUNT(*) AS n FROM demo_hits WHERE ip = ? AND at >= ?")
       .get(ip, sinceMs) as { n: number };
     return row.n;
+  }
+
+  /** Start a recoverable Studio run. Tokens are already SHA-256 hashed by the caller. */
+  createDemoRun(input: { id: string; tokenHash: string; tool: string }, now = Date.now()): void {
+    // A recovery window, not a new archive of somebody's occasion. Finished and abandoned
+    // browser runs age out after 48 hours; the pack itself keeps its normal retention rules.
+    this.db.prepare("DELETE FROM demo_runs WHERE created_at < ?").run(now - 48 * 60 * 60 * 1000);
+    this.db
+      .prepare(
+        "INSERT INTO demo_runs (id, token_hash, tool, state, created_at, updated_at) VALUES (?, ?, ?, 'running', ?, ?)",
+      )
+      .run(input.id, input.tokenHash, input.tool, now, now);
+  }
+
+  appendDemoRunEvent(id: string, body: unknown, at = Date.now()): void {
+    const row = this.db.prepare("SELECT events FROM demo_runs WHERE id = ?").get(id) as
+      | { events: string }
+      | undefined;
+    if (!row) return;
+    const events = JSON.parse(row.events) as Array<{ at: number; body: unknown }>;
+    events.push({ at, body });
+    this.db
+      .prepare("UPDATE demo_runs SET events = ?, updated_at = ? WHERE id = ?")
+      .run(JSON.stringify(events.slice(-250)), at, id);
+  }
+
+  finishDemoRun(id: string, packId: string, now = Date.now()): void {
+    this.db
+      .prepare("UPDATE demo_runs SET state = 'done', pack_id = ?, updated_at = ?, finished_at = ? WHERE id = ?")
+      .run(packId, now, now, id);
+  }
+
+  failDemoRun(id: string, error: string, now = Date.now()): void {
+    this.db
+      .prepare("UPDATE demo_runs SET state = 'failed', error = ?, updated_at = ?, finished_at = ? WHERE id = ?")
+      .run(error, now, now, id);
+  }
+
+  recoverDemoRun(id: string, tokenHash: string): DemoRunRow | undefined {
+    let row = this.db
+      .prepare("SELECT * FROM demo_runs WHERE id = ? AND token_hash = ?")
+      .get(id, tokenHash) as Record<string, unknown> | undefined;
+    // A network interruption leaves the pipeline alive, but a process restart cannot. Do not
+    // make a returning browser poll a ghost forever: 15 minutes without one persisted event is
+    // safely beyond the documented one-to-three-minute run window.
+    if (row?.["state"] === "running" && Date.now() - Number(row["updated_at"]) > 15 * 60 * 1000) {
+      const now = Date.now();
+      this.db
+        .prepare(
+          "UPDATE demo_runs SET state = 'failed', error = ?, updated_at = ?, finished_at = ? WHERE id = ?",
+        )
+        .run("The Studio service restarted before this run finished. Nothing was charged.", now, now, id);
+      row = this.db
+        .prepare("SELECT * FROM demo_runs WHERE id = ? AND token_hash = ?")
+        .get(id, tokenHash) as Record<string, unknown> | undefined;
+    }
+    return row ? toDemoRunRow(row) : undefined;
   }
 
   /* ----------------------------------------------------------------- events */

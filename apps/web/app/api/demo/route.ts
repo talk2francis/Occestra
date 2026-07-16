@@ -63,6 +63,41 @@ export async function POST(request: NextRequest): Promise<Response> {
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
+      ...(upstream.headers.get("x-oce-run-id")
+        ? { "X-Oce-Run-Id": upstream.headers.get("x-oce-run-id")! }
+        : {}),
+      ...(upstream.headers.get("x-oce-recovery-token")
+        ? { "X-Oce-Recovery-Token": upstream.headers.get("x-oce-recovery-token")! }
+        : {}),
+    },
+  });
+}
+
+/** Poll a capability-protected run after a reload or interrupted SSE connection. */
+export async function GET(request: NextRequest): Promise<Response> {
+  const secret = process.env.OCE_DEMO_SECRET;
+  const runId = request.nextUrl.searchParams.get("runId");
+  const recoveryToken = request.headers.get("x-oce-recovery-token");
+
+  if (!secret) return Response.json({ error: "demo is not configured" }, { status: 503 });
+  if (!runId || !recoveryToken) {
+    return Response.json({ error: "no recoverable Studio run" }, { status: 404 });
+  }
+
+  const upstream = await fetch(`${INTERNAL}/internal/demo/run/${encodeURIComponent(runId)}`, {
+    headers: {
+      "x-oce-demo-secret": secret,
+      "x-oce-recovery-token": recoveryToken,
+    },
+    cache: "no-store",
+  });
+
+  const body = await upstream.text();
+  return new Response(body, {
+    status: upstream.status,
+    headers: {
+      "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+      "Cache-Control": "no-store",
     },
   });
 }

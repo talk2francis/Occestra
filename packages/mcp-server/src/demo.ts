@@ -9,6 +9,7 @@
  * (they spend our model budget and seal on-chain) and recorded as orders with
  * status "demo" so they can never be mistaken for paid volume.
  */
+import { createHash, randomBytes } from "node:crypto";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { BriefContextSchema, type EngineDeps, type Pack } from "@occestra/studio-core";
@@ -68,6 +69,15 @@ const DemoBody = z.discriminatedUnion("tool", [
     }),
   }),
 ]);
+
+const RecoveryMeta = z.object({
+  runId: z.string().regex(/^demo_[A-Za-z0-9_-]{16,100}$/),
+  recoveryToken: z.string().min(32).max(256),
+});
+
+function recoveryHash(token: string): string {
+  return createHash("sha256").update(`occestra-demo:${token}`).digest("hex");
+}
 
 /** Which studio a tool belongs to — for the event feed, which speaks in studios. */
 export function studioOf(tool: string): string {
@@ -218,6 +228,21 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
   }
   ctx.store.recordDemoHit(ip);
 
+  // A browser owns its run through an unguessable capability, not through an IP address.
+  // Mobile networks rotate IPs and households share them; neither is identity. The browser
+  // normally supplies both values so it can persist them BEFORE the stream starts. Older
+  // clients get server-generated values in response headers and remain compatible.
+  const recovery = RecoveryMeta.safeParse(req.body);
+  const runId = recovery.success ? recovery.data.runId : `demo_${randomBytes(18).toString("base64url")}`;
+  const recoveryToken = recovery.success ? recovery.data.recoveryToken : randomBytes(32).toString("base64url");
+
+  try {
+    ctx.store.createDemoRun({ id: runId, tokenHash: recoveryHash(recoveryToken), tool: parsed.data.tool });
+  } catch {
+    res.status(409).json({ error: "that Studio run id is already in use" });
+    return;
+  }
+
   ctx.store.recordOrder({
     id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     tool: parsed.data.tool,
@@ -231,6 +256,8 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
     Connection: "keep-alive",
+    "X-Oce-Run-Id": runId,
+    "X-Oce-Recovery-Token": recoveryToken,
   });
   res.flushHeaders?.();
 
@@ -243,7 +270,9 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
   const log: { at: number; body: unknown }[] = [];
 
   const emit = (event: DemoEvent): void => {
-    log.push({ at: Date.now(), body: event });
+    const at = Date.now();
+    log.push({ at, body: event });
+    ctx.store.appendDemoRunEvent(runId, event, at);
     if (closed) return;
     res.write(`data: ${JSON.stringify(event)}\n\n`);
   };
@@ -274,6 +303,7 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
 
     if (ctx.sealer && pack.seal) emit({ type: "sealing" });
     emit({ type: "run_complete", pack: ctx.packForClient(pack) });
+    ctx.store.finishDemoRun(runId, pack.id);
     ctx.store.saveEvents(pack.id, log);
   } catch (error) {
     const policy = error instanceof PolicyRefusal;
@@ -281,8 +311,42 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
       ? (error as PolicyRefusal).politeMessage
       : "the run failed — nothing was charged, and nothing pretended to succeed";
     emit({ type: "run_failed", message, reason: policy ? "policy" : "error" });
+    ctx.store.failDemoRun(runId, message);
   } finally {
     clearInterval(heartbeat);
     if (!closed) res.end();
   }
+}
+
+/** Resume a Studio run after a tab closes or the network drops. Capability-token protected. */
+export function handleDemoRecovery(ctx: DemoContext, req: Request, res: Response): void {
+  if (!ctx.demoSecret || req.get("x-oce-demo-secret") !== ctx.demoSecret) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+
+  const rawRunId = req.params["id"];
+  const runId = typeof rawRunId === "string" ? rawRunId : undefined;
+  const recoveryToken = req.get("x-oce-recovery-token");
+  if (!runId || !recoveryToken) {
+    res.status(404).json({ error: "no recoverable Studio run" });
+    return;
+  }
+
+  const run = ctx.store.recoverDemoRun(runId, recoveryHash(recoveryToken));
+  if (!run) {
+    res.status(404).json({ error: "no recoverable Studio run" });
+    return;
+  }
+
+  const pack = run.packId ? ctx.store.getPack(run.packId) : undefined;
+  res.set("Cache-Control", "no-store").json({
+    runId: run.id,
+    tool: run.tool,
+    state: run.state,
+    events: run.events.map((event) => event.body),
+    updatedAt: new Date(run.updatedAt).toISOString(),
+    ...(run.error ? { error: run.error } : {}),
+    ...(pack ? { pack: ctx.packForClient(pack) } : {}),
+  });
 }

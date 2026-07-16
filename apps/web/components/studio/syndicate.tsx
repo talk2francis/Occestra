@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { EASE } from "@/components/motion";
 import { AxisChip } from "@/components/ui/axis-chip";
 import { GradeChip } from "@/components/ui/grade-chip";
-import { ROLES, roleForEvent, type DemoEvent } from "@/lib/studio";
+import { ROLES, STUDIO_IDENTITY, roleForEvent, type DemoEvent, type StudioId } from "@/lib/studio";
 import { RefusalNotice } from "./seal-moment";
 import type { RunStatus } from "./use-run";
 
@@ -15,7 +16,7 @@ import type { RunStatus } from "./use-run";
  * genuine repair brief, then its repaired return in repair amber — the whole
  * point of the product, happening live.
  */
-export function Syndicate({ status, events }: { status: RunStatus; events: DemoEvent[] }) {
+export function Syndicate({ status, events, studio }: { status: RunStatus; events: DemoEvent[]; studio: StudioId }) {
   const reduced = useReducedMotion();
   const feedRef = useRef<HTMLOListElement>(null);
   const [following, setFollowing] = useState(true);
@@ -71,15 +72,43 @@ export function Syndicate({ status, events }: { status: RunStatus; events: DemoE
         className="studio-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5"
       >
         {status === "idle" && (
-          <li className="grid h-full place-items-center px-6 text-center">
-            <div>
-              <p className="text-subhead text-ink/75">The room is quiet.</p>
-              <p className="prose-measure mx-auto mt-2 text-[0.88rem] leading-relaxed text-ink/60">
+          <li className="relative grid h-full min-h-[24rem] place-items-center overflow-hidden rounded-2xl px-6 text-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={studio}
+                aria-hidden
+                className="studio-room-portrait absolute inset-0"
+                initial={reduced ? false : { opacity: 0, scale: 1.025 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={reduced ? undefined : { opacity: 0 }}
+                transition={{ duration: reduced ? 0 : 0.6, ease: EASE }}
+              >
+                <Image
+                  src={STUDIO_IDENTITY[studio].image}
+                  alt=""
+                  fill
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                  className={`object-cover studio-room-image-${studio}`}
+                  style={{ objectPosition: STUDIO_IDENTITY[studio].imagePosition }}
+                />
+              </motion.div>
+            </AnimatePresence>
+            <motion.div
+              key={`${studio}-copy`}
+              initial={reduced ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="studio-room-plaque relative z-10 max-w-xl rounded-2xl border border-ink/10 px-6 py-5 shadow-lift backdrop-blur-[3px]"
+            >
+              <p className="text-kicker mb-2 text-[0.58rem] text-[var(--studio-accent)]">
+                {STUDIO_IDENTITY[studio].label} room
+              </p>
+              <p className="text-subhead text-ink/80">The room is quiet.</p>
+              <p className="prose-measure mx-auto mt-2 text-[0.88rem] leading-relaxed text-ink/65">
                 Pick a preset or write a brief. This runs the real pipelines with the real providers —
                 venues get searched, forecasts get fetched, the Tribunal grades what comes back, and
                 anything that fails goes visibly back for repair.
               </p>
-            </div>
+            </motion.div>
           </li>
         )}
 

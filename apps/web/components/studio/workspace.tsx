@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Archive, ClipboardPenLine, PackageCheck, PartyPopper, Radio, Rocket } from "lucide-react";
-import { type CSSProperties, useCallback, useEffect, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Wordmark } from "@/components/site/wordmark";
 import { ThemeToggle } from "@/components/ui/theme";
@@ -37,6 +37,7 @@ export function Workspace({
   }, []);
 
   const run = useStudioRun(refreshQuota);
+  const recoveryNotified = useRef(false);
   const [moment, setMoment] = useState<SealMomentData>();
   const [folding, setFolding] = useState<string>();
   const reduced = useReducedMotion();
@@ -65,6 +66,21 @@ export function Workspace({
       });
     }
   }, [run.status, run.error, run.pack, run.events]);
+
+  useEffect(() => {
+    if (!run.recovered) return;
+    const start = run.events.find((event) => event.type === "run_started");
+    if (start?.type === "run_started" && ["celebrate", "remember", "launch"].includes(start.studio)) {
+      setStudio(start.studio as StudioId);
+    }
+    setMobilePane("feed");
+    if (!recoveryNotified.current) {
+      recoveryNotified.current = true;
+      toast.success("Your Studio run is back", {
+        description: run.status === "running" ? "The pipeline kept working while the connection was away." : "Its finished pack has been restored.",
+      });
+    }
+  }, [run.recovered, run.events, run.status]);
 
   return (
     <div
@@ -152,7 +168,7 @@ export function Workspace({
         </aside>
 
         <section className={`${mobilePane === "feed" ? "block" : "hidden"} min-h-0 overflow-hidden lg:block`}>
-          <Syndicate status={run.status} events={run.events} />
+          <Syndicate status={run.status} events={run.events} studio={studio} />
         </section>
 
         <aside className={`${mobilePane === "pack" ? "block" : "hidden"} min-h-0 overflow-hidden bg-panel/40 lg:block lg:border-l lg:border-ink/10`}>

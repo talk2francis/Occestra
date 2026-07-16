@@ -23,7 +23,16 @@ change, and it says so in its own line.
   reader scrolls back, and a Jump to latest control. Mobile keeps a sticky three-room switcher and
   segmented pane controls.
 - Gave Celebrate, Remember and Launch their own icon, promise and room tint while keeping one
-  design system. Added persisted Quick and Detailed brief modes.
+  design system. Added persisted Quick and Detailed brief modes. Their owner-supplied portraits now
+  dissolve quietly into the empty Live Feed as room atmosphere and leave the canvas entirely when
+  work begins; they are never used as a competing wallpaper or as fabricated output.
+- Collapsed the ten-card House Style wall into a compact, palette-led catalogue: the studio default
+  occupies one row and the full recommended/available set opens only on request. Reduced the hero's
+  top-right guilloché back to a grey certificate watermark instead of a foreground illustration.
+- Made browser Studio runs recoverable across reloads and network interruptions. Progress is written
+  incrementally while the real pipeline continues, then rehydrated through a random 48-hour browser
+  capability; raw tokens never reach disk, runs are not associated with IP identity, and stale runs
+  fail honestly after a service restart instead of polling forever.
 - Added a shared `BriefContext` schema for owner-established context, dietary/accessibility needs,
   do/don't boundaries, references and tone. It flows through public tool validation, async jobs,
   Studio demo SSE, contracts, launch fact injection, Celebrate constraints and Remember owner
@@ -33,7 +42,7 @@ change, and it says so in its own line.
   measured SLOs, judge verification, and a build-time rendering of this changelog. Added root
   `EVALUATION.md`, a claim-to-proof map, and refreshed README architecture/design/OQS claims to
   the live V2 surface: 13 tools, OQS v1.2.0, two themes, durable jobs and idempotency.
-- Closed the V2-6 code checkpoint with 417 automated package tests passing. The production x402
+- Closed the V2-6 code checkpoint with 418 automated package tests passing. The production x402
   smoke settled 0.30 USDT, completed the durable Celebrate job in 107 seconds, and returned a
   signed pack while honestly retaining one failed guest-guide report instead of inflating its grade.
 - Closed the production browser matrix at 150/150 clean route/theme/viewport checks, plus 12/12

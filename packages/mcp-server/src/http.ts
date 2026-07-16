@@ -12,7 +12,7 @@ import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
-import { callerIp as demoCallerIp, handleDemoRun } from "./demo.js";
+import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun } from "./demo.js";
 import { PolicyRefusal, screenToolInput, writeToast, type WriteToastInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
 import {
@@ -413,6 +413,19 @@ export function buildApp(ctx: AppContext): Express {
   // with the shared secret — see demo.ts for the full contract.
   app.post("/internal/demo/run", (req, res) => {
     void handleDemoRun(
+      {
+        ...ctx,
+        demoDailyCap: ctx.demoDailyCap ?? 8,
+        demoPerIpCap: ctx.demoPerIpCap ?? 2,
+        packForClient: (pack) => packResult(ctx, pack),
+      },
+      req,
+      res,
+    );
+  });
+
+  app.get("/internal/demo/run/:id", (req, res) => {
+    handleDemoRecovery(
       {
         ...ctx,
         demoDailyCap: ctx.demoDailyCap ?? 8,

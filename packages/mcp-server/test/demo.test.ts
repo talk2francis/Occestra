@@ -134,6 +134,44 @@ describe("the internal demo route", () => {
     expect(orders[0]?.priceUsdt).toBe(0);
   });
 
+  it("recovers a completed run with its capability token, never with the run id alone", async () => {
+    const { base } = makeApp();
+    const res = await runDemo(base, "shhh", {
+      ...BODY,
+      runId: "demo_1234567890abcdef1234567890abcdef",
+      recoveryToken: "recovery-token-that-is-long-and-random-enough-1234567890",
+    });
+    expect(res.status).toBe(200);
+    await res.text();
+
+    const runId = res.headers.get("x-oce-run-id");
+    const token = res.headers.get("x-oce-recovery-token");
+    expect(runId).toBe("demo_1234567890abcdef1234567890abcdef");
+    expect(token).toBe("recovery-token-that-is-long-and-random-enough-1234567890");
+
+    const withoutCapability = await fetch(`${base}/internal/demo/run/${runId}`, {
+      headers: { "x-oce-demo-secret": "shhh" },
+    });
+    expect(withoutCapability.status).toBe(404);
+
+    const recovered = await fetch(`${base}/internal/demo/run/${runId}`, {
+      headers: {
+        "x-oce-demo-secret": "shhh",
+        "x-oce-recovery-token": token!,
+      },
+    });
+    expect(recovered.status).toBe(200);
+    const body = (await recovered.json()) as {
+      state: string;
+      events: Array<{ type: string }>;
+      pack?: { keepsakeId: string };
+    };
+    expect(body.state).toBe("done");
+    expect(body.events[0]?.type).toBe("run_started");
+    expect(body.events.at(-1)?.type).toBe("run_complete");
+    expect(body.pack?.keepsakeId).toMatch(/^oce_[0-9a-z]{22}$/);
+  });
+
   it("enforces the daily allowance", async () => {
     const { base } = makeApp({ demoDailyCap: 1 });
     expect((await runDemo(base, "shhh")).status).toBe(200);

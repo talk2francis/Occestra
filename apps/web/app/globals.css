@@ -209,8 +209,8 @@ html {
   to { transform: rotate(360deg); }
 }
 @keyframes ambient-guilloche-breathe {
-  0%, 100% { transform: rotate(-7deg) scale(0.98); opacity: 0.58; }
-  50% { transform: rotate(5deg) scale(1.035); opacity: 0.9; }
+  0%, 100% { transform: rotate(-7deg) scale(0.98); opacity: 0.035; }
+  50% { transform: rotate(5deg) scale(1.035); opacity: 0.065; }
 }
 @keyframes toast-settle {
   from { opacity: 0; transform: translateY(12px) scale(0.985); }
@@ -281,8 +281,12 @@ html {
 }
 .guilloche-ambient {
   animation: ambient-guilloche-breathe 18s ease-in-out infinite;
+  color: color-mix(in srgb, var(--color-silver) 62%, var(--color-ink));
   transform-origin: center;
   will-change: transform, opacity;
+}
+[data-theme="nocturne"] .guilloche-ambient {
+  color: color-mix(in srgb, var(--color-silver) 72%, var(--color-lilac));
 }
 
 /* The Director only adds motion-ready after hydration. Server HTML therefore
@@ -353,6 +357,41 @@ html {
     radial-gradient(circle at 11% 0%, color-mix(in srgb, var(--studio-accent-soft) 24%, transparent), transparent 29%),
     var(--color-ground);
   transition: background 0.55s var(--ease-editorial);
+}
+
+/* Studio identity photography is atmosphere, not a second hero. It lives only in the
+   quiet feed, is softened into the paper, and clears completely once real work begins. */
+.studio-room-portrait {
+  mask-image: radial-gradient(ellipse 76% 72% at 50% 50%, #000 12%, rgb(0 0 0 / 0.82) 48%, transparent 86%);
+}
+.studio-room-portrait img {
+  filter: grayscale(0.42) saturate(0.72) contrast(0.9);
+  mix-blend-mode: multiply;
+}
+.studio-room-image-celebrate { opacity: 0.15; }
+.studio-room-image-remember { opacity: 0.24; }
+.studio-room-image-launch { opacity: 0.29; }
+.studio-room-portrait::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    radial-gradient(circle at 50% 48%, transparent 12%, color-mix(in srgb, var(--color-ground) 18%, transparent) 58%, var(--color-ground) 100%),
+    linear-gradient(180deg, var(--color-ground), transparent 28%, transparent 70%, var(--color-ground));
+}
+.studio-room-plaque {
+  background: color-mix(in srgb, var(--color-ground) 84%, transparent);
+}
+[data-theme="nocturne"] .studio-room-portrait img {
+  filter: grayscale(0.48) saturate(0.72) brightness(0.72) contrast(0.92);
+  mix-blend-mode: screen;
+}
+[data-theme="nocturne"] .studio-room-image-celebrate { opacity: 0.18; }
+[data-theme="nocturne"] .studio-room-image-remember { opacity: 0.27; }
+[data-theme="nocturne"] .studio-room-image-launch { opacity: 0.31; }
+[data-theme="nocturne"] .studio-room-plaque {
+  background: color-mix(in srgb, var(--color-panel) 86%, transparent);
+  box-shadow: 0 0 38px -24px color-mix(in srgb, var(--studio-accent) 38%, transparent);
 }
 
 .docs-markdown {

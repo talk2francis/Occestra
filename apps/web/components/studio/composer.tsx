@@ -214,7 +214,7 @@ export function Composer({
         )}
       </AnimatePresence>
 
-      {/* house style — recommended for this studio first, the rest below the rule */}
+      {/* House Styles stay compact until someone actually wants to browse the catalogue. */}
       <div>
         <p className="text-kicker text-[0.62rem] text-ink/60">House Style</p>
 
@@ -223,43 +223,74 @@ export function Composer({
           const suits = (style: StyleSwatch) => !style.appliesTo || style.appliesTo.includes(studio);
           const recommended = styles.filter(suits);
           const others = styles.filter((style) => !suits(style));
+          const selected = styles.find((style) => style.id === styleId);
+          const preview = selected ?? recommended[0] ?? styles[0];
 
           const swatch = (style: StyleSwatch) => (
             <button
               key={style.id}
+              type="button"
               onClick={() => setStyleId(styleId === style.id ? undefined : style.id)}
               disabled={running}
               aria-pressed={styleId === style.id}
               title={style.bestFor}
-              className={`rounded-lg border p-2 text-left transition-colors ${
-                styleId === style.id ? "border-amethyst bg-lilac/15" : "border-ink/12 bg-ground hover:border-ink/30"
+              className={`flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                styleId === style.id ? "border-amethyst bg-lilac/15" : "border-transparent hover:border-ink/12 hover:bg-ground"
               }`}
             >
-              <span className="flex h-4 overflow-hidden rounded-sm">
+              <span className="flex h-6 w-14 shrink-0 overflow-hidden rounded-md border border-ink/8">
                 {style.palette.slice(0, 6).map((hex) => (
                   <span key={hex} className="h-full flex-1" style={{ background: hex }} />
                 ))}
               </span>
-              <span className="mt-1.5 block text-[0.72rem] font-medium text-ink/80">{style.name}</span>
-              <span className="text-data block text-[0.6rem] text-ink/60">v{style.version} · {style.id}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.72rem] font-medium text-ink/80">{style.name}</span>
+                <span className="text-data block truncate text-[0.57rem] text-ink/50">v{style.version} · {style.id}</span>
+              </span>
+              {styleId === style.id && <span className="text-kicker text-[0.52rem] text-amethyst">Selected</span>}
             </button>
           );
 
           return (
-            <>
-              <p className="mt-2 text-[0.64rem] text-ink/45">Recommended for {studio}</p>
-              <div className="mt-1 grid grid-cols-2 gap-2">{recommended.map(swatch)}</div>
-              {others.length > 0 && (
-                <>
-                  <p className="mt-3 text-[0.64rem] text-ink/45">Other styles</p>
-                  <div className="mt-1 grid grid-cols-2 gap-2 opacity-75">{others.map(swatch)}</div>
-                </>
-              )}
-            </>
+            <details className="group mt-2 rounded-xl border border-ink/12 bg-ground open:shadow-lift">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 marker:hidden">
+                {preview && (
+                  <span className="flex h-7 w-16 shrink-0 overflow-hidden rounded-md border border-ink/8">
+                    {preview.palette.slice(0, 6).map((hex) => (
+                      <span key={hex} className="h-full flex-1" style={{ background: hex }} />
+                    ))}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[0.76rem] font-medium text-ink/85">
+                    {selected?.name ?? "Studio default"}
+                  </span>
+                  <span className="block text-[0.6rem] text-ink/45">
+                    {selected ? "Custom style selected" : `A sensible ${studio} default`} · browse all {styles.length}
+                  </span>
+                </span>
+                <ChevronDown aria-hidden className="size-4 shrink-0 text-ink/45 transition-transform group-open:rotate-180" />
+              </summary>
+
+              <div className="max-h-72 overflow-y-auto border-t border-ink/10 p-1.5">
+                <p className="px-2 pb-1 pt-1.5 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-ink/40">
+                  Recommended for {studio}
+                </p>
+                <div>{recommended.map(swatch)}</div>
+                {others.length > 0 && (
+                  <>
+                    <p className="mt-1 border-t border-ink/8 px-2 pb-1 pt-2 text-[0.6rem] font-medium uppercase tracking-[0.12em] text-ink/40">
+                      Also available
+                    </p>
+                    <div className="opacity-80">{others.map(swatch)}</div>
+                  </>
+                )}
+              </div>
+            </details>
           );
         })()}
 
-        <p className="mt-1.5 text-[0.7rem] text-ink/60">Optional — each studio has a sensible default.</p>
+        <p className="mt-1.5 text-[0.67rem] text-ink/55">Optional — changing the style changes treatment, never the subject.</p>
       </div>
 
       {/* run */}

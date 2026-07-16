@@ -26,7 +26,7 @@ second category is presented as an invariant.
 | Private keepsakes use salted commitments and require ownership for deletion | `npm test --workspace @occestra/mcp-server -- privacy-salt.test.ts privacy.test.ts` |
 | TypeScript leaves execute against the real Solidity bytecode | `npm test --workspace @occestra/contracts` |
 | The x402 plain-JSON route accepts a paid replay | `onchainos agent x402-check https://api.occestra.xyz/mcp --tool oce_write_toast` |
-| The V2-6 checkpoint passes 417 automated tests | `npm test` |
+| The V2-6 checkpoint passes 418 automated tests | `npm test` |
 
 ## Measured-with-variance
 

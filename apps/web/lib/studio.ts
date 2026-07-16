@@ -172,6 +172,9 @@ export interface StudioIdentity {
   promise: string;
   accent: string;
   accentSoft: string;
+  /** Atmospheric room portrait shown only while the live feed is quiet. */
+  image: string;
+  imagePosition: string;
 }
 
 /** Three rooms, one building: each room has its own emotional register. */
@@ -181,18 +184,24 @@ export const STUDIO_IDENTITY: Record<StudioId, StudioIdentity> = {
     promise: "Plan what is ahead — grounded, generous, ready for real people.",
     accent: "#B95735",
     accentSoft: "#F4D5C7",
+    image: "/celebrate.jpg",
+    imagePosition: "50% 48%",
   },
   remember: {
     label: "Remember",
     promise: "Keep what already happened — private, faithful, beautifully held.",
     accent: "#39779A",
     accentSoft: "#D8EAF2",
+    image: "/remember.jpg",
+    imagePosition: "31% 48%",
   },
   launch: {
     label: "Launch",
     promise: "Put the work into the world — specific, coherent, impossible to mistake.",
     accent: "#7D4BA6",
     accentSoft: "#E6D9F2",
+    image: "/launch.jpg",
+    imagePosition: "53% 50%",
   },
 };
 
