@@ -10,10 +10,10 @@
 |---|---|
 | ASP name | **Occestra** |
 | Agent ID | **#5213** (register tx `0xe80a05287f5902e104c1c5525e8d651eb518ec0eaf598378ad6af186d3a819af`, X Layer 196) |
-| Type | ASP — A2MCP tools (8, x402-paid) + A2A negotiated packages |
-| Description | Use the submitted marketplace copy in `LISTING.md`, verbatim — it is what review approved. Short form: *"The Occasion Studio. Any real moment in, finished quality-graded work out: grounded plans, private keepsakes, launch kits — every artifact graded against a published standard (occestra.xyz/standard), repaired when it fails, and sealed with EIP-712 provenance on X Layer. Verification is free, forever."* |
+| Type | ASP — A2MCP (13 tools: 8 creative/verification + 5 job/style controls) + A2A negotiated packages |
+| Description | Use the submitted marketplace copy in `LISTING.md`, verbatim. Short form: *"The Occasion Studio. Any real moment in, finished quality-graded work out: grounded plans, private keepsakes, launch kits — every artifact graded against a published standard (occestra.xyz/standard), repaired when it fails, and sealed with EIP-712 provenance on X Layer. Verification is free, forever."* |
 | Endpoint | `https://api.occestra.xyz/mcp` |
-| Site / docs | `https://occestra.xyz` · `https://docs.occestra.xyz` |
+| Site / docs | `https://occestra.xyz` · `https://occestra.xyz/docs` |
 | Repo | `https://github.com/talk2francis/Occestra` |
 | SDK | `@occestra/client` on npm |
 | Contract | `0x1653509df702b45d67b3eb12ca37de9f5fc21f08` (X Layer mainnet) |
@@ -36,12 +36,11 @@ else that day.
    *Verify on X Layer* → green with timestamp.
 5. **A real Studio run** — one preset end to end (uses 1 demo credit + real model spend):
    fold-in → live events → grades → seal moment → `/k` page loads. This is what judges do.
-6. **Paid rail** — `curl -s -o /dev/null -w '%{http_code}' -X POST
-   https://api.occestra.xyz/mcp -H 'Content-Type: application/json' -H 'Accept:
-   application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
-   "params":{"name":"oce_critique","arguments":{}}}'` → **402** (the challenge = the
-   paywall lives). Check treasury OKB for settlement gas while there.
-7. **Pages** — `for r in "" studio gallery journal standard pricing for-agents stats docs; do
+6. **Paid rail** — `onchainos agent x402-check https://api.occestra.xyz/mcp` followed by one
+   real `oce_create_pack_job` paid replay → HTTP 200 with `PAYMENT-RESPONSE`, non-empty settlement
+   tx, job id, free poll/result, and a sealed pack. This specifically covers the JSON-only buyer
+   path that originally returned 406 through MCP transport.
+7. **Pages** — `for r in "" studio gallery journal standard pricing for-agents stats docs docs/judges docs/evaluation docs/changelog; do
    curl -so /dev/null -w "/$r %{http_code}\n" https://occestra.xyz/$r; done` → all 200.
 8. **Stats are current** — `occestra.xyz/stats` renders and the counters look right
    (they're computed live; wrong numbers mean a store problem).
@@ -50,6 +49,21 @@ else that day.
 10. **CI green on a clean checkout** — the badge on the repo, or
     `git clone … /tmp/check && cd /tmp/check && npm ci && npm run typecheck && npm run
     build && npm test`.
+
+The judge-facing proof table is committed as `EVALUATION.md` and live at
+`https://occestra.xyz/docs/judges`. Measured provider variance is published separately at
+`/evaluation`; deterministic invariants are never blended into the same percentage table.
+
+## Latest paid marketplace proof — 2026-07-16
+
+- x402 buyer replay: HTTP 200, **0.30 USDT settled** in
+  [`0x55ad…5a20`](https://www.oklink.com/x-layer/tx/0x55ad6c49e8ccb1c13571e14d3246e58b48d4fd8c5aa527af015b7349935a5a20).
+- Durable job: `job_mrn29g2y5mq9hn`, `oce_plan_occasion`, completed in 107 seconds after
+  sourcing four real Berlin candidates plus a dated Open-Meteo forecast.
+- Delivered pack: [`oce_01kxmnzaj4c27qz3y9gjx8`](https://occestra.xyz/k/oce_01kxmnzaj4c27qz3y9gjx8),
+  pass rate 0.8; the failed guest guide remains visibly failed rather than being counted as pass.
+- EIP-712 signature valid and leaf anchored in
+  [`0xc648…45bc`](https://www.oklink.com/x-layer/tx/0xc648edcd26b3fd55bb8c2116fd6e81f0126778554b29f7af50175bce5fca45bc).
 
 ## Owner's non-code checklist (nothing here can be done by the repo)
 

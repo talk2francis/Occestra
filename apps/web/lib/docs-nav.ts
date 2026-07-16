@@ -6,12 +6,18 @@ export interface DocEntry {
 
 export const DOCS_NAV: DocEntry[] = [
   { slug: "", title: "Overview", blurb: "What Occestra is, and why the receipts matter" },
-  { slug: "quickstart", title: "Quickstart", blurb: "Call all 8 tools, copy-paste, exact response shapes" },
+  { slug: "quickstart", title: "Quickstart", blurb: "Call the paid, free, and async tools with exact response shapes" },
   { slug: "payments", title: "Payments (x402)", blurb: "The challenge, the signature, the settlement — as implemented" },
+  { slug: "jobs", title: "Async jobs", blurb: "Create, follow, collect, cancel, and safely retry long work" },
+  { slug: "styles", title: "House Styles", blurb: "Ten versioned prompt systems, palettes, and studio gates" },
   { slug: "standard", title: "The Quality Standard", blurb: "The OQS rubric, verbatim from the grading engine" },
+  { slug: "evaluation", title: "Benchmarks & SLOs", blurb: "Exact guarantees separated from measured variance" },
   { slug: "provenance", title: "Provenance", blurb: "Hashing, the leaf, EIP-712 — verify a real seal yourself" },
+  { slug: "privacy", title: "Privacy", blurb: "Salted commitments, deletion, uploads, SSRF and audit boundaries" },
   { slug: "studios", title: "Studios reference", blurb: "Inputs, outputs, artifact kinds, gaps, privacy" },
   { slug: "a2a", title: "A2A packages", blurb: "Negotiated end-to-end occasions: scopes, pricing, revisions" },
+  { slug: "judges", title: "For judges", blurb: "Every material claim paired with its proof command or live URL" },
+  { slug: "changelog", title: "Changelog", blurb: "The repository history, rendered from CHANGELOG.md" },
   { slug: "architecture", title: "Architecture", blurb: "The monorepo, the pipeline, and where trust comes from" },
 ] as const;
 

@@ -224,5 +224,29 @@
       ],
       "locale": "en"
     }
+  },
+  {
+    "label": "detailed-brief-verifiable-agent-launch",
+    "expect": { "policyBlocked": false, "kinds": ["brand_kit", "launch_thread"], "minArtifacts": 2, "minBriefSpecificity": 75 },
+    "contract": {
+      "id": "l_detailed",
+      "studio": "launch",
+      "styleId": "neon_reverie",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "productName": "Proofline",
+      "url": "https://proofline.test",
+      "description": "A receipt verifier for autonomous agent purchases.",
+      "audience": "builders buying services from other agents",
+      "briefContext": {
+        "honoreeDetails": "The differentiator is deterministic receipt verification before model interpretation.",
+        "doList": ["lead with verification", "show the exact buyer workflow"],
+        "dontList": ["no revolutionary claims", "no invented adoption metrics"],
+        "referenceLinks": ["https://occestra.xyz/standard", "https://occestra.xyz/for-agents"],
+        "tonePreference": "technical, calm, evidence first"
+      },
+      "deliverables": ["brand_kit", "launch_thread"],
+      "locale": "en"
+    }
   }
 ]

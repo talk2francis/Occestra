@@ -4,15 +4,22 @@
  * playwright-report/ — LOOK at them; the script only catches the mechanical
  * failures, not a bad composition.
  *
- *   node scripts/audit.mjs [route ...]          # against http://localhost:3010
- *   AUDIT_BASE=https://occestra.xyz node scripts/audit.mjs /
+ *   node scripts/audit.mjs [route ...]          # all public routes by default
+ *   AUDIT_BASE=https://occestra.xyz node scripts/audit.mjs / /studio
  */
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const BASE = process.env.AUDIT_BASE ?? "http://localhost:3010";
-const ROUTES = process.argv.slice(2).length ? process.argv.slice(2) : ["/"];
+const ALL_ROUTES = [
+  "/", "/studio", "/gallery", "/pricing", "/for-agents", "/stats", "/standard",
+  "/styleguide", "/evaluation", "/journal", "/docs", "/docs/quickstart",
+  "/docs/payments", "/docs/standard", "/docs/provenance", "/docs/studios", "/docs/a2a",
+  "/docs/architecture", "/docs/jobs", "/docs/styles", "/docs/privacy", "/docs/evaluation",
+  "/docs/judges", "/docs/changelog", "/k/oce_01kxmnzaj4c27qz3y9gjx8",
+];
+const ROUTES = process.argv.slice(2).length ? process.argv.slice(2) : ALL_ROUTES;
 // Both faces of the design system are audited unless narrowed: AUDIT_THEMES=nocturne
 const THEMES = (process.env.AUDIT_THEMES ?? "daylight,nocturne").split(",");
 const REDUCED_MOTION = process.env.AUDIT_REDUCED === "1";

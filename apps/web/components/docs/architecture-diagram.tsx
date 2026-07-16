@@ -50,7 +50,7 @@ export function ArchitectureDiagram() {
 
       {/* rails */}
       <text x="20" y="28" fontSize="10" fill={AMETHYST} letterSpacing="2" style={{ fontFamily: "var(--font-sans)", fontWeight: 600 }}>HOW WORK ARRIVES</text>
-      <Box x={20} y={40} w={180} h={46} title="MCP · x402 per call" sub="POST /mcp · 8 tools" accent />
+      <Box x={20} y={40} w={180} h={46} title="MCP · x402 per call" sub="POST /mcp · 13 tools" accent />
       <Box x={220} y={40} w={180} h={46} title="A2A packages" sub="negotiated · escrowed" accent />
       <Box x={420} y={40} w={180} h={46} title="The Studio (web)" sub="SSE · demo-metered" accent />
 
@@ -72,7 +72,7 @@ export function ArchitectureDiagram() {
 
       {/* tribunal loop */}
       <Arrow d="M140,278 L140,314" />
-      <Box x={20} y={318} w={240} h={64} title="The Tribunal" sub="12 deterministic checks + versioned critic" />
+      <Box x={20} y={318} w={240} h={64} title="The Tribunal" sub="OQS v1.2 profiles + hard checks" />
       <path d="M264,338 Q330,338 330,362 Q330,386 264,376" fill="none" stroke={REPAIR} strokeWidth={1.4} markerEnd="url(#arr)" />
       <text x="352" y="356" fontSize="10" fill={REPAIR} style={{ fontFamily: "var(--font-mono)" }}>fail → repair brief</text>
       <text x="352" y="370" fontSize="10" fill={REPAIR} style={{ fontFamily: "var(--font-mono)" }}>regenerate · ×2 max</text>

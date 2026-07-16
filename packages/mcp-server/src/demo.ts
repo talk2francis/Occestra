@@ -11,7 +11,7 @@
  */
 import type { Request, Response } from "express";
 import { z } from "zod";
-import type { EngineDeps, Pack } from "@occestra/studio-core";
+import { BriefContextSchema, type EngineDeps, type Pack } from "@occestra/studio-core";
 import { buildGrader, type GraderEvent } from "./grader.js";
 import { PolicyRefusal, runPipeline, type PipelineContext } from "./pipelines.js";
 import type { Store } from "./store.js";
@@ -42,6 +42,7 @@ const DemoBody = z.discriminatedUnion("tool", [
       vibe: z.string().min(2).max(300),
       budgetUsd: z.number().positive().max(100_000).optional(),
       styleId: StyleId.optional(),
+      briefContext: BriefContextSchema.optional(),
     }),
   }),
   z.object({
@@ -52,6 +53,7 @@ const DemoBody = z.discriminatedUnion("tool", [
       momentDate: z.string().max(40).optional(),
       tone: z.string().max(200).optional(),
       styleId: StyleId.optional(),
+      briefContext: BriefContextSchema.optional(),
     }),
   }),
   z.object({
@@ -62,6 +64,7 @@ const DemoBody = z.discriminatedUnion("tool", [
       description: z.string().max(2000).optional(),
       audience: z.string().max(300).optional(),
       styleId: StyleId.optional(),
+      briefContext: BriefContextSchema.optional(),
     }),
   }),
 ]);

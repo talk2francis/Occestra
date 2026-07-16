@@ -39,6 +39,8 @@ import {
   type StoryGraph,
   type ImageQuality,
   type RunFacts,
+  type BriefContext,
+  briefContextFacts,
   ensureStored,
   imageQualityFor,
   isUndelivered,
@@ -309,6 +311,7 @@ function runFacts(input: LaunchKitInput): RunFacts {
   return {
     productName: input.productName,
     ...(input.url ? { url: input.url } : {}),
+    ...(input.briefContext ? { briefContext: input.briefContext } : {}),
     ...(aboutUs
       ? {
           agentId: AGENT_ID,
@@ -389,6 +392,7 @@ export interface PlanOccasionInput {
   constraints?: string[] | undefined;
   styleId?: HouseStyleId | undefined;
   deliverables?: CelebrateKind[] | undefined;
+  briefContext?: BriefContext | undefined;
 }
 
 /**
@@ -408,9 +412,10 @@ export async function planOccasion(ctx: PipelineContext, input: PlanOccasionInpu
     date: input.date,
     headcount: input.headcount,
     vibe: input.vibe,
-    constraints: input.constraints ?? [],
+    constraints: [...(input.constraints ?? []), ...briefContextFacts(input.briefContext)],
     deliverables: input.deliverables ?? ["plan", "schedule", "budget", "contingency", "guest_guide"],
     locale: "en",
+    ...(input.briefContext ? { briefContext: input.briefContext } : {}),
     ...(input.budgetUsd !== undefined ? { budgetUsd: input.budgetUsd } : {}),
   };
 
@@ -799,6 +804,7 @@ export interface MakeKeepsakeInput {
   mediaRefs?: string[] | undefined;
   /** The owner's corrected Story Graph. When given, it is used AS-IS. */
   confirmGraph?: StoryGraph | undefined;
+  briefContext?: BriefContext | undefined;
   /**
    * INTERNAL ONLY, and deliberately NOT in the public tool schema, so a real caller cannot set
    * it. Seeding uses it to make a SHOWCASE keepsake for the gallery — public, unsalted, its art
@@ -821,8 +827,11 @@ export async function makeKeepsake(ctx: PipelineContext, input: MakeKeepsakeInpu
     mediaRefs: input.mediaRefs ?? [],
     deliverables: ["keepsake_art", "story_page"],
     locale: "en",
-    ...(input.description ? { notes: input.description } : {}),
+    ...([input.description, ...briefContextFacts(input.briefContext)].filter(Boolean).length > 0
+      ? { notes: [input.description, ...briefContextFacts(input.briefContext)].filter(Boolean).join("\n") }
+      : {}),
     ...(input.momentDate ? { momentDate: input.momentDate } : {}),
+    ...(input.briefContext ? { briefContext: input.briefContext } : {}),
   };
 
   screen(contract);
@@ -870,6 +879,7 @@ export interface LaunchKitInput {
   audience?: string | undefined;
   styleId?: HouseStyleId | undefined;
   deliverables?: LaunchKind[] | undefined;
+  briefContext?: BriefContext | undefined;
 }
 
 /** The full LAUNCH studio (Phase 8). Pipeline is pure; the world arrives through ports. */
@@ -900,6 +910,7 @@ export async function launchKit(ctx: PipelineContext, input: LaunchKitInput): Pr
         "demo_script",
       ],
     locale: "en",
+    ...(input.briefContext ? { briefContext: input.briefContext } : {}),
     ...(input.url ? { url: input.url } : {}),
     ...(input.description ? { description: input.description } : {}),
     ...(input.audience ? { audience: input.audience } : {}),

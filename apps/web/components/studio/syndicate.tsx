@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EASE } from "@/components/motion";
 import { AxisChip } from "@/components/ui/axis-chip";
 import { GradeChip } from "@/components/ui/grade-chip";
@@ -18,15 +18,21 @@ import type { RunStatus } from "./use-run";
 export function Syndicate({ status, events }: { status: RunStatus; events: DemoEvent[] }) {
   const reduced = useReducedMotion();
   const feedRef = useRef<HTMLOListElement>(null);
+  const [following, setFollowing] = useState(true);
   const activeRole = status === "running" && events.length ? roleForEvent(events[events.length - 1]!) : undefined;
   const doneRoles = new Set(events.map((event) => roleForEvent(event)).filter(Boolean));
 
   useEffect(() => {
+    if (following) feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: reduced ? "auto" : "smooth" });
+  }, [events.length, following, reduced]);
+
+  const jumpToLatest = () => {
+    setFollowing(true);
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight, behavior: reduced ? "auto" : "smooth" });
-  }, [events.length, reduced]);
+  };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
       {/* roster — the lilac glow physically travels from role to role */}
       <ul className="relative flex flex-wrap gap-x-5 gap-y-1.5 border-b border-ink/10 px-4 py-3 sm:px-5">
         {ROLES.map((role) => {
@@ -56,7 +62,14 @@ export function Syndicate({ status, events }: { status: RunStatus; events: DemoE
       </ul>
 
       {/* feed */}
-      <ol ref={feedRef} className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+      <ol
+        ref={feedRef}
+        onScroll={(event) => {
+          const el = event.currentTarget;
+          setFollowing(el.scrollHeight - el.scrollTop - el.clientHeight < 64);
+        }}
+        className="studio-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5"
+      >
         {status === "idle" && (
           <li className="grid h-full place-items-center px-6 text-center">
             <div>
@@ -109,6 +122,21 @@ export function Syndicate({ status, events }: { status: RunStatus; events: DemoE
           </li>
         )}
       </ol>
+
+      <AnimatePresence>
+        {!following && events.length > 0 && (
+          <motion.button
+            type="button"
+            onClick={jumpToLatest}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6 }}
+            className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full border border-ink/15 bg-ground/95 px-3.5 py-2 text-[0.72rem] font-medium text-ink shadow-keepsake backdrop-blur"
+          >
+            Jump to latest ↓
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

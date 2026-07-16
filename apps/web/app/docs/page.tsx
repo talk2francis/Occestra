@@ -23,8 +23,8 @@ export default function DocsOverview() {
       <Section id="principles" title="Three things to know before anything else">
         <p>
           <strong>1. The Tribunal grades everything.</strong> Every artifact — image, plan, or
-          copy — is graded against the published, versioned Occestra Quality Standard: five scored
-          axes plus twelve deterministic checks. Failures get a concrete repair brief and go back,
+          copy — is graded against the published, versioned Occestra Quality Standard using a
+          profile made for its artifact kind, plus deterministic checks. Failures get a concrete repair brief and go back,
           at most twice. The full report ships inside every pack, <em>pass or fail</em>. The rubric
           on <Link href="/standard" className="text-amethyst underline underline-offset-2">/standard</Link>{" "}
           and in these docs is generated from the same constants the grading engine executes, so
@@ -61,7 +61,7 @@ curl -s -X POST https://api.occestra.xyz/mcp \\
         <p>
           Paid tools cost between 0.01 and 1.50 USDT per call, settled x402 on X Layer. The{" "}
           <Link href={docHref("quickstart")} className="text-amethyst underline underline-offset-2">quickstart</Link>{" "}
-          walks all eight tools;{" "}
+          walks the complete tool surface;{" "}
           <Link href={docHref("payments")} className="text-amethyst underline underline-offset-2">payments</Link>{" "}
           documents the exact wire flow our gate implements.
         </p>

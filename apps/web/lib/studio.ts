@@ -167,6 +167,35 @@ export interface FieldSpec {
   required?: boolean;
 }
 
+export interface StudioIdentity {
+  label: string;
+  promise: string;
+  accent: string;
+  accentSoft: string;
+}
+
+/** Three rooms, one building: each room has its own emotional register. */
+export const STUDIO_IDENTITY: Record<StudioId, StudioIdentity> = {
+  celebrate: {
+    label: "Celebrate",
+    promise: "Plan what is ahead — grounded, generous, ready for real people.",
+    accent: "#B95735",
+    accentSoft: "#F4D5C7",
+  },
+  remember: {
+    label: "Remember",
+    promise: "Keep what already happened — private, faithful, beautifully held.",
+    accent: "#39779A",
+    accentSoft: "#D8EAF2",
+  },
+  launch: {
+    label: "Launch",
+    promise: "Put the work into the world — specific, coherent, impossible to mistake.",
+    accent: "#7D4BA6",
+    accentSoft: "#E6D9F2",
+  },
+};
+
 export const STUDIO_FIELDS: Record<StudioId, FieldSpec[]> = {
   celebrate: [
     { name: "occasion", label: "The occasion", placeholder: "My sister's graduation dinner", kind: "text", required: true },
@@ -187,6 +216,33 @@ export const STUDIO_FIELDS: Record<StudioId, FieldSpec[]> = {
     { name: "url", label: "Live URL (read in a real browser)", placeholder: "https://…", kind: "url" },
     { name: "description", label: "What it is", placeholder: "One honest paragraph", kind: "textarea" },
     { name: "audience", label: "Audience", placeholder: "builders shipping this week", kind: "text" },
+  ],
+};
+
+/** Optional depth shared by all rooms. Values are carried as structured briefContext. */
+export const DETAILED_FIELDS: Record<StudioId, FieldSpec[]> = {
+  celebrate: [
+    { name: "honoreeDetails", label: "Who this is really for", placeholder: "What matters to them; what the room should know", kind: "textarea" },
+    { name: "dietaryNotes", label: "Dietary notes", placeholder: "vegan, allergies, halal, no alcohol…", kind: "textarea" },
+    { name: "accessibilityNotes", label: "Accessibility", placeholder: "step-free access, quiet room, transport needs…", kind: "textarea" },
+    { name: "doList", label: "Please do", placeholder: "One item per line", kind: "textarea" },
+    { name: "dontList", label: "Please avoid", placeholder: "surprise speeches\nlate-night venues", kind: "textarea" },
+    { name: "referenceLinks", label: "Reference links", placeholder: "One https:// link per line", kind: "textarea" },
+    { name: "tonePreference", label: "Tone preference", placeholder: "joyful, intimate, never sentimental", kind: "text" },
+  ],
+  remember: [
+    { name: "honoreeDetails", label: "People and details you establish", placeholder: "Names and relationships only you can truthfully provide", kind: "textarea" },
+    { name: "doList", label: "Details to hold onto", placeholder: "One true detail per line", kind: "textarea" },
+    { name: "dontList", label: "Do not infer or mention", placeholder: "Anything private, uncertain, or off-limits", kind: "textarea" },
+    { name: "referenceLinks", label: "Private reference links", placeholder: "One https:// link per line", kind: "textarea" },
+    { name: "tonePreference", label: "Editorial tone", placeholder: "clear-eyed, warm, not saccharine", kind: "text" },
+  ],
+  launch: [
+    { name: "honoreeDetails", label: "Founder / product context", placeholder: "Why it exists; the one thing buyers should understand", kind: "textarea" },
+    { name: "doList", label: "Messages to land", placeholder: "One supportable message per line", kind: "textarea" },
+    { name: "dontList", label: "Claims and clichés to avoid", placeholder: "revolutionary\n10x\nindustry-leading", kind: "textarea" },
+    { name: "referenceLinks", label: "Reference links", placeholder: "Docs, listing, contract — one https:// link per line", kind: "textarea" },
+    { name: "tonePreference", label: "Voice", placeholder: "precise, confident, no hype", kind: "text" },
   ],
 };
 

@@ -306,11 +306,26 @@ export type BudgetPayload = z.infer<typeof BudgetPayloadSchema>;
 
 /* ---------------------------------------------------------- occasion contract */
 
+/** Optional human depth shared by every Studio. This remains first-party context,
+ * never model inference: richer briefs improve specificity because the user has
+ * supplied more facts and boundaries, not because the model guessed more boldly. */
+export const BriefContextSchema = z.object({
+  honoreeDetails: z.string().min(1).max(2000).optional(),
+  dietaryNotes: z.string().min(1).max(1000).optional(),
+  accessibilityNotes: z.string().min(1).max(1000).optional(),
+  doList: z.array(z.string().min(1).max(300)).max(20).optional(),
+  dontList: z.array(z.string().min(1).max(300)).max(20).optional(),
+  referenceLinks: z.array(z.string().url()).max(12).optional(),
+  tonePreference: z.string().min(1).max(300).optional(),
+});
+export type BriefContext = z.infer<typeof BriefContextSchema>;
+
 const ContractBase = {
   id: z.string().min(1),
   styleId: HouseStyleIdSchema,
   createdAt: z.string().datetime(),
   requester: z.enum(["human", "agent"]),
+  briefContext: BriefContextSchema.optional(),
 };
 
 /** ISO calendar date, validated as a real date (rejects 2026-02-31). */

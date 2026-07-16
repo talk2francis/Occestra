@@ -7,6 +7,41 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The Occestra
 Standard (OQS) is versioned **separately** from the software — a rubric change is a promise
 change, and it says so in its own line.
 
+## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
+
+- Removed the amethyst WebGL cluster and its Three.js/drei/postprocessing dependency tree. The
+  hero now gives its full visual budget to Occestra's actual product flow instead of a decorative
+  GPU scene.
+- Restored the full editorial motion V2-4 had pared back: route-sheet arrivals, in-view section
+  reveals, hero sequence, an immediately animated real-pack walkthrough, and an undelayed
+  recent-seals ribbon. Preserved and smoothed the Studio role pulse, failed-artifact return, pack
+  settle, grade count-up, magnetic actions, toast and seal motion. Public entrances use
+  compositor-only CSS plus a tiny IntersectionObserver while stateful Studio choreography retains
+  Framer; no motion was interaction-gated or removed.
+- Reworked `/studio` into a fixed-height three-pane workbench with independently scrolling Brief,
+  Live Feed and Pack panes, hover-reveal stable scrollbars, feed auto-follow that yields when a
+  reader scrolls back, and a Jump to latest control. Mobile keeps a sticky three-room switcher and
+  segmented pane controls.
+- Gave Celebrate, Remember and Launch their own icon, promise and room tint while keeping one
+  design system. Added persisted Quick and Detailed brief modes.
+- Added a shared `BriefContext` schema for owner-established context, dietary/accessibility needs,
+  do/don't boundaries, references and tone. It flows through public tool validation, async jobs,
+  Studio demo SSE, contracts, launch fact injection, Celebrate constraints and Remember owner
+  notes. Three new labelled corpus rows measure richer input specificity without mislabelling it
+  as a deterministic output-quality score.
+- Added documentation for durable jobs, all ten House Styles, privacy and salted commitments,
+  measured SLOs, judge verification, and a build-time rendering of this changelog. Added root
+  `EVALUATION.md`, a claim-to-proof map, and refreshed README architecture/design/OQS claims to
+  the live V2 surface: 13 tools, OQS v1.2.0, two themes, durable jobs and idempotency.
+- Closed the V2-6 code checkpoint with 417 automated package tests passing. The production x402
+  smoke settled 0.30 USDT, completed the durable Celebrate job in 107 seconds, and returned a
+  signed pack while honestly retaining one failed guest-guide report instead of inflating its grade.
+- Closed the production browser matrix at 150/150 clean route/theme/viewport checks, plus 12/12
+  focused normal-motion and 12/12 reduced-motion checks after the motion-runtime optimization.
+  Homepage first-load JavaScript fell from 172 kB to 130 kB with the animation set intact;
+  Lighthouse mobile simulation is 84 performance / 100 accessibility / 100 best practices / 100
+  SEO (LCP 2.6s, TBT 450ms, CLS 0).
+
 ## [Unreleased] — V2-5: adaptive crystal cluster and motion language
 
 - Replaced the single hero prism with a seven-stone amethyst geode cluster: individually cut

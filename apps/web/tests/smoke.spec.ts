@@ -24,6 +24,10 @@ const PAGES = [
   { path: "/pricing", must: /pric|USDT|cost/i },
   { path: "/for-agents", must: /agent|tool|mcp/i },
   { path: "/gallery", must: /gallery|keepsake|pack/i },
+  { path: "/studio", must: /Studio|syndicate|brief/i },
+  { path: "/docs/jobs", must: /job|connection|lifecycle/i },
+  { path: "/docs/judges", must: /judge|proof|claim/i },
+  { path: "/docs/changelog", must: /changed|changelog|V2/i },
 ];
 
 for (const page of PAGES) {
@@ -73,4 +77,37 @@ test("evaluation splits guaranteed from measured", async ({ page }) => {
   await expect(page.locator("body")).toContainText(/measured-with-variance/i);
   // The honesty of the whole page: a range, not a single invented number.
   await expect(page.locator("body")).toContainText(/n\s*=\s*2|runs/i);
+});
+
+test("Studio is a fixed three-pane workbench and remembers brief depth", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`${BASE}/studio`, { waitUntil: "networkidle" });
+
+  await expect(page.getByText("The room is quiet.")).toBeVisible();
+  await expect(page.getByText("The pack", { exact: true })).toBeVisible();
+  await expect(page.getByText("Celebrate room")).toBeVisible();
+
+  const detailed = page.getByRole("button", { name: /Detailed brief/i });
+  await detailed.click();
+  await expect(page.getByText("The useful details")).toBeVisible();
+  // The Studio's live quota request is deliberately outside the render path; waiting for all
+  // network activity here would test an external API round-trip, not persisted UI state.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByText("The useful details")).toBeVisible();
+
+  // The document itself is fixed; each pane owns the scroll.
+  const geometry = await page.evaluate(() => ({ body: document.body.scrollHeight, viewport: innerHeight }));
+  expect(geometry.body).toBeLessThanOrEqual(geometry.viewport + 1);
+});
+
+test("Studio mobile controls keep every pane and room reachable", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${BASE}/studio`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Live feed" }).click();
+  await expect(page.getByText("The room is quiet.")).toBeVisible();
+  await page.getByRole("button", { name: "Pack", exact: true }).click();
+  await expect(page.getByText(/Finished artifacts assemble here/)).toBeVisible();
+  await page.getByRole("button", { name: "Launch" }).click();
+  await page.getByRole("button", { name: "Brief", exact: true }).click();
+  await expect(page.getByText("Launch room")).toBeVisible();
 });

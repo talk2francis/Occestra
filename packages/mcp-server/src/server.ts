@@ -10,7 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { verifySeal, leafOfSeal, chainFor } from "@occestra/receipts";
 import { rubricAsJson } from "@occestra/tribunal";
-import { sanitizeGaps, sanitizeTribunal, saltedManifestCommitment, type HouseStyleId, type Pack } from "@occestra/studio-core";
+import { BriefContextSchema, sanitizeGaps, sanitizeTribunal, saltedManifestCommitment, type HouseStyleId, type Pack } from "@occestra/studio-core";
 import { PACK_TOOLS, PRICES, type PackToolName, type ToolName } from "./gate.js";
 import { HOUSE_STYLES } from "@occestra/providers";
 import type { JobQueue } from "./jobs.js";
@@ -34,6 +34,9 @@ export const VERSION = "1.0.0";
 const STYLE_IDS = Object.keys(HOUSE_STYLES) as [HouseStyleId, ...HouseStyleId[]];
 const StyleId = z.enum(STYLE_IDS).describe(
   "House Style. Call oce_style_catalog (FREE) to see the real palette of all ten, what each is for, and a real passing example. In short: amethyst_editorial = warm ivory editorial (the safe default); gilded_noir = black + gold, black-tie; jazz_age = art-deco geometry, glamorous; solstice_bloom = pressed-flower botanicals, sunny; paper_lantern = festival paper-cut, communal; sunprint = cyanotype blues, for a MEMORY; porcelain_garden = blue-white chinaware, delicate keepsakes; terra_fresco = ochre plaster, travel & rustic; neon_reverie = luminous dark minimalism, launch-native; atlas_ink = map-and-ledger, for itineraries.",
+);
+const BriefContextInput = BriefContextSchema.optional().describe(
+  "Optional Detailed Brief: first-party context, accessibility and dietary needs, do/don't boundaries, references and tone. These facts are injected into the pipeline; they are never inferred.",
 );
 
 /** JSON with bigints rendered as decimal strings — a seal carries them. */
@@ -73,6 +76,7 @@ const TOOL_INPUTS = {
         .describe(
           "What to produce. Defaults to plan + schedule + budget + contingency + guest_guide. Add 'invitation' or 'moodboard' for artwork, 'toast' for words to say.",
         ),
+      briefContext: BriefContextInput,
   },
   oce_design_invite: {
       occasion: z.string().min(2).max(200).describe("What the invitation is for."),
@@ -124,6 +128,7 @@ const TOOL_INPUTS = {
         .describe(
           "YOUR corrected Story Graph. Call once without it, read the 'What we do not know' section, fix it, and call again with this. It is used exactly as you give it — we do not 'improve' your memory.",
         ),
+      briefContext: BriefContextInput,
   },
   oce_launch_kit: {
       productName: z.string().min(1).max(120).describe("What it is called."),
@@ -136,6 +141,7 @@ const TOOL_INPUTS = {
         .min(1)
         .optional()
         .describe("What to produce. Defaults to the full kit: genome, hero, mark, 2 social cards, thread, landing spec, demo beat sheet."),
+      briefContext: BriefContextInput,
   },
   oce_critique: {
       kind: z.string().min(2).max(40).describe("What the artifact is: 'invitation', 'plan', 'budget', 'schedule', 'toast', 'og_image', 'launch_thread', ..."),

@@ -26,14 +26,15 @@ export default function Quickstart() {
         kicker="Quickstart"
         lede={
           <>
-            Eight tools behind one stateless MCP endpoint. Everything below is copy-paste against
+            Thirteen tools behind one stateless MCP endpoint: eight creative/verification capabilities,
+            four durable job controls, and the free style catalog. Everything below is copy-paste against
             production. Paid calls return HTTP 402 first — that is the payment challenge, and the{" "}
             <Link href={docHref("payments")} className="text-amethyst underline underline-offset-2">payments page</Link>{" "}
             shows the ~30 lines that answer it. Verification never costs anything.
           </>
         }
       >
-        All eight tools, end to end.
+        The complete tool surface, end to end.
       </DocTitle>
 
       <Section id="endpoint" title="The endpoint">
@@ -67,7 +68,7 @@ export default function Quickstart() {
   "keepsakeId": "oce_01kxbz33bb4grnd1xh0gev",   // stable id, /^oce_[0-9a-z]{22}$/
   "studio": "celebrate",
   "quality": {
-    "oqsVersion": "1.0.0",                       // the rubric version that graded this
+    "oqsVersion": "1.2.0",                       // the rubric version that graded this
     "passRate": 1,                               // artifacts passing / artifacts graded
     "repairedCount": 0                           // Tribunal repair passes that ran
   },
@@ -205,8 +206,8 @@ export default function Quickstart() {
           The LAUNCH studio: give it a URL and it reads your <em>actual</em> site in a headless
           browser — the colours a browser rendered, not a guess — extracts an honest brand genome,
           then produces a hero visual, announcement cards, a launch thread, a 90-second demo beat
-          sheet and OG images. Fabricated prices and invented user counts are caught
-          deterministically and replaced with explicit placeholders.
+          sheet and OG images. Fabricated prices, invented user counts, and placeholder copy are
+          caught deterministically and rejected or repaired — never shipped as fill-in-the-blank text.
         </p>
         <ParamTable
           rows={[
@@ -265,7 +266,7 @@ export default function Quickstart() {
   "found": true,
   "keepsakeId": "oce_01kxbz33bb4grnd1xh0gev",
   "studio": "celebrate",
-  "quality": { "oqsVersion": "1.0.0", "passRate": 1, "repairedCount": 0 },
+  "quality": { "oqsVersion": "1.2.0", "passRate": 1, "repairedCount": 0 },
   "seal": {
     "…": "the full seal fields, plus:",
     "leaf": "0xc814215758135400b364fbb5d4614b7e9ab50a114158a1c91e36064ab23a4adc",

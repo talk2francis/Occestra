@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PolicyRefusal,
+  briefSpecificityScore,
   isMemorial,
   runRemember,
   screenRememberBrief,
@@ -352,6 +353,7 @@ interface RememberCorpusEntry {
     policyBlocked?: boolean;
     kinds?: string[];
     minArtifacts?: number;
+    minBriefSpecificity?: number;
   };
 }
 
@@ -373,6 +375,9 @@ describe("REMEMBER corpus", () => {
       }
 
       const { pack } = await runRemember(entry.contract, deps);
+      if (entry.expect.minBriefSpecificity) {
+        expect(briefSpecificityScore(entry.contract.briefContext)).toBeGreaterThanOrEqual(entry.expect.minBriefSpecificity);
+      }
       const kinds = pack.artifacts.map((a) => a.kind);
 
       for (const kind of entry.expect.kinds ?? []) expect(kinds).toContain(kind);

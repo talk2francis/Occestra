@@ -220,5 +220,30 @@
       ],
       "locale": "en"
     }
+  },
+  {
+    "label": "detailed-brief-family-recipe-memory",
+    "expect": { "policyBlocked": false, "kinds": ["story_page"], "minArtifacts": 1, "minBriefSpecificity": 75 },
+    "contract": {
+      "id": "r_detailed",
+      "studio": "remember",
+      "styleId": "porcelain_garden",
+      "createdAt": "2026-07-13T10:00:00.000Z",
+      "requester": "human",
+      "title": "Sunday jollof in Nana's kitchen",
+      "notes": "Nana taught me to toast the rice first. The blue bowl was always on the windowsill.",
+      "momentDate": "2018-08-12",
+      "mediaRefs": [],
+      "tone": "warm and exact",
+      "briefContext": {
+        "honoreeDetails": "Nana is the name I use for my grandmother; I establish that relationship.",
+        "doList": ["keep the blue bowl", "mention the toasted rice"],
+        "dontList": ["do not invent dialogue", "do not imply she has died"],
+        "referenceLinks": ["https://occestra.xyz/standard"],
+        "tonePreference": "sensory but unsentimental"
+      },
+      "deliverables": ["story_page"],
+      "locale": "en"
+    }
   }
 ]

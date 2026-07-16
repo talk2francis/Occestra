@@ -6,7 +6,7 @@
  * sport — a price beat needs a number and it had none. The cure is to give it one.
  */
 import { describe, expect, it } from "vitest";
-import { factsBlock } from "../src/facts.js";
+import { briefSpecificityScore, factsBlock } from "../src/facts.js";
 
 describe("factsBlock", () => {
   it("states the real prices, so the writer never has to reach for a number", () => {
@@ -44,5 +44,19 @@ describe("factsBlock", () => {
     const block = factsBlock({ productName: "Tidepool", url: "https://tidepool.test" });
     expect(block).not.toContain("USDT");
     expect(block).not.toContain("oce_");
+  });
+
+  it("makes Detailed Brief depth measurable without pretending it is an output grade", () => {
+    const quick = briefSpecificityScore();
+    const detailed = briefSpecificityScore({
+      honoreeDetails: "Ada designed a community library.",
+      accessibilityNotes: "Step-free access is required.",
+      doList: ["leave room for her grandmother's toast"],
+      dontList: ["no surprise performers"],
+      referenceLinks: ["https://occestra.xyz/standard"],
+      tonePreference: "proud, intimate, never grandiose",
+    });
+    expect(detailed).toBeGreaterThanOrEqual(75);
+    expect(detailed).toBeGreaterThan(quick);
   });
 });

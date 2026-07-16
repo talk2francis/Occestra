@@ -1,12 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Archive, ClipboardPenLine, PackageCheck, PartyPopper, Radio, Rocket } from "lucide-react";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Wordmark } from "@/components/site/wordmark";
 import { ThemeToggle } from "@/components/ui/theme";
-import type { StyleSwatch } from "@/lib/studio";
+import { STUDIO_IDENTITY, type StudioId, type StyleSwatch } from "@/lib/studio";
 import { Composer } from "./composer";
 import { PackPanel } from "./pack-panel";
 import { SealMoment, type SealMomentData } from "./seal-moment";
@@ -22,6 +22,9 @@ export function Workspace({
 }) {
   const [remaining, setRemaining] = useState(quota.remaining);
   const [cap] = useState(quota.cap);
+  const [studio, setStudio] = useState<StudioId>("celebrate");
+  const [mobilePane, setMobilePane] = useState<"brief" | "feed" | "pack">("brief");
+  const identity = STUDIO_IDENTITY[studio];
 
   const refreshQuota = useCallback(async () => {
     try {
@@ -45,6 +48,7 @@ export function Workspace({
       setFolding(summary);
       setTimeout(() => setFolding(undefined), 1000);
     }
+    setMobilePane("feed");
     void run.start(tool, args);
   };
 
@@ -63,7 +67,13 @@ export function Workspace({
   }, [run.status, run.error, run.pack, run.events]);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div
+      className="studio-room flex h-dvh min-h-0 flex-col overflow-hidden"
+      style={{
+        "--studio-accent": identity.accent,
+        "--studio-accent-soft": identity.accentSoft,
+      } as CSSProperties}
+    >
       {moment && <SealMoment data={moment} onDone={() => setMoment(undefined)} />}
 
       {/* the brief folding into the room — desktop only, where the geometry reads */}
@@ -88,7 +98,7 @@ export function Workspace({
           </motion.div>
         )}
       </AnimatePresence>
-      <header className="flex items-center justify-between gap-4 border-b border-ink/10 bg-panel/60 px-5 py-3 sm:px-8">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-ink/10 bg-panel/80 px-5 py-3 backdrop-blur-sm sm:px-8">
         <div className="flex items-center gap-4">
           <Wordmark height={26} priority />
           <span className="text-kicker hidden text-amethyst sm:inline">The Studio</span>
@@ -101,25 +111,93 @@ export function Workspace({
         </div>
       </header>
 
-      <div className="grid flex-1 lg:h-[calc(100vh-57px)] lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)_minmax(0,21rem)]">
-        <aside className="no-scrollbar border-b border-ink/10 p-4 sm:p-5 lg:overflow-y-auto lg:border-r lg:border-b-0">
+      {/* Mobile control deck stays reachable even when another pane is open. */}
+      <div className="z-20 shrink-0 border-b border-ink/10 bg-ground/95 backdrop-blur lg:hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+          <StudioRoomButton studio={studio} onChange={setStudio} />
+          <p className="line-clamp-1 text-[0.66rem] text-ink/50">{identity.promise}</p>
+        </div>
+        <div className="grid grid-cols-3 border-t border-ink/8">
+          {([
+            ["brief", ClipboardPenLine, "Brief"],
+            ["feed", Radio, "Live feed"],
+            ["pack", PackageCheck, "Pack"],
+          ] as const).map(([id, Icon, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setMobilePane(id)}
+              className={`relative flex items-center justify-center gap-1.5 py-2 text-[0.72rem] font-medium transition-colors ${mobilePane === id ? "text-ink" : "text-ink/45"}`}
+            >
+              <Icon aria-hidden className="size-3.5" />
+              {label}
+              {mobilePane === id && <motion.span layoutId="mobile-pane" className="absolute inset-x-5 bottom-0 h-0.5 bg-[var(--studio-accent)]" />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)_minmax(0,21rem)]">
+        <aside className={`${mobilePane === "brief" ? "block" : "hidden"} studio-scroll min-h-0 overflow-y-auto border-ink/10 p-4 sm:p-5 lg:block lg:border-r`}>
+          <RoomHeading studio={studio} />
           <Composer
             styles={styles}
             running={run.status === "running"}
             remaining={remaining}
             cap={cap}
+            studio={studio}
+            onStudioChange={setStudio}
             onRun={handleRun}
           />
         </aside>
 
-        <section className="min-h-[24rem] border-b border-ink/10 lg:min-h-0 lg:border-b-0">
+        <section className={`${mobilePane === "feed" ? "block" : "hidden"} min-h-0 overflow-hidden lg:block`}>
           <Syndicate status={run.status} events={run.events} />
         </section>
 
-        <aside className="bg-panel/40 lg:overflow-y-auto lg:border-l lg:border-ink/10">
+        <aside className={`${mobilePane === "pack" ? "block" : "hidden"} min-h-0 overflow-hidden bg-panel/40 lg:block lg:border-l lg:border-ink/10`}>
           <PackPanel status={run.status} events={run.events} pack={run.pack} />
         </aside>
       </div>
+    </div>
+  );
+}
+
+const ROOM_ICON = { celebrate: PartyPopper, remember: Archive, launch: Rocket } as const;
+
+function RoomHeading({ studio }: { studio: StudioId }) {
+  const Icon = ROOM_ICON[studio];
+  const room = STUDIO_IDENTITY[studio];
+  return (
+    <motion.div key={studio} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mb-5 rounded-xl border border-ink/10 bg-[var(--studio-accent-soft)]/25 p-3.5">
+      <p className="flex items-center gap-2 text-[0.82rem] font-semibold" style={{ color: room.accent }}>
+        <Icon aria-hidden className="size-4" strokeWidth={1.7} />
+        {room.label} room
+      </p>
+      <p className="mt-1 text-[0.72rem] leading-relaxed text-ink/55">{room.promise}</p>
+    </motion.div>
+  );
+}
+
+function StudioRoomButton({ studio, onChange }: { studio: StudioId; onChange: (studio: StudioId) => void }) {
+  const order: StudioId[] = ["celebrate", "remember", "launch"];
+  return (
+    <div className="flex shrink-0 rounded-full border border-ink/10 bg-panel p-0.5" aria-label="Choose a studio">
+      {order.map((id) => {
+        const Icon = ROOM_ICON[id];
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            aria-label={STUDIO_IDENTITY[id].label}
+            aria-pressed={studio === id}
+            className={`rounded-full p-1.5 transition-all ${studio === id ? "bg-ground shadow-lift" : "text-ink/35"}`}
+          >
+            <Icon aria-hidden className={`size-3.5 ${studio === id ? "text-[var(--studio-accent)]" : ""}`} />
+          </button>
+        );
+      })}
     </div>
   );
 }

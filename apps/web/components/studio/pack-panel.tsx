@@ -30,7 +30,7 @@ export function PackPanel({
         <p className="text-kicker text-[0.62rem] text-amethyst">The pack</p>
       </div>
 
-      <div className="no-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+      <div className="studio-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
         {status === "idle" && (
           <p className="text-[0.82rem] leading-relaxed text-ink/60">
             Finished artifacts assemble here — graded, sourced, and sealed with provenance you can

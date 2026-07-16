@@ -25,7 +25,7 @@ export function Tribunal() {
             lede={
               <>
                 Every artifact — image, plan, or copy — is graded against the published Occestra
-                Quality Standard: five scored axes and twelve deterministic checks. Failures get a
+                Quality Standard with kind-specific profiles and deterministic checks. Failures get a
                 concrete repair brief and go back, up to twice. The full report ships inside every
                 pack, pass or fail.
               </>

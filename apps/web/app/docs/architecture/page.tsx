@@ -12,8 +12,8 @@ export default function ArchitectureDoc() {
         lede={
           <>
             An npm-workspaces monorepo, dependency-ordered, TypeScript strict everywhere
-            (<InlineCode>exactOptionalPropertyTypes</InlineCode> included), 223 tests across the
-            packages. The design rule that shapes everything: the pipelines are pure, and the
+            (<InlineCode>exactOptionalPropertyTypes</InlineCode> included), with the current count
+            reported by <InlineCode>npm test</InlineCode>. The design rule that shapes everything: the pipelines are pure, and the
             world arrives through injected ports.
           </>
         }
@@ -31,11 +31,11 @@ export default function ArchitectureDoc() {
         <ParamTable
           rows={[
             { name: "studio-core", type: "pure", desc: "Domain types, zod schemas, OccasionContract, the three pipelines, PolicyGate, ids. No I/O — everything worldly is a port (TextModelPort, PlacesPort, GradePort…)." },
-            { name: "tribunal", type: "pure-ish", desc: "The OQS rubric as executable constants, 12 deterministic validators, the critique + repair engine, rubricAsMarkdown()/Json() — the same source that renders /standard and these docs." },
+            { name: "tribunal", type: "pure-ish", desc: "OQS v1.2 profiles and deterministic validators, the critique + repair engine, rubricAsMarkdown()/Json() — the same source that renders /standard and these docs." },
             { name: "receipts", type: "crypto", desc: "Canonical JSON hashing, seal-leaf encoding, EIP-712 signing, the KeepsakeRegistry client." },
             { name: "contracts", type: "solidity", desc: "KeepsakeRegistry.sol, compiler pipeline, and a cross-language test that runs the REAL bytecode in an in-process EVM to prove TS and Solidity encode identical leaves." },
             { name: "providers", type: "adapters", desc: "Model router (OpenAI live; Anthropic/xAI wired), image generation, House Styles, weather/places/site/market adapters, cache, and a daily cost governor." },
-            { name: "mcp-server", type: "the ASP", desc: "The 8 tools behind the x402 gate, the store, the anchor worker, the A2A negotiation module, public endpoints, and the internal demo SSE that drives the Studio." },
+            { name: "mcp-server", type: "the ASP", desc: "13 tools behind the x402 gate, durable jobs and idempotency, the store, anchor worker, A2A negotiation, public endpoints, and the internal demo SSE that drives the Studio." },
             { name: "client", type: "sdk", desc: "@occestra/client — a tiny typed SDK with the payment flow built in." },
             { name: "apps/web", type: "next 15", desc: "This site: landing, Studio, /k verify pages, gallery, standard, stats, docs. Self-hosted standalone behind Caddy." },
           ]}
@@ -102,12 +102,11 @@ export default function ArchitectureDoc() {
           theme-stable so a shared pack never changes identity with the viewer&apos;s preference.
         </p>
         <p>
-          The hero&apos;s seven-stone amethyst cluster is progressive enhancement, not an entry
-          tax. It waits for visitor intent, freezes when offscreen, refuses software renderers,
-          caps device-pixel ratio at 1.5, and removes itself if an on-device sample falls below
-          55 FPS. Daylight refracts; Nocturne adds selective bloom to only two accent facets.
-          Reduced-motion and no-WebGL visitors keep the same composition through a static,
-          art-directed SVG cluster without downloading the Three.js scene.
+          There is deliberately no WebGL hero object. The visual budget belongs to the product
+          flow: route sheets arrive, sections reveal in editorial sequence, the real Studio feed
+          follows work between roles, failed artifacts return for repair, finished artifacts
+          settle into the pack, and the seal press lands with weight. Removing the decorative
+          scene also removes a separate loading, GPU and fallback state from the first impression.
         </p>
         <p>
           Motion explains state: grades count up once, a failed artifact visibly returns for

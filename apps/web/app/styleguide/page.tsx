@@ -97,7 +97,7 @@ export default function Styleguide() {
           <AxisChip axis="grounding" score={42} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Badge>OQS v1.0.0</Badge>
+          <Badge>OQS v1.2.0</Badge>
           <Badge tone="amethyst">Agent #5213</Badge>
           <Badge tone="active">generating</Badge>
         </div>

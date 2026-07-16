@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import corpus from "./corpus/celebrate.json" with { type: "json" };
 import {
   PolicyRefusal,
+  briefSpecificityScore,
   estimateTravel,
   haversineKm,
   layOutSchedule,
@@ -231,6 +232,12 @@ describe("CELEBRATE corpus", () => {
       }
 
       const { pack } = await runCelebrate(entry.contract, deps);
+
+      if (typeof entry.expect["minBriefSpecificity"] === "number") {
+        expect(briefSpecificityScore(entry.contract.briefContext)).toBeGreaterThanOrEqual(
+          entry.expect["minBriefSpecificity"] as number,
+        );
+      }
 
       expect(pack.id).toMatch(/^oce_[0-9a-z]{22}$/);
       expect(pack.studio).toBe("celebrate");

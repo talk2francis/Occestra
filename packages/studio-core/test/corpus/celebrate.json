@@ -260,5 +260,34 @@
       "deliverables": ["plan"],
       "locale": "en"
     }
+  },
+  {
+    "label": "detailed-brief-accessible-graduation",
+    "expect": { "policyBlocked": false, "kinds": ["plan", "guest_guide"], "minBriefSpecificity": 75 },
+    "contract": {
+      "id": "c_detailed",
+      "studio": "celebrate",
+      "styleId": "solstice_bloom",
+      "createdAt": "2026-07-12T10:00:00.000Z",
+      "requester": "human",
+      "occasion": "Ada's architecture graduation lunch",
+      "city": "Lagos",
+      "date": "2026-07-25",
+      "headcount": 18,
+      "budgetUsd": 900,
+      "vibe": "sunlit, grown-up, relaxed",
+      "constraints": [],
+      "briefContext": {
+        "honoreeDetails": "Ada designed a community library for her final project.",
+        "dietaryNotes": "Two vegan guests and one severe peanut allergy.",
+        "accessibilityNotes": "Ada's grandmother needs step-free access and a chair with arms.",
+        "doList": ["leave time for her grandmother's toast", "use local flowers"],
+        "dontList": ["no surprise performers", "no loud nightclub venue"],
+        "referenceLinks": ["https://occestra.xyz/standard"],
+        "tonePreference": "proud and intimate, never grandiose"
+      },
+      "deliverables": ["plan", "guest_guide"],
+      "locale": "en"
+    }
   }
 ]

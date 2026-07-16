@@ -7,10 +7,8 @@
  * not screen capture and not invented data. Under prefers-reduced-motion it
  * renders the finished state as a single static frame.
  */
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { EASE } from "@/components/motion";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { SealMark } from "@/components/ui/seal-mark";
 import { SourceChip } from "@/components/ui/source-chip";
@@ -58,14 +56,8 @@ function useClock(active: boolean) {
   return t;
 }
 
-const rise = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } },
-  exit: { opacity: 0, transition: { duration: 0.3 } },
-};
-
 export function Walkthrough() {
-  const reduced = useReducedMotion();
+  const [reduced, setReduced] = useState(false);
   const [inView, setInView] = useState(false);
   const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -74,7 +66,14 @@ export function Walkthrough() {
   // render identical to SSR, then jump (without animation) to the completed
   // static frame. Choosing the completed frame during hydration made every
   // line of walkthrough text disagree with the server.
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
   const motionReduced = Boolean(reduced && mounted);
 
   // Only run the clock while visible — no work while scrolled away.
@@ -112,12 +111,7 @@ export function Walkthrough() {
               <GradeChip verdict="info">grading</GradeChip>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-lilac bg-lilac/25 px-2.5 py-0.5 text-[0.68rem] font-semibold tracking-[0.1em] text-plum uppercase">
-                <motion.span
-                  aria-hidden
-                  className="size-1.5 rounded-full bg-plum"
-                  animate={motionReduced ? {} : { opacity: [1, 0.3, 1] }}
-                  transition={{ duration: 1.4, repeat: Infinity }}
-                />
+                <span aria-hidden className={`size-1.5 rounded-full bg-plum${motionReduced ? "" : " working-pulse"}`} />
                 working
               </span>
             )}
@@ -157,42 +151,34 @@ export function Walkthrough() {
 
           {/* the work, streaming in */}
           <div className="relative min-h-[21rem] p-4 sm:min-h-[23rem] sm:p-5">
-            <AnimatePresence>
-              {now >= AT.brief && (
-                <motion.p key="brief" {...rise} className="text-subhead max-w-[26em] text-ink/90">
+            {now >= AT.brief && (
+                <p className="walkthrough-rise text-subhead max-w-[26em] text-ink/90">
                   “{CELEBRATE.brief}”
-                </motion.p>
-              )}
-            </AnimatePresence>
+                </p>
+            )}
 
             <div className="mt-4 flex flex-wrap gap-1.5">
-              <AnimatePresence>
                 {CELEBRATE.venues.slice(0, venueCount).map((venue) => (
-                  <motion.span
+                  <span
                     key={venue.name}
-                    {...rise}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-panel/70 px-2.5 py-1 text-[0.75rem] text-ink/90"
+                    className="walkthrough-rise inline-flex items-center gap-1.5 rounded-full border border-ink/12 bg-panel/70 px-2.5 py-1 text-[0.75rem] text-ink/90"
                   >
                     {venue.name}
                     <span className="text-data text-ink/80">osm</span>
-                  </motion.span>
+                  </span>
                 ))}
-              </AnimatePresence>
             </div>
 
-            <AnimatePresence>
-              {now >= AT.forecast && (
-                <motion.div key="forecast" {...rise} className="mt-3 flex flex-wrap items-center gap-2 text-[0.82rem] text-ink/65">
+            {now >= AT.forecast && (
+                <div className="walkthrough-rise mt-3 flex flex-wrap items-center gap-2 text-[0.82rem] text-ink/65">
                   {CELEBRATE.forecast}
                   <SourceChip source={CELEBRATE.forecastSource.source} retrievedAt={CELEBRATE.forecastSource.retrievedAt} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+            )}
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <AnimatePresence>
                 {now >= AT.schedule && (
-                  <motion.div key="schedule" {...rise} className="rounded-xl border border-ink/10 bg-panel/60 p-3">
+                  <div className="walkthrough-rise rounded-xl border border-ink/10 bg-panel/60 p-3">
                     <p className="text-kicker mb-2 text-[0.6rem] text-ink/60">Schedule</p>
                     {CELEBRATE.schedule.map((item) => (
                       <p key={item.time} className="flex gap-2 text-[0.78rem] leading-6 text-ink/80">
@@ -200,10 +186,10 @@ export function Walkthrough() {
                         {item.title}
                       </p>
                     ))}
-                  </motion.div>
+                  </div>
                 )}
                 {now >= AT.budget && (
-                  <motion.div key="budget" {...rise} className="rounded-xl border border-ink/10 bg-panel/60 p-3">
+                  <div className="walkthrough-rise rounded-xl border border-ink/10 bg-panel/60 p-3">
                     <p className="text-kicker mb-2 text-[0.6rem] text-ink/60">Budget — {CELEBRATE.budget.total} {CELEBRATE.budget.currency}</p>
                     {CELEBRATE.budget.items.map((item) => (
                       <p key={item.label} className="flex justify-between text-[0.78rem] leading-6 text-ink/80">
@@ -211,14 +197,12 @@ export function Walkthrough() {
                         <span className="text-data text-ink/65">{item.amount}</span>
                       </p>
                     ))}
-                  </motion.div>
+                  </div>
                 )}
-              </AnimatePresence>
             </div>
 
-            <AnimatePresence>
-              {now >= AT.guide && (
-                <motion.div key="guide" {...rise} className="mt-3 flex items-center gap-3">
+            {now >= AT.guide && (
+                <div className="walkthrough-rise mt-3 flex items-center gap-3">
                   <Image
                     src="/artifacts/guest-guide.webp"
                     alt="Shareable guest guide produced for the farewell dinner"
@@ -230,40 +214,31 @@ export function Walkthrough() {
                     <p className="text-[0.82rem] font-medium text-ink/85">Guest guide — shareable page</p>
                     <p className="text-[0.72rem] text-ink/60">invite suite · toast · contingency plan</p>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+            )}
 
             {/* the Tribunal grades each artifact */}
             <div className="mt-4 flex flex-wrap gap-1.5">
-              <AnimatePresence>
                 {CELEBRATE.artifacts.slice(0, gradeCount).map((artifact) => (
-                  <motion.span key={artifact.kind} {...rise}>
+                  <span key={artifact.kind} className="walkthrough-rise">
                     <GradeChip verdict="pass">{artifact.kind.replace("_", " ")} · pass</GradeChip>
-                  </motion.span>
+                  </span>
                 ))}
-              </AnimatePresence>
             </div>
 
             {/* the seal stamps down */}
-            <AnimatePresence>
               {now >= AT.sealStart && (
-                <motion.div
-                  key="seal"
-                  initial={motionReduced ? { opacity: 1 } : { opacity: 0, scale: 1.5 }}
-                  animate={{ opacity: 1, scale: 1, transition: { duration: 0.55, ease: EASE } }}
-                  exit={{ opacity: 0 }}
-                  className="absolute right-4 bottom-4 sm:right-6 sm:bottom-5"
+                <div
+                  className={`absolute right-4 bottom-4 sm:right-6 sm:bottom-5${motionReduced ? "" : " walkthrough-seal-in"}`}
                 >
                   <SealMark size={84} className="text-amethyst/85" />
-                </motion.div>
+                </div>
               )}
               {sealed && (
-                <motion.p key="anchor" {...rise} className="text-data mt-4 max-w-[24rem] break-all text-ink/60">
+                <p className="walkthrough-rise text-data mt-4 max-w-[24rem] break-all text-ink/60">
                   anchored on X Layer · {CELEBRATE.seal.anchorTx.slice(0, 26)}… · {CELEBRATE.seal.anchoredAt}
-                </motion.p>
+                </p>
               )}
-            </AnimatePresence>
           </div>
         </div>
       </div>

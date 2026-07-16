@@ -13,6 +13,8 @@
  * wants is not here, it must leave the claim out rather than invent it OR placeholder it.
  */
 
+import type { BriefContext } from "./types.js";
+
 export interface RunFacts {
   /** What the thing is actually called. */
   productName: string;
@@ -24,6 +26,34 @@ export interface RunFacts {
   prices?: ReadonlyArray<{ name: string; usdt: number }> | undefined;
   /** Anything else established by evidence (a real headline, a real audience). */
   established?: readonly string[] | undefined;
+  /** Optional first-party depth from the Detailed Brief. */
+  briefContext?: BriefContext | undefined;
+}
+
+/** Stable, labelled facts from the Detailed Brief. Never flatten these into
+ * untrusted prose without their labels: "avoid X" must never become "do X". */
+export function briefContextFacts(context?: BriefContext): string[] {
+  if (!context) return [];
+  const lines: string[] = [];
+  if (context.honoreeDetails) lines.push(`Owner-established context: ${context.honoreeDetails}`);
+  if (context.dietaryNotes) lines.push(`Dietary requirements: ${context.dietaryNotes}`);
+  if (context.accessibilityNotes) lines.push(`Accessibility requirements: ${context.accessibilityNotes}`);
+  if (context.doList?.length) lines.push(`Must include: ${context.doList.join("; ")}`);
+  if (context.dontList?.length) lines.push(`Must avoid: ${context.dontList.join("; ")}`);
+  if (context.referenceLinks?.length) lines.push(`Owner-provided references: ${context.referenceLinks.join(", ")}`);
+  if (context.tonePreference) lines.push(`Tone requested: ${context.tonePreference}`);
+  return lines;
+}
+
+/** A deterministic input-quality measure used by the corpus. It rewards usable,
+ * bounded context—not verbosity—and gives the three detailed fixtures a measurable
+ * claim without pretending it is an output-quality benchmark. */
+export function briefSpecificityScore(context?: BriefContext): number {
+  if (!context) return 20;
+  const facts = briefContextFacts(context);
+  const boundaries = (context.doList?.length ?? 0) + (context.dontList?.length ?? 0);
+  const sources = context.referenceLinks?.length ?? 0;
+  return Math.min(100, 20 + facts.length * 10 + Math.min(boundaries, 6) * 4 + Math.min(sources, 3) * 5);
 }
 
 /**
@@ -51,6 +81,7 @@ export function factsBlock(facts: RunFacts): string {
   }
 
   for (const fact of facts.established ?? []) lines.push(`- ${fact}`);
+  for (const fact of briefContextFacts(facts.briefContext)) lines.push(`- ${fact}`);
 
   lines.push(
     "",

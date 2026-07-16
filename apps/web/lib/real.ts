@@ -15,7 +15,7 @@ export const REGISTRY = "0x1653509df702b45d67b3eb12ca37de9f5fc21f08";
 export const EXPLORER_REGISTRY = `https://www.oklink.com/x-layer/address/${REGISTRY}`;
 export const API_BASE = "https://api.occestra.xyz";
 export const AGENT_ID = 5213;
-export const OQS_VERSION = "1.0.0";
+export const OQS_VERSION = "1.2.0";
 
 /* ------------------------------------------------ the sealed celebrate pack */
 

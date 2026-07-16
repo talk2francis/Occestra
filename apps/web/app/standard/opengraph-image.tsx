@@ -9,6 +9,6 @@ export default function OgImage() {
     kicker: "Published standard",
     title: "The Occestra Quality Standard.",
     footer: "Generated from the same constants the grading engine runs.",
-    badge: "OQS v1.0.0",
+    badge: "OQS v1.2.0",
   });
 }

@@ -9,6 +9,6 @@ export default function OgImage() {
     kicker: "Pricing",
     title: "Priced in cents. Graded like it costs more.",
     footer: "x402 per call in USDT on X Layer, plus negotiated A2A packages.",
-    badge: "8 tools",
+    badge: "13 tools",
   });
 }
