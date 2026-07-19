@@ -22,6 +22,8 @@ import {
   makeKeepsake,
   moodboard,
   planOccasion,
+  isPackTool,
+  runPipeline,
   writeToast,
   type PipelineContext,
 } from "./pipelines.js";
@@ -59,7 +61,7 @@ export function toJson(value: unknown): string {
  * One shape, two readers. A schema that lived only inside registerTool could not be checked
  * at the door, and a second copy of it at the door would drift from the first by Thursday.
  */
-const TOOL_INPUTS = {
+export const TOOL_INPUTS = {
   oce_plan_occasion: {
       occasion: z.string().min(2).max(200).describe("What is happening. e.g. 'my sister's 30th birthday dinner'"),
       city: z.string().min(1).max(120).describe("City the occasion happens in."),
@@ -151,10 +153,37 @@ const TOOL_INPUTS = {
       size: z.string().regex(/^\d{2,5}x\d{2,5}$/).optional().describe("The size the image was SUPPOSED to be. Enables the hard dimension check."),
       styleId: StyleId.optional(),
   },
+  oce_verify_keepsake: {
+      keepsakeId: z.string().regex(/^oce_[0-9a-z]{22}$/).describe("The keepsake id returned with any Occestra result."),
+      ownerToken: z
+        .string()
+        .min(8)
+        .max(200)
+        .optional()
+        .describe("For a PRIVATE keepsake only: the owner token given at creation."),
+  },
 } as const;
 
 /** The arguments an async job may be created with — validated before a cent moves. */
 export function packToolSchema(tool: PackToolName): z.ZodTypeAny {
+  return z.object(TOOL_INPUTS[tool]);
+}
+
+/** Tools the OKX stateless buyer may call without opening an MCP session. */
+export const PLAIN_HTTP_TOOLS = [
+  ...PACK_TOOLS,
+  "oce_critique",
+  "oce_verify_keepsake",
+] as const;
+
+export type PlainHttpToolName = (typeof PLAIN_HTTP_TOOLS)[number];
+
+export function isPlainHttpTool(tool: string): tool is PlainHttpToolName {
+  return (PLAIN_HTTP_TOOLS as readonly string[]).includes(tool);
+}
+
+/** One schema source for MCP, jobs and stateless x402 replays. */
+export function plainHttpToolSchema(tool: PlainHttpToolName): z.ZodTypeAny {
   return z.object(TOOL_INPUTS[tool]);
 }
 
@@ -234,6 +263,110 @@ export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
     verify: "Call oce_verify_keepsake with this keepsakeId — it is free, forever.",
     ...(note ? { note } : {}),
   };
+}
+
+/** Render the richer Tribunal response identically on MCP and plain HTTP. */
+async function critiqueResult(
+  ctx: ServerContext,
+  input: z.infer<z.ZodObject<typeof TOOL_INPUTS.oce_critique>>,
+): Promise<unknown> {
+  const { pack, report } = await critique(ctx, input);
+  return {
+    ...packResult(ctx, pack),
+    verdict: report.pass ? "PASS" : "FAIL",
+    oqsVersion: report.oqsVersion,
+    axes: report.axes,
+    hardFailures: report.deterministic.filter((check) => !check.passed && check.hard),
+    softFailures: report.deterministic.filter((check) => !check.passed && !check.hard),
+    repairBrief: report.repairBrief,
+    rubric: `${ctx.publicBaseUrl}/standard`,
+  };
+}
+
+/** Verify a seal without requiring callers to establish an MCP session. */
+async function verifyKeepsakeResult(
+  ctx: ServerContext,
+  { keepsakeId, ownerToken }: z.infer<z.ZodObject<typeof TOOL_INPUTS.oce_verify_keepsake>>,
+): Promise<unknown> {
+  const pack = ctx.store.getPack(keepsakeId);
+  if (!pack) {
+    return {
+      found: false,
+      keepsakeId,
+      note: "No keepsake with that id. Occestra only knows the ones it made.",
+    };
+  }
+
+  const anchor = ctx.store.anchorOf(keepsakeId);
+  const explorer = chainFor(ctx.chainId).blockExplorers.default.url;
+  const isPrivate = ctx.store.isPrivate(keepsakeId);
+  const salt = isPrivate && ownerToken ? ctx.store.revealSalt(keepsakeId, ownerToken) : undefined;
+  if (salt) ctx.store.audit("salt_revealed", { packId: keepsakeId, actor: ctx.store.actorHash(ownerToken!) });
+  const manifestVerified = isPrivate
+    ? pack.seal && salt
+      ? saltedManifestCommitment(pack, salt as `0x${string}`).toLowerCase() === pack.seal.manifestHash.toLowerCase()
+      : undefined
+    : true;
+
+  return {
+    found: true,
+    keepsakeId,
+    studio: pack.studio,
+    ...(isPrivate ? { private: true } : {}),
+    createdAt: pack.createdAt,
+    ...(isPrivate ? {} : { quality: pack.quality }),
+    seal: pack.seal
+      ? {
+          ...pack.seal,
+          leaf: leafOfSeal(pack.seal),
+          signatureValid: await verifySeal(pack.seal),
+        }
+      : undefined,
+    anchored: Boolean(anchor?.anchoredAt),
+    ...(anchor?.txHash ? { anchorTx: anchor.txHash, explorer: `${explorer}/tx/${anchor.txHash}` } : {}),
+    ...(isPrivate
+      ? {
+          manifest:
+            manifestVerified === undefined
+              ? "This keepsake is private and its seal is salted. Its signature and anchor are anyone's to verify; to confirm the sealed commitment opens to this pack, pass the ownerToken you were given."
+              : manifestVerified
+                ? "SALT VERIFIED: the salt opens the sealed commitment for this pack — the anchored leaf is provably this keepsake, and nobody without the salt could have known that."
+                : "SALT MISMATCH: the token's salt does not open this pack's commitment.",
+        }
+      : {}),
+    ...(anchor && !anchor.anchoredAt
+      ? { note: "Sealed and queued — the anchor worker batches leaves on chain every 30 minutes." }
+      : {}),
+    ...(pack.seal ? {} : { note: "This pack was produced without a sealer key and is unsigned." }),
+    publicPage: `${ctx.publicBaseUrl}/k/${keepsakeId}`,
+    registry: ctx.registry,
+    rubric: rubricAsJson().oqsVersion,
+  };
+}
+
+/**
+ * Execute one advertised service directly over ordinary HTTP JSON.
+ *
+ * OKX's task buyer replays one HTTP request; it does not initialize an MCP session. Keeping
+ * this dispatcher beside the MCP handlers guarantees the compatibility route runs the same
+ * pipelines and returns the same deliverables instead of silently substituting a toast.
+ */
+export async function executePlainHttpTool(
+  ctx: ServerContext,
+  tool: PlainHttpToolName,
+  args: unknown,
+): Promise<unknown> {
+  const input = plainHttpToolSchema(tool).parse(args);
+  if (isPackTool(tool)) {
+    return packResult(ctx, await runPipeline(ctx, tool, input));
+  }
+  if (tool === "oce_critique") {
+    return critiqueResult(ctx, input as z.infer<z.ZodObject<typeof TOOL_INPUTS.oce_critique>>);
+  }
+  return verifyKeepsakeResult(
+    ctx,
+    input as z.infer<z.ZodObject<typeof TOOL_INPUTS.oce_verify_keepsake>>,
+  );
 }
 
 export function buildServer(ctx: ServerContext): McpServer {
@@ -465,18 +598,7 @@ export function buildServer(ctx: ServerContext): McpServer {
       inputSchema: TOOL_INPUTS.oce_critique,
     },
     async (input) =>
-      run(() => critique(ctx, input),
-        ({ pack, report }) => ({
-          ...packResult(ctx, pack),
-          verdict: report.pass ? "PASS" : "FAIL",
-          oqsVersion: report.oqsVersion,
-          axes: report.axes,
-          hardFailures: report.deterministic.filter((check) => !check.passed && check.hard),
-          softFailures: report.deterministic.filter((check) => !check.passed && !check.hard),
-          repairBrief: report.repairBrief,
-          rubric: `${ctx.publicBaseUrl}/standard`,
-        }),
-      ),
+      run(() => critiqueResult(ctx, input), (result) => result),
   );
 
   /* -------------------------------------------------------- oce_verify_keepsake */
@@ -496,80 +618,9 @@ export function buildServer(ctx: ServerContext): McpServer {
         "",
         "You do not have to trust Occestra's servers for any of this: the manifest hash is recomputable from the pack itself, and the anchor is on X Layer whether we are online or not.",
       ].join("\n"),
-      inputSchema: {
-        keepsakeId: z.string().regex(/^oce_[0-9a-z]{22}$/).describe("The keepsake id returned with any Occestra result."),
-        ownerToken: z
-          .string()
-          .min(8)
-          .max(200)
-          .optional()
-          .describe("For a PRIVATE keepsake only: the owner token you were given at creation. It reveals the salt so you can confirm the on-chain commitment opens to your pack. Never needed for public packs."),
-      },
+      inputSchema: TOOL_INPUTS.oce_verify_keepsake,
     },
-    async ({ keepsakeId, ownerToken }) => {
-      const pack = ctx.store.getPack(keepsakeId);
-      if (!pack) {
-        return ok({
-          found: false,
-          keepsakeId,
-          note: "No keepsake with that id. Occestra only knows the ones it made.",
-        });
-      }
-
-      const anchor = ctx.store.anchorOf(keepsakeId);
-      const explorer = chainFor(ctx.chainId).blockExplorers.default.url;
-      const isPrivate = ctx.store.isPrivate(keepsakeId);
-
-      // A private keepsake's seal is SALTED. Anyone can confirm the sealer signed it and it is on
-      // chain; only the owner, presenting their token, can confirm the commitment opens to THIS
-      // pack's manifest. Without the token we say so plainly rather than implying a full check.
-      const salt = isPrivate && ownerToken ? ctx.store.revealSalt(keepsakeId, ownerToken) : undefined;
-      // A private salt was released to a proven owner — recorded, without the salt or any content.
-      if (salt) ctx.store.audit("salt_revealed", { packId: keepsakeId, actor: ctx.store.actorHash(ownerToken!) });
-      const manifestVerified = isPrivate
-        ? pack.seal && salt
-          ? saltedManifestCommitment(pack, salt as `0x${string}`).toLowerCase() === pack.seal.manifestHash.toLowerCase()
-          : undefined
-        : true;
-
-      return ok({
-        found: true,
-        keepsakeId,
-        studio: pack.studio,
-        ...(isPrivate ? { private: true } : {}),
-        createdAt: pack.createdAt,
-        // A private pack's quality summary counts artifacts but names none — safe to show.
-        ...(isPrivate ? {} : { quality: pack.quality }),
-        seal: pack.seal
-          ? {
-              ...pack.seal,
-              leaf: leafOfSeal(pack.seal),
-              signatureValid: await verifySeal(pack.seal),
-            }
-          : undefined,
-        anchored: Boolean(anchor?.anchoredAt),
-        ...(anchor?.txHash
-          ? { anchorTx: anchor.txHash, explorer: `${explorer}/tx/${anchor.txHash}` }
-          : {}),
-        ...(isPrivate
-          ? {
-              manifest:
-                manifestVerified === undefined
-                  ? "This keepsake is private and its seal is salted. Its signature and anchor are anyone's to verify; to confirm the sealed commitment opens to this pack, pass the ownerToken you were given."
-                  : manifestVerified
-                    ? "SALT VERIFIED: the salt opens the sealed commitment for this pack — the anchored leaf is provably this keepsake, and nobody without the salt could have known that."
-                    : "SALT MISMATCH: the token's salt does not open this pack's commitment.",
-            }
-          : {}),
-        ...(anchor && !anchor.anchoredAt
-          ? { note: "Sealed and queued — the anchor worker batches leaves on chain every 30 minutes." }
-          : {}),
-        ...(pack.seal ? {} : { note: "This pack was produced without a sealer key and is unsigned." }),
-        publicPage: `${ctx.publicBaseUrl}/k/${keepsakeId}`,
-        registry: ctx.registry,
-        rubric: rubricAsJson().oqsVersion,
-      });
-    },
+    async (input) => ok(await verifyKeepsakeResult(ctx, input)),
   );
 
   /* --------------------------------------------------- oce_create_pack_job */

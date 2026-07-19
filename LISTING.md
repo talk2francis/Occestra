@@ -10,7 +10,11 @@ one the shipped code actually performs today.
 - **Tagline:** Every moment, made monumental.
 - **Type:** A2MCP (Agent-to-MCP), pay-per-call
 - **Primary category:** Lifestyle (the Art Creation angle is carried in the copy, not a second listing)
-- **Endpoint:** `https://api.occestra.xyz/mcp` (MCP, streamable-http, stateless, POST)
+- **Endpoint:** `https://api.occestra.xyz/mcp` (MCP Streamable HTTP; JSON-only `tools/call`
+  replays are dispatched directly to the named tool)
+- **Plain buyer endpoints:** `https://api.occestra.xyz/x402/<tool>` (GET or POST JSON). Use the
+  matching service URL when a marketplace buyer does not initialize MCP; unlike an empty shared
+  route, this preserves which service was purchased and can never fall back to Toast.
 - **Payment:** x402 v2, scheme `exact`, network `eip155:196` (X Layer), asset USD₮0
   `0x779ded0c9e1022225f8e0630b35a9b54be713736`
 - **Treasury:** `0x0d63f9EeB86813230B72017444cea16Cd4A453F2`

@@ -9,11 +9,14 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
-- Fixed the remaining OKX buyer-compatibility edge: a `task-402-pay` replay can retain a JSON-RPC
-  `tools/call` envelope while negotiating plain `application/json`. The shared `/mcp` route now
-  recognizes that exact toast replay as plain x402, recursively unwraps `params.arguments`, and
-  returns the paid JSON deliverable instead of MCP Streamable-HTTP's 406. Genuine MCP sessions
-  still require both JSON and event-stream media types; a regression test covers the replay.
+- Fixed the remaining OKX buyer-compatibility edge for **every advertised service**, not only
+  Toast. A `task-402-pay` replay may retain a JSON-RPC `tools/call` envelope while negotiating
+  plain `application/json`; `/mcp` now dispatches that replay to the named plan, invitation,
+  toast, moodboard, keepsake, launch, critique or verification implementation and returns its
+  genuine JSON deliverable. It never substitutes a toast for another purchase. Each service is
+  also exposed at `/x402/<tool>` so a bodyless buyer can preserve service identity without an MCP
+  initialize/session handshake. Genuine MCP sessions still require both JSON and event-stream
+  media types. Regression coverage executes every direct service and asserts its own artifact.
 - Made the three licensed Studio portraits clearer and persistent behind the Live Feed while work
   runs, with a stronger paper-soft treatment and a more legible quiet-room plaque. Raised the
   landing certificate rosette to the requested 55% visibility point without putting it in front of

@@ -731,6 +731,109 @@ describe("http surface", () => {
     expect(real.status).toBe(200);
   });
 
+  it("dispatches JSON-only x402 replays to the named service — never a toast fallback", async () => {
+    await start(new OkxGate({
+      store: makeCtx().store,
+      treasury: TREASURY,
+      chainId: 196,
+      now: () => NOW,
+    }));
+
+    const cases = [
+      {
+        tool: "oce_plan_occasion" as const,
+        args: { occasion: "Birthday dinner", city: "Abuja", date: "2026-07-25", headcount: 18, vibe: "warm" },
+        kind: "plan",
+      },
+      {
+        tool: "oce_design_invite" as const,
+        args: { occasion: "Birthday dinner", date: "2026-07-25", city: "Abuja" },
+        kind: "invitation",
+      },
+      {
+        tool: "oce_write_toast" as const,
+        args: { subject: "Francis", tone: "warm" },
+        kind: "toast",
+      },
+      {
+        tool: "oce_moodboard" as const,
+        args: { subject: "an amethyst birthday dinner" },
+        kind: "moodboard",
+      },
+      {
+        tool: "oce_make_keepsake" as const,
+        args: { title: "A day at the beach", description: "Friends spent a quiet afternoon together." },
+        kind: "keepsake_art",
+      },
+      {
+        tool: "oce_launch_kit" as const,
+        args: {
+          productName: "Tidepool",
+          description: "A planning tool for small creative teams.",
+          deliverables: ["brand_kit"],
+        },
+        kind: "brand_kit",
+      },
+      {
+        tool: "oce_critique" as const,
+        args: { kind: "launch_thread", brief: "A specific product launch thread", text: "We made a useful product." },
+        kind: "critique_report",
+      },
+    ];
+
+    for (const [index, sample] of cases.entries()) {
+      const fee = sample.tool === "oce_write_toast" ? 0.02 : PRICES[sample.tool];
+      const proof = await paymentProof(fee, `plain-service-${index}`);
+      const response = await fetch(`${base}/mcp`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          "PAYMENT-SIGNATURE": proof,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: index + 100,
+          method: "tools/call",
+          params: { name: sample.tool, arguments: sample.args },
+        }),
+      });
+
+      expect(response.status, sample.tool).toBe(200);
+      const result = await response.json();
+      expect(result.service).toBe(sample.tool);
+      const kinds = result.deliverable.artifacts.map((artifact: { kind: string }) => artifact.kind);
+      expect(kinds, `${sample.tool} returned ${kinds.join(", ")}`).toContain(sample.kind);
+      if (sample.tool !== "oce_write_toast") expect(kinds).not.toEqual(["toast"]);
+    }
+
+    // Verification is free and is also usable over ordinary JSON without an MCP session.
+    const verify = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 200,
+        method: "tools/call",
+        params: { name: "oce_verify_keepsake", arguments: { keepsakeId: "oce_0zzzzzzzzzzzzzzzzzzzzz" } },
+      }),
+    });
+    expect(verify.status).toBe(200);
+    const verifyResult = await verify.json();
+    expect(verifyResult.service).toBe("oce_verify_keepsake");
+    expect(verifyResult.priceUsdt).toBe(0);
+    expect(verifyResult.deliverable).toMatchObject({ found: false });
+
+    // A service-specific endpoint preserves identity even when the buyer sends no body.
+    const moodboard = await fetch(`${base}/x402/oce_moodboard`, { headers: { accept: "application/json" } });
+    expect(moodboard.status).toBe(402);
+    expect((await moodboard.json()).accepts[0].amount).toBe(toAtomic(PRICES.oce_moodboard).toString());
+
+    const manifest = await (await fetch(`${base}/.well-known/occestra.json`)).json();
+    expect(manifest.tools.find((tool: { name: string }) => tool.name === "oce_critique").plainHttp)
+      .toBe("http://test.local/x402/oce_critique");
+  }, 60_000);
+
   it("does the work in dev mode, and never gates the free tool even under a real gate", async () => {
     await start(new DevGate());
 

@@ -12,7 +12,8 @@ mainnet) — built for the OKX.AI Genesis Hackathon.
 | | |
 |---|---|
 | **Product** | https://occestra.xyz — landing, live Studio workspace, gallery of real runs |
-| **ASP endpoint** | `https://api.occestra.xyz/mcp` — MCP over streamable HTTP, x402-paid, stateless |
+| **ASP endpoint** | `https://api.occestra.xyz/mcp` — MCP Streamable HTTP plus JSON-only buyer replay dispatch |
+| **Plain x402** | `https://api.occestra.xyz/x402/<tool>` — service-specific JSON for buyers that do not initialize MCP |
 | **Docs** | https://occestra.xyz/docs — quickstart, jobs, styles, privacy, SLOs, provenance, A2A, judge proofs |
 | **Published standard** | https://occestra.xyz/standard — generated from the grading engine's own constants |
 | **Live stats** | https://occestra.xyz/stats — honest counters, computed from the store per request |

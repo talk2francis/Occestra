@@ -224,13 +224,16 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
   not end-to-end validation: sign and replay both buyer shapes before listing.**
 
 - 2026-07-19 (paid buyer replay) — **THE ENVELOPE DOES NOT DECIDE THE TRANSPORT; THE ACCEPTED
-  MEDIA TYPES DO.** OKX's current `x402-check --body` can preserve a JSON-RPC `tools/call` envelope
-  while still acting as a plain HTTP buyer accepting only `application/json`. Classifying every
-  JSON-RPC-shaped body as MCP sent that valid paid replay to Streamable-HTTP and returned 406 before
-  settlement. `/mcp` now treats the exact JSON-only `oce_write_toast` wrapper as the registered
-  plain x402 service, unwraps `params.arguments`, and reserves MCP for clients that actually accept
-  `text/event-stream`. An unrelated JSON-only MCP request still gets 406, so compatibility does not
-  silently turn the shared endpoint into a different tool.
+  MEDIA TYPES DO — AND A COMPATIBILITY ROUTE MUST DISPATCH, NEVER FALL BACK.** OKX's current
+  `task-402-pay` can preserve a JSON-RPC `tools/call` envelope while acting as a plain HTTP buyer
+  accepting only `application/json`. The first patch recognized only `oce_write_toast`; every
+  other purchased service still reached Streamable-HTTP, returned 406, and an external fulfiller
+  could then record a hollow sale with a toast fallback. `/mcp` now unwraps and directly executes
+  the **named** plan/invite/toast/moodboard/keepsake/launch/critique/verify implementation. It never
+  substitutes another tool. `/x402/<tool>` gives bodyless buyers an identity-preserving endpoint;
+  the bodyless shared `/mcp` route remains only the legacy 0.02-USDT toast service because an empty
+  shared request cannot identify any other purchase. MCP is reserved for clients that actually
+  accept `text/event-stream`. Tests execute every direct service and assert its own artifact kind.
 
 - 2026-07-14 (V2-1.6) — **`oce_design_invite` FAILED EVERY BUYER, AND ONLY MEASURING IT ACROSS RUNS FOUND IT.** Two defects, both caught by `node scripts/slo.mjs`: (1) the invitation IMAGE was failing legibility 30 / platform_fit 30 because the critic graded the art plate as a FINISHED invitation and found no names/date/city inside it — but EVERY Occestra image is text-free by design ("type is set separately"), which the tool descriptions state to the buyer. The critic did not know. `isArtPlate()` in critique.ts now tells it: do not deduct legibility or platform_fit for absent copy; judge the ART. This is the `inapplicableAxes` bug one layer up — an axis measured against a surface the artifact was deliberately built without, and it silently affected every image tool. (2) The invite COPY was a static template with the raw occasion string interpolated, so occasion="Mara & Sam are getting married" produced "invited to Mara & Sam are getting married". Now WRITTEN by the model, grounded. Result: design_invite 0–50% → 100% across 3 runs. **A tool can pass its unit tests and still fail every real buyer; measure the real thing.**
 - 2026-07-14 (V2-1.2) — **ALL SIX PAID TOOLS SOLD BELOW COST, NOT THREE — AND THE MEASUREMENT THAT SAID "THREE" HAD THE SAME BLIND SPOT THE GOVERNOR DID.** `scripts/cost-model.mjs` counted "beats" (generator calls) and never counted the CRITIC, because the critic does not go through the text port. A plan makes five artifacts, therefore five critique calls, and was modelled as making none: it was believed to cost $0.0066 and truly costs **$0.1253** — wrong by **19×**, in the direction that loses money. Every tool was under water. `scripts/cost-live.mjs` now measures the two rates for real (WRITER $0.0118/call, CRITIC $0.0168/call — the critic is the DEARER one: the whole artifact goes in and the anchored rubric goes in) and `cost-model.mjs` counts both ports. **Any time you measure spend, ask what talks to a model WITHOUT going through the port you are watching.**

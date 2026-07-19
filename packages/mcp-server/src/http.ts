@@ -13,14 +13,18 @@ import { HOUSE_STYLES } from "@occestra/providers";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun } from "./demo.js";
-import { PolicyRefusal, screenToolInput, writeToast, type WriteToastInput } from "./pipelines.js";
+import { PolicyRefusal, screenToolInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
 import {
   VERSION,
   buildServer,
+  executePlainHttpTool,
+  isPlainHttpTool,
   packResult,
   packToolSchema,
+  plainHttpToolSchema,
   toJson,
+  type PlainHttpToolName,
   type ServerContext,
   type ToolResult,
 } from "./server.js";
@@ -112,7 +116,7 @@ function replayPlain(res: Response, stored: StoredResponse): void {
 
 /* ----------------------------------------------------- plain x402 service */
 
-const PLAIN_X402_TOOL = "oce_write_toast" as const;
+const LEGACY_PLAIN_TOOL = "oce_write_toast" as const;
 const DEFAULT_PLAIN_TOAST_SUBJECT = "the people who made this moment possible";
 
 type JsonObject = Record<string, unknown>;
@@ -125,7 +129,7 @@ function isJsonObject(value: unknown): value is JsonObject {
  * `task-402-pay` replays either a GET with no body or a POST carrying the service body. Accept
  * both. A few buyers wrap the body as `arguments`, `input`, `body` or `params`; unwrap those too.
  */
-function plainToastInput(req: Request): WriteToastInput {
+function unwrappedPlainBody(req: Request): JsonObject {
   const source = req.method === "GET" ? req.query : req.body;
   let body: JsonObject = isJsonObject(source) ? source : {};
 
@@ -139,6 +143,60 @@ function plainToastInput(req: Request): WriteToastInput {
       .find(isJsonObject);
     if (!nested) break;
     body = nested;
+  }
+
+  return body;
+}
+
+/** Resolve service identity before touching money. A bodyless shared /mcp stays legacy toast. */
+function plainToolOf(req: Request, routeTool?: string): PlainHttpToolName | undefined {
+  if (routeTool) return isPlainHttpTool(routeTool) ? routeTool : undefined;
+
+  const body = isJsonObject(req.body) ? req.body : {};
+  const params = isJsonObject(body["params"]) ? body["params"] : {};
+  const candidates = [
+    params["name"],
+    req.query["tool"],
+    req.query["service"],
+    body["tool"],
+    body["service"],
+    body["serviceName"],
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && isPlainHttpTool(value)) return value;
+  }
+  return LEGACY_PLAIN_TOOL;
+}
+
+function defaultPlainInput(tool: PlainHttpToolName, now: number): JsonObject {
+  const date = new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  switch (tool) {
+    case "oce_plan_occasion":
+      return { occasion: "a meaningful gathering", city: "Abuja", date, headcount: 8, vibe: "warm and welcoming" };
+    case "oce_design_invite":
+      return { occasion: "a meaningful celebration", date };
+    case "oce_write_toast":
+      return { subject: DEFAULT_PLAIN_TOAST_SUBJECT };
+    case "oce_moodboard":
+      return { subject: "a warm, meaningful gathering" };
+    case "oce_make_keepsake":
+      return { title: "A moment worth remembering", description: "A keepsake with no invented personal details." };
+    case "oce_launch_kit":
+      return { productName: "A new project", description: "A thoughtful new product preparing to launch." };
+    case "oce_critique":
+      return { kind: "written artifact", brief: "Clear, specific, useful writing", text: "A draft submitted for quality review." };
+    case "oce_verify_keepsake":
+      return {};
+  }
+}
+
+/** Normalize buyer envelopes and apply honest, tool-specific defaults for bodyless replays. */
+function plainToolInput(req: Request, tool: PlainHttpToolName, now: number): unknown {
+  const body = unwrappedPlainBody(req);
+  const defaults = defaultPlainInput(tool, now);
+
+  if (tool !== "oce_write_toast") {
+    return plainHttpToolSchema(tool).parse({ ...defaults, ...body });
   }
 
   const text = (...keys: string[]): string | undefined => {
@@ -165,8 +223,7 @@ function plainToastInput(req: Request): WriteToastInput {
     ...(Number.isFinite(lengthSeconds) ? { lengthSeconds } : {}),
   };
 
-  // One schema still governs the MCP tool, the async job and this compatibility service.
-  return packToolSchema(PLAIN_X402_TOOL).parse(candidate) as WriteToastInput;
+  return plainHttpToolSchema(tool).parse({ ...defaults, ...candidate });
 }
 
 /* ---------------------------------------------------------------- the app */
@@ -289,6 +346,7 @@ export function buildApp(ctx: AppContext): Express {
           name,
           priceUsdt,
           free: priceUsdt === 0,
+          ...(isPlainHttpTool(name) ? { plainHttp: `${ctx.publicBaseUrl}/x402/${name}` } : {}),
         })),
         {
           name: "oce_create_pack_job",
@@ -521,10 +579,17 @@ export function buildApp(ctx: AppContext): Express {
     return Number.isFinite(configured) && configured > 0 ? configured : 0.02;
   };
 
-  /** The x402 challenge shared by the GET/no-body and POST/business-body buyer paths. */
-  const emitX402Probe = (res: Response): boolean => {
+  const plainFee = (tool: PlainHttpToolName, legacySharedRoute: boolean): number =>
+    legacySharedRoute && tool === LEGACY_PLAIN_TOOL ? plainX402Fee() : PRICES[tool];
+
+  /** Emit a service-specific x402 challenge without invoking the MCP transport. */
+  const emitX402Probe = (
+    res: Response,
+    tool: PlainHttpToolName = LEGACY_PLAIN_TOOL,
+    legacySharedRoute = true,
+  ): boolean => {
     if (!(ctx.gate instanceof OkxGate)) return false;
-    const challenge = ctx.gate.challenge(PLAIN_X402_TOOL, plainX402Fee());
+    const challenge = ctx.gate.challenge(tool, plainFee(tool, legacySharedRoute));
     res
       .status(402)
       .set("PAYMENT-REQUIRED", Buffer.from(JSON.stringify(challenge)).toString("base64"))
@@ -542,15 +607,20 @@ export function buildApp(ctx: AppContext): Express {
    * what produced the review-blocking 406 and, worse, meant a valid authorization was never
    * settled. Proper JSON-RPC MCP calls still take the transport path below.
    */
-  const handlePlainX402 = async (req: Request, res: Response): Promise<void> => {
+  const handlePlainX402 = async (
+    req: Request,
+    res: Response,
+    tool: PlainHttpToolName,
+    legacySharedRoute = false,
+  ): Promise<void> => {
     if (!(ctx.gate instanceof OkxGate)) {
       res.status(405).json({ error: "The plain x402 service is available in production payment mode only." });
       return;
     }
 
-    let input: WriteToastInput;
+    let input: unknown;
     try {
-      input = plainToastInput(req);
+      input = plainToolInput(req, tool, ctx.deps.clock.now());
       screenToolInput(input);
     } catch (error) {
       if (error instanceof PolicyRefusal) {
@@ -558,21 +628,23 @@ export function buildApp(ctx: AppContext): Express {
         return;
       }
       res.status(400).json({
-        error: "The toast request body is not valid.",
+        error: `The request body is not valid for ${tool}.`,
         detail: error instanceof Error ? error.message : String(error),
         charged: false,
       });
       return;
     }
 
-    const fee = plainX402Fee();
-    const idempotencyKey = req.get("idempotency-key")?.trim() || paymentNonceOf(req.headers);
+    const fee = plainFee(tool, legacySharedRoute);
+    const idempotencyKey = fee > 0
+      ? req.get("idempotency-key")?.trim() || paymentNonceOf(req.headers)
+      : undefined;
 
     if (idempotencyKey) {
       const requestHash = createHash("sha256")
-        .update(JSON.stringify({ service: PLAIN_X402_TOOL, input }))
+        .update(JSON.stringify({ service: tool, input }))
         .digest("hex");
-      const claim = ctx.store.claimIdempotencyKey(idempotencyKey, requestHash, PLAIN_X402_TOOL);
+      const claim = ctx.store.claimIdempotencyKey(idempotencyKey, requestHash, tool);
 
       if (claim.status === "replay") {
         replayPlain(res, claim.response as StoredResponse);
@@ -591,65 +663,74 @@ export function buildApp(ctx: AppContext): Express {
       }
     }
 
-    const verdict = await ctx.gate.check({ headers: req.headers }, PLAIN_X402_TOOL, fee);
-    if (!verdict.ok) {
-      if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
-      if (verdict.status === 402) {
-        res.status(402).set("PAYMENT-REQUIRED", verdict.headerValue).json(verdict.challenge);
+    let requestCtx: ServerContext = ctx;
+    let paymentResponse: string | undefined;
+    let order: ServerContext["order"];
+
+    if (fee > 0) {
+      const verdict = await ctx.gate.check({ headers: req.headers }, tool, fee);
+      if (!verdict.ok) {
+        if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
+        if (verdict.status === 402) {
+          res.status(402).set("PAYMENT-REQUIRED", verdict.headerValue).json(verdict.challenge);
+          return;
+        }
+        res.status(verdict.status).json({ error: verdict.reason, charged: false });
         return;
       }
-      res.status(verdict.status).json({ error: verdict.reason, charged: false });
-      return;
+
+      order = {
+        id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        tool,
+        priceUsdt: fee,
+        payerRef: verdict.payerRef,
+      };
+      ctx.store.recordOrder({
+        ...order,
+        status: "paid",
+        ...(verdict.txHash ? { txHash: verdict.txHash } : {}),
+        createdAt: Date.now(),
+      });
+      paymentResponse = OkxGate.settlementHeader(verdict, String(fee));
+      res.set("PAYMENT-RESPONSE", paymentResponse);
+      requestCtx = { ...ctx, order };
     }
 
-    const order = {
-      id: `o_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      tool: PLAIN_X402_TOOL,
-      priceUsdt: fee,
-      payerRef: verdict.payerRef,
-    };
-    ctx.store.recordOrder({
-      ...order,
-      status: "paid",
-      ...(verdict.txHash ? { txHash: verdict.txHash } : {}),
-      createdAt: Date.now(),
-    });
-
-    const paymentResponse = OkxGate.settlementHeader(verdict, String(fee));
-    res.set("PAYMENT-RESPONSE", paymentResponse);
-    const requestCtx: ServerContext = { ...ctx, order };
-
     try {
-      const pack = await writeToast(requestCtx, input);
+      const deliverable = await executePlainHttpTool(requestCtx, tool, input);
       const payload = {
         ok: true,
-        service: PLAIN_X402_TOOL,
+        service: tool,
         priceUsdt: fee,
-        deliverable: packResult(requestCtx, pack),
+        deliverable,
       };
 
       if (idempotencyKey) {
         ctx.store.completeIdempotencyKey(idempotencyKey, {
           payload,
           isError: false,
-          paymentResponse,
+          ...(paymentResponse ? { paymentResponse } : {}),
         } satisfies StoredResponse);
       }
 
       res.status(200).type("application/json").json(payload);
     } catch (error) {
       if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
-      ctx.store.oweRefund({
-        orderId: order.id,
-        payerRef: order.payerRef,
-        amountUsdt: order.priceUsdt,
-        tool: order.tool,
-        reason: "the plain x402 toast service failed after settlement",
-      });
+      if (order) {
+        ctx.store.oweRefund({
+          orderId: order.id,
+          payerRef: order.payerRef,
+          amountUsdt: order.priceUsdt,
+          tool: order.tool,
+          reason: `the plain x402 ${tool} service failed after settlement`,
+        });
+      }
       res.status(500).json({
-        error: "The paid toast could not be delivered. A refund has been recorded.",
-        charged: true,
-        refundOwed: fee,
+        error: order
+          ? `The paid ${tool} call could not be delivered. A refund has been recorded.`
+          : `${tool} could not be delivered.`,
+        charged: Boolean(order),
+        ...(order ? { refundOwed: fee } : {}),
       });
     }
   };
@@ -661,18 +742,22 @@ export function buildApp(ctx: AppContext): Express {
 
     // `task-402-pay` speaks plain HTTP, not MCP. Some versions preserve a JSON-RPC tools/call
     // envelope while still negotiating ordinary application/json. Classify by BOTH message and
-    // transport: only a client accepting text/event-stream is an MCP session. A JSON-only replay
-    // for the registered toast service must reach the plain handler or a valid payment gets a 406
-    // and the marketplace task can never complete.
+    // transport: only a client accepting text/event-stream is an MCP session. Every JSON-only
+    // tools/call replay must reach the named direct pipeline; silently substituting the toast
+    // tool records a hollow sale and is worse than an explicit failure.
     const isMcpRequest = body?.jsonrpc === "2.0" && typeof body.method === "string";
     const acceptsEventStream = (req.get("accept") ?? "").includes("text/event-stream");
-    const isPlainToastRpc =
+    const plainRpcTool =
       isMcpRequest &&
       body?.method === "tools/call" &&
-      body.params?.name === PLAIN_X402_TOOL &&
-      !acceptsEventStream;
-    if ((!isMcpRequest || isPlainToastRpc) && ctx.gate instanceof OkxGate) {
-      await handlePlainX402(req, res);
+      typeof body.params?.name === "string" &&
+      isPlainHttpTool(body.params.name) &&
+      !acceptsEventStream
+        ? body.params.name
+        : undefined;
+    if ((!isMcpRequest || plainRpcTool) && ctx.gate instanceof OkxGate) {
+      const tool = plainRpcTool ?? plainToolOf(req) ?? LEGACY_PLAIN_TOOL;
+      await handlePlainX402(req, res, tool, tool === LEGACY_PLAIN_TOOL);
       return;
     }
     if (isMcpRequest) {
@@ -872,14 +957,31 @@ export function buildApp(ctx: AppContext): Express {
     }
   });
 
+  // One plain URL per service lets a bodyless buyer preserve service identity. The shared
+  // /mcp GET remains the legacy marketplace toast probe; it cannot infer another service from
+  // an empty request, so callers/listings for other services should use these explicit routes.
+  app.all("/x402/:tool", async (req, res) => {
+    const tool = plainToolOf(req, req.params.tool);
+    if (!tool) {
+      res.status(404).json({ error: `unknown plain x402 service: ${req.params.tool}`, charged: false });
+      return;
+    }
+    if (req.method !== "GET" && req.method !== "POST") {
+      res.status(405).json({ error: "Plain x402 services accept GET or POST." });
+      return;
+    }
+    await handlePlainX402(req, res, tool, false);
+  });
+
   // Stateless means stateless: no SSE stream to GET, no session to DELETE.
   app.get("/mcp", async (req, res) => {
     // `task-402-pay` first discovers with GET, then may replay that exact GET with X-PAYMENT.
     // An unsigned GET gets the challenge; a signed one settles and receives the JSON toast.
     if (ctx.gate instanceof OkxGate) {
       const hasPayment = Boolean(req.get("payment-signature") ?? req.get("x-payment"));
-      if (!hasPayment && emitX402Probe(res)) return;
-      await handlePlainX402(req, res);
+      const tool = plainToolOf(req) ?? LEGACY_PLAIN_TOOL;
+      if (!hasPayment && emitX402Probe(res, tool, tool === LEGACY_PLAIN_TOOL)) return;
+      await handlePlainX402(req, res, tool, tool === LEGACY_PLAIN_TOOL);
       return;
     }
     res.status(405).json({ error: "Occestra's MCP endpoint is stateless: POST only." });
