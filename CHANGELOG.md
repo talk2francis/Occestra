@@ -9,6 +9,15 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Fixed the remaining OKX buyer-compatibility edge: a `task-402-pay` replay can retain a JSON-RPC
+  `tools/call` envelope while negotiating plain `application/json`. The shared `/mcp` route now
+  recognizes that exact toast replay as plain x402, recursively unwraps `params.arguments`, and
+  returns the paid JSON deliverable instead of MCP Streamable-HTTP's 406. Genuine MCP sessions
+  still require both JSON and event-stream media types; a regression test covers the replay.
+- Made the three licensed Studio portraits clearer and persistent behind the Live Feed while work
+  runs, with a stronger paper-soft treatment and a more legible quiet-room plaque. Raised the
+  landing certificate rosette to the requested 55% visibility point without putting it in front of
+  hero copy.
 - Updated all six repriced OKX.AI marketplace services so their displayed fees match the live x402
   challenges. The update landed on X Layer in `0x7a5f…d323` and was read back service-by-service;
   Critique stayed 0.01 USDT and Verification stayed free.
@@ -39,8 +48,8 @@ change, and it says so in its own line.
   segmented pane controls.
 - Gave Celebrate, Remember and Launch their own icon, promise and room tint while keeping one
   design system. Added persisted Quick and Detailed brief modes. Their owner-supplied portraits now
-  dissolve quietly into the empty Live Feed as room atmosphere and leave the canvas entirely when
-  work begins; they are never used as a competing wallpaper or as fabricated output.
+  dissolve into the Live Feed as persistent room atmosphere, including while work runs; they remain
+  behind legible artifact surfaces and are never presented as fabricated pipeline output.
 - Collapsed the ten-card House Style wall into a compact, palette-led catalogue: the studio default
   occupies one row and the full recommended/available set opens only on request. Reduced the hero's
   top-right guilloché back to a grey certificate watermark instead of a foreground illustration.

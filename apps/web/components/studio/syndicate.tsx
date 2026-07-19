@@ -62,42 +62,46 @@ export function Syndicate({ status, events, studio }: { status: RunStatus; event
         })}
       </ul>
 
-      {/* feed */}
-      <ol
-        ref={feedRef}
-        onScroll={(event) => {
-          const el = event.currentTarget;
-          setFollowing(el.scrollHeight - el.scrollTop - el.clientHeight < 64);
-        }}
-        className="studio-scroll min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5"
-      >
+      {/* The room portrait belongs to the Studio, not just its empty state. It remains behind the
+          live feed so a running Celebrate, Remember or Launch job never loses its sense of place. */}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={studio}
+            aria-hidden
+            className="studio-room-portrait pointer-events-none absolute inset-0"
+            initial={reduced ? false : { opacity: 0, scale: 1.025 }}
+            animate={{ opacity: status === "idle" ? 1 : 0.78, scale: 1 }}
+            exit={reduced ? undefined : { opacity: 0 }}
+            transition={{ duration: reduced ? 0 : 0.6, ease: EASE }}
+          >
+            <Image
+              src={STUDIO_IDENTITY[studio].image}
+              alt=""
+              fill
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className={`object-cover studio-room-image-${studio}`}
+              style={{ objectPosition: STUDIO_IDENTITY[studio].imagePosition }}
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* feed */}
+        <ol
+          ref={feedRef}
+          onScroll={(event) => {
+            const el = event.currentTarget;
+            setFollowing(el.scrollHeight - el.scrollTop - el.clientHeight < 64);
+          }}
+          className="studio-scroll relative z-10 h-full min-h-0 space-y-3 overflow-y-auto p-4 sm:p-5"
+        >
         {status === "idle" && (
           <li className="relative grid h-full min-h-[24rem] place-items-center overflow-hidden rounded-2xl px-6 text-center">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={studio}
-                aria-hidden
-                className="studio-room-portrait absolute inset-0"
-                initial={reduced ? false : { opacity: 0, scale: 1.025 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={reduced ? undefined : { opacity: 0 }}
-                transition={{ duration: reduced ? 0 : 0.6, ease: EASE }}
-              >
-                <Image
-                  src={STUDIO_IDENTITY[studio].image}
-                  alt=""
-                  fill
-                  sizes="(min-width: 1024px) 50vw, 100vw"
-                  className={`object-cover studio-room-image-${studio}`}
-                  style={{ objectPosition: STUDIO_IDENTITY[studio].imagePosition }}
-                />
-              </motion.div>
-            </AnimatePresence>
             <motion.div
               key={`${studio}-copy`}
               initial={reduced ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="studio-room-plaque relative z-10 max-w-xl rounded-2xl border border-ink/10 px-6 py-5 shadow-lift backdrop-blur-[3px]"
+              className="studio-room-plaque relative z-10 max-w-lg rounded-2xl border border-ink/10 px-6 py-5 shadow-lift backdrop-blur-[7px]"
             >
               <p className="text-kicker mb-2 text-[0.58rem] text-[var(--studio-accent)]">
                 {STUDIO_IDENTITY[studio].label} room
@@ -150,7 +154,8 @@ export function Syndicate({ status, events, studio }: { status: RunStatus; event
             working…
           </li>
         )}
-      </ol>
+        </ol>
+      </div>
 
       <AnimatePresence>
         {!following && events.length > 0 && (

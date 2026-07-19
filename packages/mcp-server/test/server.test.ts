@@ -632,7 +632,8 @@ describe("http surface", () => {
       now: () => NOW,
     }));
 
-    // GET discovery advertises the marketplace-registered toast fee: 0.02 USDT.
+    // GET discovery advertises the marketplace-registered plain-service fee. Production keeps
+    // this probe at 0.02 USDT independently of the richer MCP toast tool's current price.
     const get = await fetch(`${base}/mcp`, { headers: { accept: "application/json" } });
     expect(get.status).toBe(402);
     const getBody = await get.json();
@@ -683,6 +684,34 @@ describe("http surface", () => {
     const postResult = await paidPost.json();
     expect(postResult.deliverable.artifacts[0].title).toBe("A toast for my sister Mara");
     expect(ctx.store.orders().filter((order) => order.status === "paid")).toHaveLength(2);
+
+    // A buyer replay may retain its JSON-RPC tools/call envelope while accepting JSON only. It is
+    // still the registered plain x402 service, not an MCP stream, and must settle + deliver rather
+    // than falling into StreamableHTTPServerTransport's 406 response.
+    const wrappedProof = await paymentProof(0.02, "plain-jsonrpc-post");
+    const wrapped = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "PAYMENT-SIGNATURE": wrappedProof,
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 11,
+        method: "tools/call",
+        params: {
+          name: "oce_write_toast",
+          arguments: { subject: "the marketplace buyer", tone: "warm" },
+        },
+      }),
+    });
+    expect(wrapped.status).toBe(200);
+    expect(wrapped.headers.get("content-type")).toContain("application/json");
+    const wrappedResult = await wrapped.json();
+    expect(wrappedResult.ok).toBe(true);
+    expect(wrappedResult.deliverable.artifacts[0].title).toBe("A toast for the marketplace buyer");
+    expect(ctx.store.orders().filter((order) => order.status === "paid")).toHaveLength(3);
 
     // A malformed MCP client is rejected BEFORE its proof can be inspected or settled.
     const badMcp = await fetch(`${base}/mcp`, {

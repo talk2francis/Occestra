@@ -19,13 +19,23 @@ cp -r public .next/standalone/apps/web/public
 cp -r assets .next/standalone/apps/web/assets   # OG fonts read at runtime
 
 systemctl restart occestra-web
-sleep 2
+
+# A cold standalone start commonly needs 3–5 seconds on this VPS. Poll readiness instead of
+# sleeping for two seconds and reporting a false deployment failure after a perfectly good build.
+for attempt in $(seq 1 20); do
+  if curl -sf -o /dev/null http://127.0.0.1:3010/; then
+    break
+  fi
+  if [ "$attempt" -eq 20 ]; then
+    echo "deploy: web service did not become ready within 20 seconds" >&2
+    exit 1
+  fi
+  sleep 1
+done
 
 # Serving HTML is NOT proof the site works. A standalone tree with no static/ answers 200
 # on / and 400 on every stylesheet and chunk — the page renders unstyled and inert, and a
 # health check that only asks for HTML calls that a success. So ask for the CSS.
-curl -sf -o /dev/null http://127.0.0.1:3010/
-
 css=$(curl -s http://127.0.0.1:3010/ | grep -o '_next/static/css/[a-z0-9]*\.css' | head -1)
 if [ -z "$css" ]; then
   echo "deploy: could not find a stylesheet link in the rendered HTML" >&2

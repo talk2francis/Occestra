@@ -129,11 +129,16 @@ function plainToastInput(req: Request): WriteToastInput {
   const source = req.method === "GET" ? req.query : req.body;
   let body: JsonObject = isJsonObject(source) ? source : {};
 
-  for (const key of ["arguments", "input", "body", "params"] as const) {
-    if (isJsonObject(body[key])) {
-      body = body[key];
-      break;
-    }
+  // Buyer implementations do not all replay the business body in the same envelope. In
+  // particular, task-402-pay may preserve a JSON-RPC tools/call wrapper, which nests the actual
+  // toast input at params.arguments. Unwrap repeatedly (with a small fixed ceiling) so the paid
+  // HTTP service remains transport-agnostic without accepting arbitrary recursive input.
+  for (let depth = 0; depth < 4; depth += 1) {
+    const nested = ["arguments", "input", "body", "params"]
+      .map((key) => body[key])
+      .find(isJsonObject);
+    if (!nested) break;
+    body = nested;
   }
 
   const text = (...keys: string[]): string | undefined => {
@@ -654,10 +659,19 @@ export function buildApp(ctx: AppContext): Express {
       | { jsonrpc?: string; method?: string; params?: { name?: string; arguments?: unknown } }
       | undefined;
 
-    // `task-402-pay` speaks plain HTTP, not MCP. Its signed replay must never reach the MCP
-    // transport (which requires text/event-stream). JSON-RPC calls remain genuine MCP traffic.
+    // `task-402-pay` speaks plain HTTP, not MCP. Some versions preserve a JSON-RPC tools/call
+    // envelope while still negotiating ordinary application/json. Classify by BOTH message and
+    // transport: only a client accepting text/event-stream is an MCP session. A JSON-only replay
+    // for the registered toast service must reach the plain handler or a valid payment gets a 406
+    // and the marketplace task can never complete.
     const isMcpRequest = body?.jsonrpc === "2.0" && typeof body.method === "string";
-    if (!isMcpRequest && ctx.gate instanceof OkxGate) {
+    const acceptsEventStream = (req.get("accept") ?? "").includes("text/event-stream");
+    const isPlainToastRpc =
+      isMcpRequest &&
+      body?.method === "tools/call" &&
+      body.params?.name === PLAIN_X402_TOOL &&
+      !acceptsEventStream;
+    if ((!isMcpRequest || isPlainToastRpc) && ctx.gate instanceof OkxGate) {
       await handlePlainX402(req, res);
       return;
     }

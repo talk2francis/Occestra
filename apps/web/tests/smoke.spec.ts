@@ -167,6 +167,37 @@ test("Studio restores an interrupted run only with its browser capability", asyn
     .not.toBeNull();
 });
 
+test("Studio keeps its room portrait behind a running feed", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "oce-active-studio-run",
+      JSON.stringify({
+        runId: "demo_running1234567890abcdef123456",
+        recoveryToken: "browser-only-capability-token-running-1234567890",
+        createdAt: Date.now(),
+      }),
+    );
+  });
+  await page.route("**/api/demo?runId=*", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        state: "running",
+        events: [
+          { type: "run_started", tool: "oce_launch_kit", studio: "launch" },
+          { type: "stage", role: "Planner", message: "reading the brief" },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(`${BASE}/studio`, { waitUntil: "domcontentloaded" });
+  const portrait = page.locator('img[src*="launch.jpg"]');
+  await expect(portrait).toBeVisible();
+  await expect(page.getByText("working…", { exact: true })).toBeVisible();
+  await expect.poll(() => portrait.evaluate((image) => Number(getComputedStyle(image).opacity))).toBeGreaterThan(0.3);
+});
+
 test("Studio mobile controls keep every pane and room reachable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${BASE}/studio`, { waitUntil: "networkidle" });
