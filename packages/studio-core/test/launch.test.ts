@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BRAND_GENOME_VERSION,
   briefSpecificityScore,
+  compactGeneratedField,
   PolicyRefusal,
   PRICE_PLACEHOLDER,
   findFabrications,
@@ -327,6 +328,55 @@ describe("brand genome", () => {
 /* --------------------------------------------------------------- artifacts */
 
 describe("the kit", () => {
+  it("bounds verbose generated directions deterministically instead of dropping the demo script", () => {
+    const verbose = `${"Show the live audit evidence and trace the finding to its source. ".repeat(10)}End.`;
+    const compact = compactGeneratedField(verbose, 300);
+
+    expect(compact.length).toBeLessThanOrEqual(300);
+    expect(compact).toMatch(/…$/);
+    expect(compact).toContain("Show the live audit evidence");
+    expect(compact).not.toMatch(/\s{2,}/);
+    expect(compactGeneratedField("Already concise.", 300)).toBe("Already concise.");
+  });
+
+  it("keeps an overlong model-written beat sheet as usable bounded copy", async () => {
+    class VerboseBeatWriter extends FakeText {
+      override async complete(request: { system: string; json?: boolean }) {
+        if (request.system.includes("90-second product demo")) {
+          const direction = "Show the evidence, open the finding, trace it to the exact contract line, and demonstrate the practical fix. ".repeat(8);
+          return {
+            model: "fake",
+            usdCost: 0,
+            text: JSON.stringify({
+              beats: [
+                { seconds: "0-8", beat: "cold open", onScreen: direction, saying: direction },
+                { seconds: "8-20", beat: "problem", onScreen: direction, saying: direction },
+                { seconds: "20-55", beat: "live magic", onScreen: direction, saying: direction },
+                { seconds: "55-70", beat: "trust", onScreen: direction, saying: direction },
+                { seconds: "80-90", beat: "call to action", onScreen: direction, saying: direction },
+              ],
+            }),
+          };
+        }
+        return super.complete(request);
+      }
+    }
+
+    const { pack } = await runLaunch(
+      contract({ deliverables: ["demo_script"] }),
+      makeDeps({ text: new VerboseBeatWriter() }),
+    );
+    const script = pack.artifacts.find((artifact) => artifact.kind === "demo_script");
+
+    expect(script?.undelivered).toBeUndefined();
+    expect(script?.data).toContain("…");
+    for (const row of script!.data!.split("\n").filter((line) => /^\| \d/.test(line))) {
+      const cells = row.split("|").slice(1, -1).map((cell) => cell.trim());
+      expect(cells[2]!.length).toBeLessThanOrEqual(300);
+      expect(cells[3]!.length).toBeLessThanOrEqual(300);
+    }
+  });
+
   it("produces every deliverable at the right size, and grades all of them", async () => {
     const image = new FakeImage();
     const { port, seen } = recordingGrader();

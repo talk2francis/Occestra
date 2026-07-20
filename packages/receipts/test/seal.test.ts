@@ -79,6 +79,27 @@ describe("leaf encoding", () => {
 });
 
 describe("EIP-712 seals", () => {
+  it("seals a degraded pack while committing to its honest undelivered record", async () => {
+    const degraded = pack({
+      artifacts: [
+        artifact({
+          format: "md",
+          uri: undefined,
+          data: undefined,
+          undelivered: {
+            code: "writer:no_usable_output",
+            reason: "The writer could not produce usable copy for this piece.",
+          },
+        }),
+      ],
+      quality: { oqsVersion: "1.2.0", passRate: 1, repairedCount: 0, undeliveredCount: 1 },
+    });
+
+    const sealed = await sealerOf().seal(degraded);
+    expect(sealed.seal.manifestHash).toBe(manifestHash(degraded));
+    expect(await verifyPack(sealed)).toMatchObject({ valid: true });
+  });
+
   it("signs a pack and the signature recovers to the sealer's own address", async () => {
     const sealer = sealerOf();
     const sealed = await sealer.seal(pack());

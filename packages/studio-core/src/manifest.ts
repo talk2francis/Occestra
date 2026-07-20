@@ -71,13 +71,24 @@ export function hashCanonical(value: unknown): `0x${string}` {
   return keccak256(toBytes(canonicalJson(value)));
 }
 
-/** Content hash of a single artifact: its inline data if present, else its storage key. */
+/**
+ * Content hash of a single artifact.
+ *
+ * Delivered work commits to its inline data or storage key. An honestly-undelivered
+ * artifact has neither, by design, but it is still part of the pack and therefore must
+ * be covered by provenance. Commit to its stable public failure record instead. This
+ * lets a degraded pack be sealed without either dropping the missing deliverable from
+ * the manifest or inventing content for it.
+ */
 export function artifactContentHash(artifact: Artifact): `0x${string}` {
   const content = artifact.data ?? artifact.uri;
-  if (content === undefined) {
-    throw new TypeError(`artifact ${artifact.id} has neither data nor uri — nothing to hash`);
+  if (content !== undefined) return keccak256(toBytes(content));
+
+  if (artifact.undelivered) {
+    return hashCanonical({ undelivered: artifact.undelivered });
   }
-  return keccak256(toBytes(content));
+
+  throw new TypeError(`artifact ${artifact.id} has neither data, uri, nor an undelivered record — nothing to hash`);
 }
 
 export interface PackManifest {

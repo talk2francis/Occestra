@@ -32,7 +32,7 @@ const NOW = Date.parse("2026-07-12T10:00:00.000Z");
 const dirs: string[] = [];
 const servers: Server[] = [];
 
-function makeApp(over: Partial<AppContext> = {}) {
+function makeApp(over: Partial<AppContext> = {}, depsOver: Partial<EngineDeps> = {}) {
   const dataDir = mkdtempSync(join(tmpdir(), "occestra-demo-test-"));
   dirs.push(dataDir);
 
@@ -45,6 +45,7 @@ function makeApp(over: Partial<AppContext> = {}) {
     clock: new FixedClock(NOW),
     weather: new FakeWeather(),
     places: new FakePlaces(),
+    ...depsOver,
   };
 
   const ctx: AppContext = {
@@ -119,6 +120,8 @@ describe("the internal demo route", () => {
     expect(types[0]).toBe("run_started");
     expect(types).toContain("grading");
     expect(types).toContain("graded");
+    expect(types).toContain("sealing");
+    expect(types.indexOf("sealing")).toBeLessThan(types.indexOf("run_complete"));
     expect(types.at(-1)).toBe("run_complete");
 
     // The finished pack is the store's pack, serialised for the client.
@@ -184,5 +187,32 @@ describe("the internal demo route", () => {
     const res = await runDemo(base, "shhh", { tool: "oce_launch_kit", arguments: {} });
     expect(res.status).toBe(400);
     expect(store.demoRunsSince(0)).toBe(0);
+  });
+
+  it("completes and seals a launch pack when generated copy is honestly undelivered", async () => {
+    // This is the production Archon failure shape: the writer failed schema validation,
+    // the pure pipeline correctly kept honest undelivered stubs, and provenance used to
+    // throw because those stubs intentionally have neither data nor a storage URI.
+    const unusableWriter = new FakeTextModel(() => "{}");
+    const { base, store } = makeApp({}, { text: unusableWriter });
+    const res = await runDemo(base, "shhh", {
+      tool: "oce_launch_kit",
+      arguments: {
+        productName: "Archon",
+        description: "Evidence-backed security audits for smart contracts and wallet-enabled agents.",
+        audience: "Web3 engineering and security teams.",
+        styleId: "neon_reverie",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    const events = parseEvents(await res.text());
+    expect(events.at(-1)?.["type"]).toBe("run_complete");
+
+    const complete = events.at(-1) as { pack: { keepsakeId: string; artifacts: Array<{ undelivered?: unknown }> } };
+    const saved = store.getPack(complete.pack.keepsakeId);
+    expect(saved?.seal).toBeDefined();
+    expect(saved?.quality.undeliveredCount).toBeGreaterThan(0);
+    expect(saved?.artifacts.some((artifact) => artifact.undelivered)).toBe(true);
   });
 });

@@ -637,6 +637,26 @@ async function writeGuardedCopy<T>(
   return { ok: true, value: best, verdict };
 }
 
+/**
+ * Keep generated table cells inside their product contract without throwing away the
+ * whole deliverable. Models are poor character counters even after a repair prompt.
+ * Normalising whitespace and clipping at a sentence/word boundary is deterministic,
+ * preserves the useful beginning of the direction, and is safer than turning an otherwise
+ * usable 90-second beat sheet into an absent artifact.
+ */
+export function compactGeneratedField(value: string, limit: number): string {
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (compact.length <= limit) return compact;
+
+  const room = Math.max(1, limit - 1);
+  const window = compact.slice(0, room + 1);
+  const sentence = Math.max(window.lastIndexOf(". "), window.lastIndexOf("! "), window.lastIndexOf("? "));
+  const word = window.lastIndexOf(" ");
+  const floor = Math.floor(room * 0.6);
+  const cut = sentence >= floor ? sentence + 1 : word >= floor ? word : room;
+  return `${compact.slice(0, cut).trimEnd()}…`;
+}
+
 /** Turn a surviving guard failure into an honest coverage gap. */
 function gapsFor(kind: string, verdict: CopyVerdict): string[] {
   const gaps: string[] = [];
@@ -1178,7 +1198,7 @@ export async function runLaunch(
           copyFailure(),
         ),
       );
-      gaps.push(`launch_thread:degraded — ${thread.error}`);
+      gaps.push(`launch_thread:degraded — ${copyFailure().reason}`);
     }
   }
 
@@ -1311,20 +1331,23 @@ export async function runLaunch(
           copyFailure(),
         ),
       );
-      gaps.push(`landing_spec:degraded — ${spec.error}`);
+      gaps.push(`landing_spec:degraded — ${copyFailure().reason}`);
     }
   }
 
   /* the 90-second demo beat sheet */
   if (wanted.has("demo_script")) {
+    const boundedBeatField = (minimum: number, maximum: number) =>
+      z.string().min(minimum).transform((value) => compactGeneratedField(value, maximum));
+
     const BeatSchema = z.object({
       beats: z
         .array(
           z.object({
-            seconds: z.string().min(3).max(20),
-            beat: z.string().min(2).max(40),
-            onScreen: z.string().min(5).max(300),
-            saying: z.string().min(5).max(300),
+            seconds: boundedBeatField(3, 20),
+            beat: boundedBeatField(2, 40),
+            onScreen: boundedBeatField(5, 300),
+            saying: boundedBeatField(5, 300),
           }),
         )
         .min(5)
@@ -1354,6 +1377,7 @@ export async function runLaunch(
         "It matters in the LIVE MAGIC beat too: do not spec a drag-and-drop interface, a dashboard, or a button unless the evidence proves it exists. Describe what the product DOES, in terms the evidence supports.",
         "",
         "Rules: no stock footage. No 'excited to announce'. Say what is ON SCREEN and what is SAID, separately.",
+        "LENGTH CONTRACT: every onScreen and saying value must be 300 characters or fewer; seconds must be 20 or fewer; beat must be 40 or fewer. Use one concise direction per field.",
         `NEVER use: ${[...genome.bannedCliches, "seamless", "seamlessly", "elevate", "transform your"].join(", ")}.`,
         repairNote,
         "",
@@ -1435,7 +1459,7 @@ export async function runLaunch(
           copyFailure(),
         ),
       );
-      gaps.push(`demo_script:degraded — ${beats.error}`);
+      gaps.push(`demo_script:degraded — ${copyFailure().reason}`);
     }
   }
 

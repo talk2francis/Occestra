@@ -9,6 +9,14 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Fixed the Launch Studio failure exposed by the Archon run. A writer response that missed a
+  bounded schema correctly became an honest `undelivered` artifact, but provenance then rejected
+  that artifact because it intentionally had neither inline data nor a file URI. Canonical
+  manifests now commit to the stable public failure record, so degraded packs remain complete,
+  signable and independently verifiable without dropping or fabricating work. Demo-video fields
+  are also deterministically bounded at readable sentence/word boundaries, sealing is announced
+  at the real signing boundary, raw failure stacks are retained in operator logs, and an
+  end-to-end regression seals and persists the exact degraded Launch-pack shape.
 - Fixed the remaining OKX buyer-compatibility edge for **every advertised service**, not only
   Toast. A `task-402-pay` replay may retain a JSON-RPC `tools/call` envelope while negotiating
   plain `application/json`; `/mcp` now dispatches that replay to the named plan, invitation,

@@ -290,6 +290,7 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
       ...(ctx.linkChecker ? { linkChecker: ctx.linkChecker } : {}),
       onEvent: emit,
     }),
+    ...(ctx.sealer ? { onBeforeSeal: () => emit({ type: "sealing" }) } : {}),
   };
 
   const { tool, arguments: args } = parsed.data;
@@ -301,12 +302,16 @@ export async function handleDemoRun(ctx: DemoContext, req: Request, res: Respons
     // if/else was three chances to add a tool to only two of them.
     const pack: Pack = await runPipeline(runCtx, tool, args);
 
-    if (ctx.sealer && pack.seal) emit({ type: "sealing" });
     emit({ type: "run_complete", pack: ctx.packForClient(pack) });
     ctx.store.finishDemoRun(runId, pack.id);
     ctx.store.saveEvents(pack.id, log);
   } catch (error) {
     const policy = error instanceof PolicyRefusal;
+    if (!policy) {
+      // Raw details stay operator-side. The browser receives the stable sentence below,
+      // while production logs retain the actual stack and run id needed to fix the bug.
+      console.error(`[occestra] demo run ${runId} (${tool}) failed`, error);
+    }
     const message = policy
       ? (error as PolicyRefusal).politeMessage
       : "the run failed — nothing was charged, and nothing pretended to succeed";

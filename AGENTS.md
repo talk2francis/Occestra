@@ -59,6 +59,9 @@ Default server port: 8402.
 ## Canonical manifest hashing + seal leaf (MUST match TS and Solidity docs)
 - canonicalJson(obj): JSON with recursively sorted object keys, no extra whitespace, bigint -> decimal string.
 - manifestHash = keccak256(utf8 bytes of canonicalJson(pack manifest)).
+- Artifact content hash = keccak256(data or storage key). An honestly undelivered artifact has
+  neither; hash canonicalJson({undelivered:{code,reason}}) so the declared failure remains in the
+  signed manifest instead of being dropped or fabricated.
 - packKind: celebrate=0, remember=1, launch=2, tool=3.
 - leaf = keccak256(abi.encode(keccak256(bytes(keepsakeId)), bytes32 manifestHash, uint8 packKind, uint64 createdAt)).
 
@@ -158,6 +161,15 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
 ## Deviations log
 (Record anything changed from this file, with reason, date, and source URL.)
 
+- 2026-07-20 (degraded-pack sealing) — **HONEST DEGRADATION REACHED THE SEAL AND CRASHED.** The
+  Archon Launch run received an overlong demo-beat response twice. The pipeline correctly retained
+  a `writer:no_usable_output` stub, but `artifactContentHash()` only accepted data or a URI, while
+  an undelivered stub intentionally has neither. Sealing therefore threw after every other artifact
+  had been generated and graded. Undelivered artifacts now commit to the canonical stable public
+  failure record; delivered-artifact hashes are byte-for-byte unchanged. Generated demo fields are
+  deterministically bounded at sentence/word boundaries, and the real demo error stack is logged
+  operator-side. Cross-package regression coverage runs this degraded shape through signing,
+  persistence and SSE completion.
 - 2026-07-16 (Studio recovery) — **A SUCCESSFUL PIPELINE CAN STILL LOOK LIKE A FAILED PRODUCT AT
   THE FINAL REACT RENDER.** `sanitizeGaps()` deliberately changed public gaps from raw strings to
   `{code, note}`, but the Studio's completed-pack pane still called string methods on them. Any run

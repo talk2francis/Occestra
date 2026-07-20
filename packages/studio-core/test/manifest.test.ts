@@ -62,12 +62,48 @@ describe("manifest hashing", () => {
     );
   });
 
-  it("hashes binary artifacts by storage key, and refuses artifacts with no content at all", () => {
+  it("hashes binary artifacts by storage key and honest failures by their stable failure record", () => {
     const withUri = pack({
       artifacts: [artifact({ format: "png", data: undefined, uri: "s/keepsake.png" })],
     });
     expect(manifestOf(withUri).artifacts[0]!.hash).toBe(keccak256(toBytes("s/keepsake.png")));
     expect(manifestHash(withUri)).toMatch(/^0x[0-9a-f]{64}$/);
+
+    const undelivered = pack({
+      artifacts: [
+        artifact({
+          data: undefined,
+          uri: undefined,
+          undelivered: {
+            code: "writer:no_usable_output",
+            reason: "The writer could not produce usable copy for this piece.",
+          },
+        }),
+      ],
+    });
+    expect(manifestOf(undelivered).artifacts[0]!.hash).toBe(
+      hashCanonical({
+        undelivered: {
+          code: "writer:no_usable_output",
+          reason: "The writer could not produce usable copy for this piece.",
+        },
+      }),
+    );
+    expect(manifestHash(undelivered)).toMatch(/^0x[0-9a-f]{64}$/);
+
+    const changedReason = pack({
+      artifacts: [
+        artifact({
+          data: undefined,
+          uri: undefined,
+          undelivered: {
+            code: "writer:no_usable_output",
+            reason: "A different public failure record.",
+          },
+        }),
+      ],
+    });
+    expect(manifestHash(changedReason)).not.toBe(manifestHash(undelivered));
 
     const empty = pack({ artifacts: [artifact({ data: undefined, uri: undefined })] });
     expect(() => manifestHash(empty)).toThrow(TypeError);

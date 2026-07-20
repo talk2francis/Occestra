@@ -61,6 +61,8 @@ export interface PipelineContext {
   governor?: CostGovernor;
   coverageGaps: string[];
   linkChecker?: (url: string) => Promise<boolean>;
+  /** Fires at the real seal boundary so streamed UIs never announce sealing after it happened. */
+  onBeforeSeal?: (() => void) | undefined;
 }
 
 export class PolicyRefusal extends Error {
@@ -198,6 +200,8 @@ async function sealAndStore(
     ctx.store.savePack(pack);
     return pack;
   }
+
+  ctx.onBeforeSeal?.();
 
   if (isPrivateKind(kind) && !opts.forcePublic) {
     const salt = `0x${randomBytes(32).toString("hex")}` as Hex;
