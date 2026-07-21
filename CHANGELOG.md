@@ -9,6 +9,15 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Added an explicit visibility ladder instead of silently treating every sealed pack as Gallery
+  content: Celebrate and Launch finish unlisted/shareable; Remember remains private and exposes
+  provenance only; Gallery publication requires the browser's unguessable run capability and a
+  separate consent step. Publishing a Remember run creates a new public snapshot with a redacted
+  title, selected copied artifacts, stripped private provenance, a new id and a new unsalted seal;
+  the salted original is unchanged. The Gallery keeps its curated shelf, adds owner-published work,
+  style-to-Studio conversion links, normalized duplicate grouping, withdrawal capabilities, and a
+  privacy section containing aggregate counts only—never blurred private images or masked ids.
+
 - Fixed the Launch Studio failure exposed by the Archon run. A writer response that missed a
   bounded schema correctly became an honest `undelivered` artifact, but provenance then rejected
   that artifact because it intentionally had neither inline data nor a file URI. Canonical

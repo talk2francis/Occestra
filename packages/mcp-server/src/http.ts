@@ -13,6 +13,7 @@ import { HOUSE_STYLES } from "@occestra/providers";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun } from "./demo.js";
+import { handleGalleryPublish, handleGalleryWithdraw } from "./showcase.js";
 import { PolicyRefusal, screenToolInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
 import {
@@ -449,6 +450,21 @@ export function buildApp(ctx: AppContext): Express {
     });
   });
 
+  // Owner-approved community work. Private source ids, management capabilities and source
+  // metadata never enter this response.
+  app.get("/gallery-submissions", (req, res) => {
+    const requested = Number.parseInt(String(req.query.limit ?? "24"), 10);
+    const submissions = ctx.store.gallerySubmissions(Number.isFinite(requested) ? requested : 24);
+    res.json({
+      submissions: submissions.map(({ sourcePackId: _sourcePackId, ...submission }) => submission),
+      asOf: new Date().toISOString(),
+    });
+  });
+
+  app.get("/gallery-activity", (_req, res) => {
+    res.json({ ...ctx.store.galleryActivity(), asOf: new Date().toISOString() });
+  });
+
   /* -------------------------------------------- internal Studio demo (SSE) */
 
   app.get("/internal/demo/quota", (req, res) => {
@@ -489,6 +505,32 @@ export function buildApp(ctx: AppContext): Express {
 
   app.get("/internal/demo/run/:id", (req, res) => {
     handleDemoRecovery(
+      {
+        ...ctx,
+        demoDailyCap: ctx.demoDailyCap ?? 8,
+        demoPerIpCap: ctx.demoPerIpCap ?? 2,
+        packForClient: (pack) => packResult(ctx, pack),
+      },
+      req,
+      res,
+    );
+  });
+
+  app.post("/internal/demo/gallery", (req, res) => {
+    void handleGalleryPublish(
+      {
+        ...ctx,
+        demoDailyCap: ctx.demoDailyCap ?? 8,
+        demoPerIpCap: ctx.demoPerIpCap ?? 2,
+        packForClient: (pack) => packResult(ctx, pack),
+      },
+      req,
+      res,
+    );
+  });
+
+  app.delete("/internal/demo/gallery/:id", (req, res) => {
+    handleGalleryWithdraw(
       {
         ...ctx,
         demoDailyCap: ctx.demoDailyCap ?? 8,

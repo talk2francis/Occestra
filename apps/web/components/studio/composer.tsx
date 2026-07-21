@@ -28,6 +28,7 @@ export function Composer({
   remaining,
   cap,
   studio,
+  initialStyleId,
   onStudioChange,
   onRun,
 }: {
@@ -36,11 +37,12 @@ export function Composer({
   remaining: number;
   cap: number;
   studio: StudioId;
+  initialStyleId?: string;
   onStudioChange: (studio: StudioId) => void;
   onRun: (tool: string, args: Record<string, unknown>) => void;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
-  const [styleId, setStyleId] = useState<string>();
+  const [styleId, setStyleId] = useState<string | undefined>(initialStyleId);
   const [depth, setDepth] = useState<"quick" | "detailed">("quick");
   const reduced = useReducedMotion();
 

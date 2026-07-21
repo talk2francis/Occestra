@@ -90,6 +90,43 @@ export interface RecentPublicPack {
   deliveredCount: number;
 }
 
+export interface GallerySubmission {
+  packId: string;
+  studio: PublicPack["studio"];
+  displayTitle: string;
+  coverArtifactId?: string;
+  visibleArtifactIds: string[];
+  createdAt: number;
+  duplicateCount: number;
+}
+
+export interface GalleryActivity {
+  privatePacks: number;
+  anchoredPrivatePacks: number;
+  publicShowcases: number;
+}
+
+export async function fetchGallerySubmissions(limit = 24): Promise<GallerySubmission[]> {
+  try {
+    const res = await fetch(`${INTERNAL}/gallery-submissions?limit=${Math.max(1, Math.min(60, limit))}`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { submissions?: GallerySubmission[] };
+    return Array.isArray(body.submissions) ? body.submissions : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchGalleryActivity(): Promise<GalleryActivity | undefined> {
+  try {
+    const res = await fetch(`${INTERNAL}/gallery-activity`, { next: { revalidate: 300 } });
+    if (!res.ok) return undefined;
+    return (await res.json()) as GalleryActivity;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Real recent activity from the store; private packs and user titles are excluded upstream. */
 export async function fetchRecentPublicPacks(limit = 8): Promise<RecentPublicPack[]> {
   try {
@@ -137,6 +174,12 @@ export const STYLE_NAMES: Record<string, string> = {
   gilded_noir: "Gilded Noir",
   sunprint: "Sunprint",
   atlas_ink: "Atlas Ink",
+  solstice_bloom: "Solstice Bloom",
+  jazz_age: "Jazz Age",
+  paper_lantern: "Paper Lantern",
+  porcelain_garden: "Porcelain Garden",
+  neon_reverie: "Neon Reverie",
+  terra_fresco: "Terra Fresco",
 };
 
 export const X_LAYER_RPC = "https://rpc.xlayer.tech";

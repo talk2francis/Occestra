@@ -16,13 +16,17 @@ import { useStudioRun } from "./use-run";
 export function Workspace({
   styles,
   quota,
+  initialStudio = "celebrate",
+  initialStyleId,
 }: {
   styles: StyleSwatch[];
   quota: { used: number; cap: number; remaining: number };
+  initialStudio?: StudioId;
+  initialStyleId?: string;
 }) {
   const [remaining, setRemaining] = useState(quota.remaining);
   const [cap] = useState(quota.cap);
-  const [studio, setStudio] = useState<StudioId>("celebrate");
+  const [studio, setStudio] = useState<StudioId>(initialStudio);
   const [mobilePane, setMobilePane] = useState<"brief" | "feed" | "pack">("brief");
   const identity = STUDIO_IDENTITY[studio];
 
@@ -162,6 +166,7 @@ export function Workspace({
             remaining={remaining}
             cap={cap}
             studio={studio}
+            initialStyleId={initialStyleId}
             onStudioChange={setStudio}
             onRun={handleRun}
           />
@@ -172,7 +177,7 @@ export function Workspace({
         </section>
 
         <aside className={`${mobilePane === "pack" ? "block" : "hidden"} min-h-0 overflow-hidden bg-panel/40 lg:block lg:border-l lg:border-ink/10`}>
-          <PackPanel status={run.status} events={run.events} pack={run.pack} />
+          <PackPanel status={run.status} events={run.events} pack={run.pack} capability={run.capability} />
         </aside>
       </div>
     </div>

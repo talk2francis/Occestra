@@ -39,7 +39,15 @@ async function fetchQuota(): Promise<{ used: number; cap: number; remaining: num
   }
 }
 
-export default async function StudioPage() {
+export default async function StudioPage({ searchParams }: { searchParams: Promise<{ studio?: string; style?: string }> }) {
+  const query = await searchParams;
   const [styles, quota] = await Promise.all([fetchStyles(), fetchQuota()]);
-  return <Workspace styles={styles} quota={quota} />;
+  const initialStudio = ["celebrate", "remember", "launch"].includes(query.studio ?? "")
+    ? query.studio as "celebrate" | "remember" | "launch"
+    : "celebrate";
+  const requestedStyle = styles.find((style) => style.id === query.style);
+  const initialStyleId = requestedStyle && (!requestedStyle.appliesTo || requestedStyle.appliesTo.includes(initialStudio))
+    ? requestedStyle.id
+    : undefined;
+  return <Workspace styles={styles} quota={quota} initialStudio={initialStudio} initialStyleId={initialStyleId} />;
 }

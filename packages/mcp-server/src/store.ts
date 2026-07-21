@@ -120,6 +120,23 @@ export interface PendingSeal {
   anchoredAt?: number;
 }
 
+export interface GallerySubmissionRow {
+  packId: string;
+  sourcePackId: string;
+  studio: Pack["studio"];
+  displayTitle: string;
+  coverArtifactId?: string;
+  visibleArtifactIds: string[];
+  createdAt: number;
+  duplicateCount: number;
+}
+
+export interface GalleryActivity {
+  privatePacks: number;
+  anchoredPrivatePacks: number;
+  publicShowcases: number;
+}
+
 export interface StoreConfig {
   dataDir?: string;
   /** Signs artifact URLs. Falls back to an ephemeral key, which is fine for dev. */
@@ -306,6 +323,22 @@ export class Store {
         owner_token_hash TEXT NOT NULL,
         created_at       INTEGER NOT NULL
       );
+
+      -- Owner-approved Gallery entries. A private Remember pack is NEVER referenced publicly:
+      -- source_pack_id stays server-side and pack_id points at a separate redacted public
+      -- showcase. Management tokens are hashed, just like private-pack owner tokens.
+      CREATE TABLE IF NOT EXISTS gallery_submissions (
+        pack_id              TEXT PRIMARY KEY,
+        source_pack_id       TEXT NOT NULL UNIQUE,
+        studio               TEXT NOT NULL,
+        display_title        TEXT NOT NULL,
+        cover_artifact_id    TEXT,
+        visible_artifact_ids TEXT NOT NULL,
+        management_hash      TEXT NOT NULL,
+        created_at           INTEGER NOT NULL,
+        withdrawn_at         INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_gallery_active ON gallery_submissions(withdrawn_at, created_at);
 
       -- Every upload, with when it arrived. Used to auto-purge uploads that were never turned
       -- into a keepsake: a stranger's photograph must not linger on our disk forever because
@@ -562,6 +595,108 @@ export class Store {
     }
 
     return recent;
+  }
+
+  /* --------------------------------------------------------------- gallery */
+
+  gallerySubmissionForSource(sourcePackId: string): GallerySubmissionRow | undefined {
+    const row = this.db
+      .prepare("SELECT * FROM gallery_submissions WHERE source_pack_id = ? AND withdrawn_at IS NULL")
+      .get(sourcePackId) as Record<string, unknown> | undefined;
+    return row ? this.toGallerySubmission(row, 1) : undefined;
+  }
+
+  saveGallerySubmission(input: {
+    packId: string;
+    sourcePackId: string;
+    studio: Pack["studio"];
+    displayTitle: string;
+    coverArtifactId?: string;
+    visibleArtifactIds: string[];
+    managementToken: string;
+  }): void {
+    this.db
+      .prepare(
+        `INSERT INTO gallery_submissions
+          (pack_id, source_pack_id, studio, display_title, cover_artifact_id,
+           visible_artifact_ids, management_hash, created_at, withdrawn_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+      )
+      .run(
+        input.packId,
+        input.sourcePackId,
+        input.studio,
+        input.displayTitle,
+        input.coverArtifactId ?? null,
+        JSON.stringify(input.visibleArtifactIds),
+        this.hashOwnerToken(input.managementToken),
+        Date.now(),
+      );
+  }
+
+  /** Active submissions, newest per normalized title. Older duplicates stay stored, not promoted. */
+  gallerySubmissions(limit = 24): GallerySubmissionRow[] {
+    const safeLimit = Math.max(1, Math.min(60, Math.trunc(limit)));
+    const rows = this.db
+      .prepare("SELECT * FROM gallery_submissions WHERE withdrawn_at IS NULL ORDER BY created_at DESC")
+      .all() as Array<Record<string, unknown>>;
+    const groups = new Map<string, Array<Record<string, unknown>>>();
+    for (const row of rows) {
+      const key = String(row["display_title"]).trim().toLocaleLowerCase();
+      const group = groups.get(key) ?? [];
+      group.push(row);
+      groups.set(key, group);
+    }
+    return [...groups.values()]
+      .slice(0, safeLimit)
+      .map((group) => this.toGallerySubmission(group[0]!, group.length));
+  }
+
+  withdrawGallerySubmission(packId: string, managementToken: string): boolean {
+    const row = this.db
+      .prepare("SELECT management_hash FROM gallery_submissions WHERE pack_id = ? AND withdrawn_at IS NULL")
+      .get(packId) as { management_hash: string } | undefined;
+    if (!row) return false;
+    const expected = Buffer.from(row.management_hash);
+    const given = Buffer.from(this.hashOwnerToken(managementToken));
+    if (expected.length !== given.length || !timingSafeEqual(expected, given)) return false;
+    const result = this.db
+      .prepare("UPDATE gallery_submissions SET withdrawn_at = ? WHERE pack_id = ? AND withdrawn_at IS NULL")
+      .run(Date.now(), packId);
+    return result.changes === 1;
+  }
+
+  galleryActivity(): GalleryActivity {
+    const counts = this.db
+      .prepare(
+        `SELECT
+          (SELECT COUNT(*) FROM pack_private) AS private_packs,
+          (SELECT COUNT(*) FROM pack_private pp
+             JOIN seals_pending sp ON sp.keepsake_id = pp.pack_id
+            WHERE sp.anchored_at IS NOT NULL) AS anchored_private,
+          (SELECT COUNT(*) FROM gallery_submissions gs
+            WHERE gs.withdrawn_at IS NULL AND gs.pack_id <> gs.source_pack_id) AS public_showcases`,
+      )
+      .get() as { private_packs: number; anchored_private: number; public_showcases: number };
+    return {
+      privatePacks: counts.private_packs,
+      anchoredPrivatePacks: counts.anchored_private,
+      publicShowcases: counts.public_showcases,
+    };
+  }
+
+  private toGallerySubmission(row: Record<string, unknown>, duplicateCount: number): GallerySubmissionRow {
+    const visible = JSON.parse(String(row["visible_artifact_ids"] ?? "[]")) as unknown;
+    return {
+      packId: String(row["pack_id"]),
+      sourcePackId: String(row["source_pack_id"]),
+      studio: row["studio"] as Pack["studio"],
+      displayTitle: String(row["display_title"]),
+      ...(row["cover_artifact_id"] ? { coverArtifactId: String(row["cover_artifact_id"]) } : {}),
+      visibleArtifactIds: Array.isArray(visible) ? visible.filter((id): id is string => typeof id === "string") : [],
+      createdAt: Number(row["created_at"]),
+      duplicateCount,
+    };
   }
 
   /** Record which private uploads a pack was built from, so delete can find them again. */

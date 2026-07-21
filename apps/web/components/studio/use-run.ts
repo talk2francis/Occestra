@@ -5,9 +5,12 @@ import type { DemoEvent, FinishedPack } from "@/lib/studio";
 
 export type RunStatus = "idle" | "running" | "done" | "failed";
 
-interface StoredRun {
+export interface StudioCapability {
   runId: string;
   recoveryToken: string;
+}
+
+interface StoredRun extends StudioCapability {
   createdAt: number;
 }
 
@@ -25,6 +28,7 @@ export interface StudioRun {
   error: string | undefined;
   /** True once a persisted or disconnected run has been found on the server. */
   recovered: boolean;
+  capability: StudioCapability | undefined;
   start: (tool: string, args: Record<string, unknown>) => Promise<void>;
 }
 
@@ -92,6 +96,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
   const [pack, setPack] = useState<FinishedPack>();
   const [error, setError] = useState<string>();
   const [recovered, setRecovered] = useState(false);
+  const [capability, setCapability] = useState<StudioCapability>();
   const busy = useRef(false);
   const generation = useRef(0);
   const restoredOnce = useRef(false);
@@ -166,6 +171,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
     if (!stored) return;
 
     busy.current = true;
+    setCapability({ runId: stored.runId, recoveryToken: stored.recoveryToken });
     setStatus("running");
     const runGeneration = ++generation.current;
     void recover(stored, runGeneration);
@@ -182,6 +188,7 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
       const runGeneration = ++generation.current;
       const run = newRun();
       remember(run);
+      setCapability({ runId: run.runId, recoveryToken: run.recoveryToken });
 
       setStatus("running");
       setEvents([]);
@@ -274,5 +281,5 @@ export function useStudioRun(onFinished?: () => void): StudioRun {
     [onFinished, recover],
   );
 
-  return { status, events, pack, error, recovered, start };
+  return { status, events, pack, error, recovered, capability, start };
 }

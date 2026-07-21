@@ -99,6 +99,18 @@ describe("the public activity pulse is real and anonymous", () => {
     expect(JSON.stringify(recent)).not.toContain("Francis");
     expect(JSON.stringify(recent)).not.toContain("Ada");
   });
+
+  it("reports private activity only as aggregate counts", () => {
+    const s = store();
+    const privatePack = pack("oce_01kxprivateactivity0001", "remember");
+    s.savePack(privatePack);
+    s.savePrivate(privatePack.id, `0x${randomBytes(32).toString("hex")}`, s.hashOwnerToken("owner"));
+
+    const activity = s.galleryActivity();
+    expect(activity).toEqual({ privatePacks: 1, anchoredPrivatePacks: 0, publicShowcases: 0 });
+    expect(JSON.stringify(activity)).not.toContain(privatePack.id);
+    expect(JSON.stringify(activity)).not.toContain("Our summer");
+  });
 });
 
 describe("the salt is released only to the owner", () => {

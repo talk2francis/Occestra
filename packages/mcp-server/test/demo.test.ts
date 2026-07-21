@@ -215,4 +215,129 @@ describe("the internal demo route", () => {
     expect(saved?.quality.undeliveredCount).toBeGreaterThan(0);
     expect(saved?.artifacts.some((artifact) => artifact.undelivered)).toBe(true);
   });
+
+  it("publishes a private Remember run only as a separate owner-approved snapshot", async () => {
+    const { base, store } = makeApp();
+    const runId = "demo_privategallery1234567890abcdef";
+    const recoveryToken = "private-gallery-recovery-token-12345678901234567890";
+    const run = await runDemo(base, "shhh", {
+      ...BODY,
+      runId,
+      recoveryToken,
+    });
+    expect(run.status).toBe(200);
+    const events = parseEvents(await run.text());
+    const completed = events.at(-1) as { pack: { keepsakeId: string } };
+    const sourceId = completed.pack.keepsakeId;
+    const source = store.getPack(sourceId)!;
+    expect(store.isPrivate(sourceId)).toBe(true);
+
+    const selected = source.artifacts.filter((artifact) => !artifact.undelivered).slice(0, 2);
+    const cover = selected.find((artifact) => artifact.format === "png" && artifact.uri);
+    const publish = await fetch(`${base}/internal/demo/gallery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-oce-demo-secret": "shhh" },
+      body: JSON.stringify({
+        runId,
+        recoveryToken,
+        displayTitle: "A quiet afternoon",
+        artifactIds: selected.map((artifact) => artifact.id),
+        ...(cover ? { coverArtifactId: cover.id } : {}),
+        consent: true,
+      }),
+    });
+    expect(publish.status).toBe(201);
+    const result = (await publish.json()) as {
+      packId: string;
+      managementToken: string;
+      originalRemainsPrivate: boolean;
+    };
+    expect(result.originalRemainsPrivate).toBe(true);
+    expect(result.packId).not.toBe(sourceId);
+    expect(store.isPrivate(result.packId)).toBe(false);
+
+    const snapshot = store.getPack(result.packId)!;
+    expect(snapshot.artifacts).toHaveLength(selected.length);
+    expect(snapshot.artifacts.every((artifact) => artifact.sources.length === 0)).toBe(true);
+    expect(JSON.stringify(snapshot)).not.toContain("Test moment");
+    expect(snapshot.seal?.salted).not.toBe(true);
+
+    // The public files are real copies, not aliases into private storage. Deleting the private
+    // project cannot tear the owner-approved public showcase.
+    store.deletePack(sourceId);
+    const publicImage = snapshot.artifacts.find((artifact) => artifact.uri);
+    if (publicImage?.uri) expect(await store.storage.get(publicImage.uri)).toBeDefined();
+    expect(store.getPack(result.packId)).toBeDefined();
+
+    const listing = await fetch(`${base}/gallery-submissions`);
+    const listingText = await listing.text();
+    expect(listingText).toContain("A quiet afternoon");
+    expect(listingText).not.toContain(sourceId);
+    expect(listingText).not.toContain("managementToken");
+
+    const wrong = await fetch(`${base}/internal/demo/gallery/${result.packId}`, {
+      method: "DELETE",
+      headers: { "x-oce-demo-secret": "shhh", "x-oce-gallery-token": "wrong-token" },
+    });
+    expect(wrong.status).toBe(404);
+    const withdrawn = await fetch(`${base}/internal/demo/gallery/${result.packId}`, {
+      method: "DELETE",
+      headers: {
+        "x-oce-demo-secret": "shhh",
+        "x-oce-gallery-token": result.managementToken,
+      },
+    });
+    expect(withdrawn.status).toBe(200);
+    expect(store.gallerySubmissions()).toHaveLength(0);
+    expect(store.getPack(result.packId)).toBeDefined(); // withdrawal is not destructive
+  });
+
+  it("keeps a Celebrate pack unlisted until its owner explicitly submits it", async () => {
+    const { base, store } = makeApp();
+    const runId = "demo_unlistedgallery1234567890abcdef";
+    const recoveryToken = "unlisted-gallery-recovery-token-123456789012345678";
+    const run = await runDemo(base, "shhh", {
+      tool: "oce_plan_occasion",
+      runId,
+      recoveryToken,
+      arguments: {
+        occasion: "A small garden supper",
+        city: "Abuja",
+        date: "2026-08-08",
+        headcount: 8,
+        vibe: "warm and unhurried",
+      },
+    });
+    expect(run.status).toBe(200);
+    const events = parseEvents(await run.text());
+    const sourceId = (events.at(-1) as { pack: { keepsakeId: string } }).pack.keepsakeId;
+    const source = store.getPack(sourceId)!;
+    expect(store.isPrivate(sourceId)).toBe(false);
+    expect(store.gallerySubmissions()).toHaveLength(0);
+
+    const payload = {
+      runId,
+      recoveryToken,
+      displayTitle: "A garden supper",
+      artifactIds: source.artifacts.filter((artifact) => !artifact.undelivered).map((artifact) => artifact.id),
+      consent: true,
+    };
+    const publish = await fetch(`${base}/internal/demo/gallery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-oce-demo-secret": "shhh" },
+      body: JSON.stringify(payload),
+    });
+    expect(publish.status).toBe(201);
+    const result = (await publish.json()) as { packId: string; originalRemainsPrivate: boolean };
+    expect(result.packId).toBe(sourceId);
+    expect(result.originalRemainsPrivate).toBe(false);
+    expect(store.gallerySubmissions()[0]?.displayTitle).toBe("A garden supper");
+
+    const duplicate = await fetch(`${base}/internal/demo/gallery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-oce-demo-secret": "shhh" },
+      body: JSON.stringify(payload),
+    });
+    expect(duplicate.status).toBe(409);
+  });
 });

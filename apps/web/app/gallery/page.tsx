@@ -1,12 +1,21 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowUpRight, LockKeyhole } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { SealMark } from "@/components/ui/seal-mark";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { GuillocheRosette } from "@/components/ui/guilloche";
 import { BUILD_DIARY_IDS, GALLERY_IDS } from "@/lib/gallery";
-import { STYLE_NAMES, fetchPack, type PublicPack } from "@/lib/pack";
+import {
+  STYLE_NAMES,
+  fetchGalleryActivity,
+  fetchGallerySubmissions,
+  fetchPack,
+  type GallerySubmission,
+  type PublicPack,
+} from "@/lib/pack";
 
 export const metadata: Metadata = {
   title: "Gallery",
@@ -32,13 +41,70 @@ function excerpt(pack: PublicPack): string | undefined {
     .slice(0, 220);
 }
 
+function GalleryCard({ pack, title, index, coverArtifactId, duplicateCount }: {
+  pack: PublicPack;
+  title?: string;
+  index: number;
+  coverArtifactId?: string;
+  duplicateCount?: number;
+}) {
+  const selectedCover = coverArtifactId ? pack.artifacts.find((artifact) => artifact.id === coverArtifactId && artifact.url) : undefined;
+  const image = selectedCover?.url ? { url: selectedCover.url, title: selectedCover.title } : firstImage(pack);
+  const text = image ? undefined : excerpt(pack);
+  const styleId = pack.artifacts.find((artifact) => artifact.styleId)?.styleId;
+  const label = title ?? pack.artifacts[0]?.title ?? `A ${pack.studio} pack`;
+  const studioHref = `/studio?studio=${pack.studio}${styleId ? `&style=${encodeURIComponent(styleId)}` : ""}`;
+
+  return (
+    <article
+      data-reveal-card
+      style={{ "--card-delay": `${(index % 3) * 90}ms`, "--card-tilt": `${index % 2 === 0 ? -0.45 : 0.45}deg` } as CSSProperties}
+      className="lum-edge group overflow-hidden rounded-2xl border border-ink/10 bg-ground shadow-lift transition-shadow hover:shadow-keepsake"
+    >
+      <Link href={`/k/${pack.id}`} className="block">
+        {image && (
+          // eslint-disable-next-line @next/next/no-img-element -- signed expiring URL
+          <img src={image.url} alt={image.title} className="w-full" loading="lazy" />
+        )}
+        <div className="p-5 pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge tone="amethyst">{pack.studio}</Badge>
+              {styleId && <Badge>{STYLE_NAMES[styleId] ?? styleId}</Badge>}
+            </div>
+            {pack.seal && <SealMark size={34} className="shrink-0 text-amethyst/70" />}
+          </div>
+          <h2 className="text-subhead mt-3 leading-snug group-hover:underline group-hover:decoration-ink/25 group-hover:underline-offset-4">{label}</h2>
+          {text && <p className="mt-2 font-serif text-[0.95rem] leading-relaxed text-ink/65 italic">“{text}…”</p>}
+          <p className="mt-3 flex flex-wrap gap-1.5">
+            <GradeChip verdict={pack.quality.passRate === 1 ? "pass" : "repair"}>pass rate {Math.round(pack.quality.passRate * 100)}%</GradeChip>
+            {pack.quality.repairedCount > 0 && <GradeChip verdict="repair">repaired ×{pack.quality.repairedCount}</GradeChip>}
+            {duplicateCount && duplicateCount > 1 && <Badge>{duplicateCount - 1} similar hidden</Badge>}
+          </p>
+        </div>
+      </Link>
+      <Link href={studioHref} className="flex items-center justify-between border-t border-ink/8 px-5 py-3 text-[0.74rem] font-medium text-amethyst transition-colors hover:bg-panel/55">
+        Make one in this style <ArrowUpRight aria-hidden className="size-3.5" />
+      </Link>
+    </article>
+  );
+}
+
 export default async function GalleryPage() {
   const load = async (ids: string[]): Promise<PublicPack[]> =>
     (await Promise.all(ids.map((id) => fetchPack(id)))).filter(
       (pack): pack is PublicPack => Boolean(pack),
     );
 
-  const [packs, diary] = await Promise.all([load(GALLERY_IDS), load(BUILD_DIARY_IDS)]);
+  const [packs, diary, submissions, activity] = await Promise.all([
+    load(GALLERY_IDS),
+    load(BUILD_DIARY_IDS),
+    fetchGallerySubmissions(),
+    fetchGalleryActivity(),
+  ]);
+  const shared = (await Promise.all(
+    submissions.map(async (submission) => ({ submission, pack: await fetchPack(submission.packId) })),
+  )).filter((entry): entry is { submission: GallerySubmission; pack: PublicPack } => Boolean(entry.pack));
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
@@ -58,56 +124,19 @@ export default async function GalleryPage() {
         <p className="mt-10 text-[0.9rem] text-ink/65">The store is briefly unreachable — nothing fake will be shown in its place.</p>
       ) : (
         <div className="mt-12 columns-1 gap-5 sm:columns-2 lg:columns-3 [&>*]:mb-5 [&>*]:break-inside-avoid">
-          {packs.map((pack, index) => {
-            const image = firstImage(pack);
-            const text = image ? undefined : excerpt(pack);
-            const styleId = pack.artifacts.find((a) => a.styleId)?.styleId;
-            const title = pack.artifacts[0]?.title ?? `A ${pack.studio} pack`;
-
-            return (
-              <Link
-                key={pack.id}
-                href={`/k/${pack.id}`}
-                data-reveal-card
-                style={{
-                  "--card-delay": `${(index % 3) * 90}ms`,
-                  "--card-tilt": `${index % 2 === 0 ? -0.45 : 0.45}deg`,
-                } as CSSProperties}
-                className="lum-edge group block overflow-hidden rounded-2xl border border-ink/10 bg-ground shadow-lift transition-shadow hover:shadow-keepsake"
-              >
-                {image && (
-                  /* eslint-disable-next-line @next/next/no-img-element -- signed expiring URL */
-                  <img src={image.url} alt={image.title} className="w-full" loading="lazy" />
-                )}
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge tone="amethyst">{pack.studio}</Badge>
-                      {styleId && <Badge>{STYLE_NAMES[styleId] ?? styleId}</Badge>}
-                    </div>
-                    {pack.seal && <SealMark size={34} className="shrink-0 text-amethyst/70" />}
-                  </div>
-                  <h2 className="text-subhead mt-3 leading-snug group-hover:underline group-hover:decoration-ink/25 group-hover:underline-offset-4">
-                    {title}
-                  </h2>
-                  {text && (
-                    <p className="mt-2 font-serif text-[0.95rem] leading-relaxed text-ink/65 italic">
-                      “{text}…”
-                    </p>
-                  )}
-                  <p className="mt-3 flex flex-wrap gap-1.5">
-                    <GradeChip verdict={pack.quality.passRate === 1 ? "pass" : "repair"}>
-                      pass rate {Math.round(pack.quality.passRate * 100)}%
-                    </GradeChip>
-                    {pack.quality.repairedCount > 0 && (
-                      <GradeChip verdict="repair">repaired ×{pack.quality.repairedCount}</GradeChip>
-                    )}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
+          {packs.map((pack, index) => <GalleryCard key={pack.id} pack={pack} index={index} />)}
         </div>
+      )}
+
+      {shared.length > 0 && (
+        <section className="mt-20 border-t border-ink/10 pt-12">
+          <SectionHeading kicker="Shared by their makers" lede="Owner-approved packs and public showcases. Nothing enters this shelf automatically.">Published deliberately.</SectionHeading>
+          <div className="mt-9 columns-1 gap-5 sm:columns-2 lg:columns-3 [&>*]:mb-5 [&>*]:break-inside-avoid">
+            {shared.map(({ submission, pack }, index) => (
+              <GalleryCard key={pack.id} pack={pack} title={submission.displayTitle} coverArtifactId={submission.coverArtifactId} duplicateCount={submission.duplicateCount} index={index} />
+            ))}
+          </div>
+        </section>
       )}
 
       {/*
@@ -148,6 +177,24 @@ export default async function GalleryPage() {
           </ul>
         </details>
       )}
+
+      <section data-audit-clip className="relative mt-16 overflow-hidden rounded-3xl border border-ink/10 bg-panel/45 px-6 py-9 sm:px-10 sm:py-11">
+        <GuillocheRosette size={220} className="pointer-events-none absolute -right-14 -bottom-14 opacity-40" />
+        <div className="relative max-w-3xl">
+          <p className="flex items-center gap-2 text-kicker text-amethyst"><LockKeyhole aria-hidden className="size-4" /> Private by design</p>
+          <h2 className="mt-3 font-serif text-2xl leading-tight text-ink sm:text-3xl">Proof that private work happened. No trail to the person.</h2>
+          <p className="mt-3 max-w-2xl text-[0.88rem] leading-relaxed text-ink/62">
+            Remember keepsakes are never surfaced here as blurred teasers. No image, title, name, date, location, partial keepsake id, or link is exposed. We publish only aggregate operational counts; an owner may separately create a reviewed public showcase.
+          </p>
+          {activity && (
+            <dl className="mt-7 grid max-w-2xl grid-cols-3 gap-3">
+              <div className="rounded-xl border border-ink/10 bg-ground/70 p-3"><dt className="text-[0.62rem] text-ink/50">private packs</dt><dd className="mt-1 font-serif text-2xl text-ink">{activity.privatePacks}</dd></div>
+              <div className="rounded-xl border border-ink/10 bg-ground/70 p-3"><dt className="text-[0.62rem] text-ink/50">anchored privately</dt><dd className="mt-1 font-serif text-2xl text-ink">{activity.anchoredPrivatePacks}</dd></div>
+              <div className="rounded-xl border border-ink/10 bg-ground/70 p-3"><dt className="text-[0.62rem] text-ink/50">public showcases</dt><dd className="mt-1 font-serif text-2xl text-ink">{activity.publicShowcases}</dd></div>
+            </dl>
+          )}
+        </div>
+      </section>
 
       <p className="mt-10 text-[0.85rem] text-ink/65">
         Want one of your own?{" "}

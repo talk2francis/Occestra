@@ -5,7 +5,8 @@ import { EASE } from "@/components/motion";
 import { GradeChip } from "@/components/ui/grade-chip";
 import { SealMark } from "@/components/ui/seal-mark";
 import type { DemoEvent, FinishedGap, FinishedPack } from "@/lib/studio";
-import type { RunStatus } from "./use-run";
+import { GalleryPublish } from "./gallery-publish";
+import type { RunStatus, StudioCapability } from "./use-run";
 
 /**
  * The right pane: the pack assembling itself. While the run streams, each
@@ -16,10 +17,12 @@ export function PackPanel({
   status,
   events,
   pack,
+  capability,
 }: {
   status: RunStatus;
   events: DemoEvent[];
   pack: FinishedPack | undefined;
+  capability?: StudioCapability;
 }) {
   const reduced = useReducedMotion();
   const gradedSoFar = events.filter((event) => event.type === "graded");
@@ -181,7 +184,7 @@ export function PackPanel({
                 href={`/k/${pack.keepsakeId}`}
                 className="glow-cta block rounded-full bg-ink px-5 py-2.5 text-center text-[0.85rem] font-medium text-ground shadow-lift transition-colors hover:bg-plum"
               >
-                Open the public page
+                {pack.private ? "Open the private provenance page" : "Open the public page"}
               </a>
               <a
                 href={`https://api.occestra.xyz/k/${pack.keepsakeId}`}
@@ -192,6 +195,7 @@ export function PackPanel({
                 Download the manifest (JSON)
               </a>
             </div>
+            <GalleryPublish pack={pack} capability={capability} />
           </motion.div>
         )}
       </div>

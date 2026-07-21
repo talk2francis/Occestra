@@ -161,10 +161,61 @@ test("Studio restores an interrupted run only with its browser capability", asyn
   await expect(page.getByText("Launch room", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("oce_01kxmnzaj4c27qz3y9gjx8", { exact: true })).toBeVisible();
   await expect(page.getByText(/MODEL_ROUTER.*preferred model was unavailable/i)).toBeVisible();
+  await expect(page.getByText("Unlisted by default")).toBeVisible();
+  await expect(page.getByText("Submit to Gallery")).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem("oce-active-studio-run"))).toBeNull();
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("oce-recent-studio-run")))
     .not.toBeNull();
+});
+
+test("Remember publication is an explicit, separate public-showcase flow", async ({ page }) => {
+  const pack = {
+    keepsakeId: "oce_01kxmnzaj4c27qz3y9gjx9",
+    studio: "remember",
+    private: true,
+    quality: { oqsVersion: "1.2.0", passRate: 1, repairedCount: 0 },
+    coverageGaps: [],
+    artifacts: [{ id: "keepsake_art", kind: "keepsake_art", title: "A private afternoon", format: "png", url: "/remember.jpg", sources: [] }],
+    publicPage: "/k/oce_01kxmnzaj4c27qz3y9gjx9",
+  };
+  await page.addInitScript(() => {
+    localStorage.setItem("oce-recent-studio-run", JSON.stringify({
+      runId: "demo_privatepublish1234567890abcdef",
+      recoveryToken: "browser-only-private-publish-capability-1234567890",
+      createdAt: Date.now(),
+    }));
+  });
+  await page.route("**/api/demo?runId=*", (route) => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ state: "done", events: [{ type: "run_started", tool: "oce_make_keepsake", studio: "remember" }, { type: "run_complete", pack }], pack }),
+  }));
+  await page.route("**/api/gallery", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    const body = route.request().postDataJSON() as { consent?: boolean; displayTitle?: string; artifactIds?: string[] };
+    expect(body).toMatchObject({ consent: true, displayTitle: "Sunday light", artifactIds: ["keepsake_art"] });
+    await route.fulfill({ contentType: "application/json", status: 201, body: JSON.stringify({
+      packId: "oce_01kxmnzaj4c27qz3y9gjy0",
+      publicPage: "/k/oce_01kxmnzaj4c27qz3y9gjy0",
+      managementToken: "manage-token",
+    }) });
+  });
+
+  await page.goto(`${BASE}/studio`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Private by default")).toBeVisible();
+  await page.getByText("Create a public showcase").click();
+  await page.getByPlaceholder("Use a title without names or locations").fill("Sunday light");
+  const checks = page.getByRole("checkbox");
+  await checks.nth(0).check();
+  await checks.nth(1).check();
+  await page.getByRole("button", { name: "Publish selected copies" }).click();
+  await expect(page.getByText(/separate public showcase is now in the Gallery/i)).toBeVisible();
+});
+
+test("Gallery describes private activity without surfacing private cards", async ({ page }) => {
+  await page.goto(`${BASE}/gallery`, { waitUntil: "networkidle" });
+  await expect(page.getByText("Private by design", { exact: true })).toBeVisible();
+  await expect(page.getByText(/never surfaced here as blurred teasers/i)).toBeVisible();
 });
 
 test("Studio keeps its room portrait behind a running feed", async ({ page }) => {

@@ -75,7 +75,7 @@ const RecoveryMeta = z.object({
   recoveryToken: z.string().min(32).max(256),
 });
 
-function recoveryHash(token: string): string {
+export function recoveryHash(token: string): string {
   return createHash("sha256").update(`occestra-demo:${token}`).digest("hex");
 }
 
@@ -170,6 +170,7 @@ export function instrumentDeps(deps: EngineDeps, emit: (event: DemoEvent) => voi
 
 export interface DemoContext extends PipelineContext {
   store: Store;
+  publicBaseUrl: string;
   demoSecret?: string;
   demoDailyCap: number;
   /** Free runs one caller may take per day, inside the shared daily cap. */

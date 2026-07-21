@@ -220,13 +220,14 @@ export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
   // verify the on-chain leaf themselves; the token authorises revealing it again, and deleting
   // the pack. This is the only place either appears.
   const secrets = (pack as Pack & { privateSecrets?: { ownerToken: string; salt: string } }).privateSecrets;
+  const isPrivate = Boolean(secrets) || ctx.store.isPrivate(pack.id);
 
   return {
     keepsakeId: pack.id,
     studio: pack.studio,
+    ...(isPrivate ? { private: true } : {}),
     ...(secrets
       ? {
-          private: true,
           owner: {
             ownerToken: secrets.ownerToken,
             salt: secrets.salt,
@@ -243,6 +244,7 @@ export function packResult(ctx: ServerContext, pack: Pack, note?: string) {
       kind: artifact.kind,
       title: artifact.title,
       format: artifact.format,
+      ...(artifact.styleId ? { styleId: artifact.styleId } : {}),
       ...(artifact.data ? { content: artifact.data } : {}),
       ...(artifact.uri ? { url: ctx.store.signedUrlFor(artifact.uri, 86_400) } : {}),
       sources: artifact.sources,

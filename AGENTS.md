@@ -190,6 +190,13 @@ studio-core: >=22 tests. tribunal: >=16 tests. receipts+contracts: >=8 tests inc
   artifact shape and returned HTTP 500. The fetch layer now distinguishes public packs from private
   provenance shells, and `/k` renders a purpose-built verifier that never dereferences or hints at
   withheld contents.
+- 2026-07-21 (Gallery visibility) — **A BLURRED PRIVATE IMAGE IS STILL A DISCLOSURE.** Celebrate
+  and Launch packs are unlisted/shareable by default; Remember packs remain salted and private;
+  no run enters the Gallery automatically. An owner-approved Remember publication creates a
+  separate public snapshot with a new id and seal, selected copied artifacts, redacted titles and
+  stripped private sources. The original pack and its capability stay private. Public Gallery
+  activity about private work is aggregate-only—never a blurred asset, partial id, name, title,
+  timestamp or location.
 
 - 2026-07-15 (V2-5) — **A SOFTWARE WEBGL CONTEXT IS NOT A CAPABLE WEBGL CONTEXT.** Headless
   Chromium on this VPS exposes WebGL through SwiftShader, then renders the cluster in single-digit

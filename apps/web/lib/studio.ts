@@ -44,6 +44,7 @@ export interface FinishedArtifact {
   kind: string;
   title: string;
   format: string;
+  styleId?: string;
   content?: string;
   url?: string;
   sources: Array<{ source: string; retrievedAt: string; url?: string }>;
@@ -67,6 +68,8 @@ export type FinishedGap = { code: string; note: string } | string;
 export interface FinishedPack {
   keepsakeId: string;
   studio: StudioId;
+  /** Remember packs expose only provenance at /k unless their owner makes a separate showcase. */
+  private?: boolean;
   quality: {
     oqsVersion: string;
     passRate: number;
