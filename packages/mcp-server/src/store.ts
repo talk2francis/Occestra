@@ -1210,6 +1210,7 @@ export class Store {
     key: string,
     requestHash: string,
     tool: string,
+    options: { bindRequest?: boolean } = {},
   ):
     | { status: "fresh" }
     | { status: "replay"; response: unknown }
@@ -1229,7 +1230,17 @@ export class Store {
         return { status: "fresh" as const };
       }
 
-      if (row["request_hash"] !== requestHash) return { status: "conflict" as const };
+      // A key the BUYER chose is bound to the request they chose it for: reusing it for
+      // different work is their bug and refusing is the only safe answer. A key WE derived
+      // from their payment nonce is bound to the payment instead, and must not be — the
+      // nonce buys exactly one answer, and they are entitled to it however their client
+      // re-serializes the body on retry. Binding it to a request hash is what made a dropped
+      // response permanently unrecoverable in the 2026-07-28 test: same nonce, byte-different
+      // body, 422, money gone.
+      if (options.bindRequest !== false && row["request_hash"] !== requestHash) {
+        return { status: "conflict" as const };
+      }
+      if (row["tool"] !== tool) return { status: "conflict" as const };
 
       if (row["state"] === "done") {
         return {

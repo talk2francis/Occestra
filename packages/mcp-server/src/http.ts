@@ -678,15 +678,19 @@ export function buildApp(ctx: AppContext): Express {
     }
 
     const fee = plainFee(tool, legacySharedRoute);
-    const idempotencyKey = fee > 0
-      ? req.get("idempotency-key")?.trim() || paymentNonceOf(req.headers)
-      : undefined;
+    const buyerKey = fee > 0 ? req.get("idempotency-key")?.trim() : undefined;
+    const idempotencyKey = fee > 0 ? buyerKey || paymentNonceOf(req.headers) : undefined;
+    // Only a key the buyer chose is bound to the exact request. A nonce-derived key is bound
+    // to the payment, so a retry with a differently-serialized body still gets its answer.
+    const bindRequest = Boolean(buyerKey);
 
     if (idempotencyKey) {
       const requestHash = createHash("sha256")
         .update(JSON.stringify({ service: tool, input }))
         .digest("hex");
-      const claim = ctx.store.claimIdempotencyKey(idempotencyKey, requestHash, tool);
+      const claim = ctx.store.claimIdempotencyKey(idempotencyKey, requestHash, tool, {
+        bindRequest,
+      });
 
       if (claim.status === "replay") {
         replayPlain(res, claim.response as StoredResponse);
@@ -877,14 +881,16 @@ export function buildApp(ctx: AppContext): Express {
       //    the call and single-use by construction. So the identical request, replayed, is
       //    safe by default, with no change on the buyer's side at all.
       if (!isFree(tool)) {
-        idempotencyKey =
-          req.get("idempotency-key")?.trim() || paymentNonceOf(req.headers) || undefined;
+        const buyerKey = req.get("idempotency-key")?.trim();
+        idempotencyKey = buyerKey || paymentNonceOf(req.headers) || undefined;
 
         if (idempotencyKey) {
           const hash = createHash("sha256")
             .update(JSON.stringify({ tool, args }))
             .digest("hex");
-          const claim = ctx.store.claimIdempotencyKey(idempotencyKey, hash, tool);
+          const claim = ctx.store.claimIdempotencyKey(idempotencyKey, hash, tool, {
+            bindRequest: Boolean(buyerKey),
+          });
 
           if (claim.status === "replay") {
             replay(res, (body as { id?: unknown }).id, claim.response as StoredResponse);

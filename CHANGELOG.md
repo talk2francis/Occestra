@@ -9,6 +9,32 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Fixed the worst failure a paid marketplace can have: taking the fee and returning nothing.
+  A third-party buyer ran the listing on 2026-07-28, paid 0.60 USD₮0 across two attempts and
+  received no deliverable at all. Settlement confirmed the transfer with viem's
+  `waitForTransactionReceipt`, which polls the head and then fetches that block; X Layer's
+  public RPC is a load-balanced pool, so one node advertised head N while the next answered
+  `block is out of range` for it. That is a well-formed JSON-RPC error rather than a network
+  error, so viem did not retry — it threw, after the transfer had already landed, and the buyer
+  got HTTP 400. Confirmation now polls `eth_getTransactionReceipt` directly with backoff, never
+  fetching a block, and treats every RPC error as transient. A genuine revert still fails
+  honestly. A receipt we cannot read in ninety seconds is reported to the buyer as `broadcast`
+  with its transaction hash, and the deliverable is handed over regardless: once the transfer is
+  on the wire the buyer's nonce is spent, and keeping the fee while refusing the goods is never
+  the right answer.
+- Made a dropped response recoverable instead of permanently fatal. The idempotency key we
+  derive from a buyer's payment nonce was also bound to a hash of the request body, so replaying
+  the same paid nonce with a byte-different serialization returned 422 and the answer was
+  unreachable forever. A nonce-derived key is now bound to the payment alone — it buys exactly
+  one answer and the buyer gets it however their client re-serializes the retry — while a key
+  the buyer chose stays bound to its request, because reuse there is genuinely their bug. The
+  service is checked in both cases, so a nonce can never return another tool's work.
+- Added `scripts/x402-buyer-smoke.mjs`: the missing half of the test suite, which stands on the
+  buyer's side of the counter. It takes a real 402, signs a real EIP-3009 authorization, settles
+  on chain, asserts a deliverable, and then replays the spent nonce to prove recovery works.
+  Signing with the treasury key makes `from` and `to` the same address, so the settlement is
+  real but moves no net value and costs only gas.
+
 - Added an explicit visibility ladder instead of silently treating every sealed pack as Gallery
   content: Celebrate and Launch finish unlisted/shareable; Remember remains private and exposes
   provenance only; Gallery publication requires the browser's unguessable run capability and a

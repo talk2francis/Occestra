@@ -152,8 +152,17 @@ export interface PaymentChallenge {
   }>;
 }
 
+/**
+ * How long we will chase a settlement receipt before delivering anyway. Long enough to ride
+ * out X Layer pool lag (blocks are ~2s), short enough that a buyer is not left hanging.
+ */
+const SETTLEMENT_CONFIRM_TIMEOUT_MS = 90_000;
+
+const sleep = (ms: number): Promise<void> =>
+  ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+
 export type GateVerdict =
-  | { ok: true; payerRef: string; txHash?: string; settled: boolean }
+  | { ok: true; payerRef: string; txHash?: string; settled: boolean; confirmed?: boolean }
   | { ok: false; status: 402; challenge: PaymentChallenge; headerValue: string }
   | { ok: false; status: 400; reason: string };
 
@@ -423,6 +432,7 @@ export class OkxGate implements PaymentGate {
       payerRef: authorization.from.toLowerCase(),
       settled: settlement.settled,
       ...(settlement.txHash ? { txHash: settlement.txHash } : {}),
+      ...(settlement.confirmed === undefined ? {} : { confirmed: settlement.confirmed }),
     };
   }
 
@@ -433,7 +443,10 @@ export class OkxGate implements PaymentGate {
   private async settle(
     authorization: z.infer<typeof AuthorizationSchema>,
     signature: Hex,
-  ): Promise<{ ok: true; txHash?: string; settled: boolean } | { ok: false; reason: string }> {
+  ): Promise<
+    | { ok: true; txHash?: string; settled: boolean; confirmed?: boolean }
+    | { ok: false; reason: string }
+  > {
     if (!this.config.settlementKey) {
       // Verified but not redeemed. Honest about it: the caller records it as unsettled.
       return { ok: true, settled: false };
@@ -464,22 +477,74 @@ export class OkxGate implements PaymentGate {
         chain,
       });
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-      if (receipt.status !== "success") {
+      // From here the buyer's authorization is SPENT: the transfer is broadcast and their
+      // nonce is consumed on chain. Nothing below this line may return a failure that keeps
+      // the fee and refuses the goods — see confirm().
+      const confirmation = await this.confirm(publicClient, txHash);
+
+      if (confirmation.status === "reverted") {
         return { ok: false, reason: `settlement transaction reverted (${txHash})` };
       }
 
-      return { ok: true, txHash, settled: true };
+      return { ok: true, txHash, settled: true, confirmed: confirmation.status === "success" };
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) };
     }
   }
 
+  /**
+   * Wait for the settlement receipt without ever losing the buyer's money to an RPC hiccup.
+   *
+   * viem's `waitForTransactionReceipt` polls the head and then fetches THAT BLOCK. X Layer's
+   * public RPC is a load-balanced pool: one node advertises head N while the next has not
+   * indexed N yet and answers `block is out of range`. That is a well-formed JSON-RPC error,
+   * not a network error, so viem does not retry it — it throws. A buyer whose transfer had
+   * already landed then got HTTP 400 and no deliverable. It happened twice in the 2026-07-28
+   * nationwide ASP test and it is the worst failure a paid marketplace can have.
+   *
+   * So: poll `eth_getTransactionReceipt` directly (no block fetch at all), treat every RPC
+   * error as transient, and if the deadline passes with no receipt, report `unconfirmed`
+   * rather than failing. The caller delivers on `unconfirmed` — the transfer is broadcast and
+   * signed by us, so the honest outcome is goods now and a settlement status the buyer can
+   * check for themselves, never a kept fee and a 400.
+   */
+  private async confirm(
+    publicClient: ReturnType<typeof createPublicClient>,
+    txHash: Hex,
+  ): Promise<{ status: "success" | "reverted" | "unconfirmed" }> {
+    const deadline = this.config.now() + SETTLEMENT_CONFIRM_TIMEOUT_MS;
+    let delay = 500;
+
+    while (this.config.now() < deadline) {
+      try {
+        const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
+        if (receipt) return { status: receipt.status === "success" ? "success" : "reverted" };
+      } catch {
+        // Receipt-not-found and pool-lag noise are indistinguishable here and both mean the
+        // same thing: ask again.
+      }
+
+      await sleep(Math.min(delay, Math.max(0, deadline - this.config.now())));
+      delay = Math.min(delay * 2, 4000);
+    }
+
+    return { status: "unconfirmed" };
+  }
+
   /** The PAYMENT-RESPONSE header the buyer decodes to see what actually happened. */
   static settlementHeader(verdict: Extract<GateVerdict, { ok: true }>, amount: string): string {
+    // "broadcast" is the honest third state: the transfer is on the wire and the buyer's nonce
+    // is spent, but our RPC could not hand back a receipt in time. The tx hash is right there
+    // for them to check. We deliver on it rather than keep the fee and refuse the goods.
+    const status = !verdict.settled
+      ? "verified"
+      : verdict.confirmed === false
+        ? "broadcast"
+        : "settled";
+
     return Buffer.from(
       JSON.stringify({
-        status: verdict.settled ? "settled" : "verified",
+        status,
         transaction: verdict.txHash ?? null,
         amount,
         payer: verdict.payerRef,
