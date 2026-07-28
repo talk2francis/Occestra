@@ -101,6 +101,9 @@ const ctx: AppContext = {
   ...(env["OCE_DEMO_SECRET"] ? { demoSecret: env["OCE_DEMO_SECRET"] } : {}),
   ...(env["OCE_DEMO_DAILY_CAP"] ? { demoDailyCap: Number(env["OCE_DEMO_DAILY_CAP"]) } : {}),
   ...(env["OCE_DEMO_PER_IP_CAP"] ? { demoPerIpCap: Number(env["OCE_DEMO_PER_IP_CAP"]) } : {}),
+  ...(env["OCE_MARKETPLACE_BUDGET_MS"]
+    ? { marketplaceBudgetMs: Number(env["OCE_MARKETPLACE_BUDGET_MS"]) }
+    : {}),
 };
 
 /* -------------------------------------------------------------- job queue */

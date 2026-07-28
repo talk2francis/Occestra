@@ -30,6 +30,7 @@ import {
   type ToolResult,
 } from "./server.js";
 import type { JobQueue } from "./jobs.js";
+import type { JobRow } from "./store.js";
 
 export interface AppContext extends ServerContext {
   gate: PaymentGate;
@@ -41,6 +42,12 @@ export interface AppContext extends ServerContext {
   demoDailyCap?: number;
   /** Free runs one caller may take per day. Default 2 — enough to try it, not to farm it. */
   demoPerIpCap?: number;
+  /**
+   * How long a paid response may take before it hands back a job handle instead of a pack.
+   * Defaults to MARKETPLACE_BUDGET_MS; overridden in tests, and by OCE_MARKETPLACE_BUDGET_MS
+   * if a future buyer's client turns out to be more or less patient than OKX's thirty seconds.
+   */
+  marketplaceBudgetMs?: number;
 }
 
 /* -------------------------------------------------------------- rate limit */
@@ -113,6 +120,154 @@ function replayPlain(res: Response, stored: StoredResponse): void {
   if (stored.paymentResponse) res.set("PAYMENT-RESPONSE", stored.paymentResponse);
   res.set("Idempotency-Replayed", "true");
   res.status(200).json(stored.payload);
+}
+
+/* -------------------------------------------------- the thirty-second wall */
+
+/**
+ * THE MARKETPLACE HANGS UP AT THIRTY SECONDS.
+ *
+ * Measured, not guessed: `onchainos agent task-402-pay` replays the paid endpoint and cuts the
+ * connection at exactly 30.0s — Caddy records it as `status 0, duration 30.0`. Occestra's pack
+ * tools take 80–130s. So every marketplace-routed purchase of a pack was failing, and failing
+ * in the worst possible way: our side kept working, settled the payment and finished the pack
+ * into a socket nobody was holding. The buyer's client reported a transport error and got
+ * nothing. That is the whole of the 2026-07-28 test failure, and it had nothing to do with
+ * which endpoint was listed — `/mcp` and `/x402/<tool>` failed identically.
+ *
+ * So a paid response now lives inside a BUDGET, measured from the moment the request arrived.
+ * Settlement spends part of it; whatever is left is how long we may wait for the pack. If the
+ * pack lands inside the budget the buyer gets it in-band, exactly as before. If it does not,
+ * they get 200 and a durable job handle — the work continues, it is already paid for, and
+ * `oce_job_status` / `oce_job_result` are free. What they never get is a dead connection.
+ *
+ * The budget is deliberately under 30s rather than at it: the client's clock starts before
+ * ours (TLS, request body) and ends after ours (response body), so the margin is real.
+ */
+const MARKETPLACE_BUDGET_MS = 25_000;
+
+const isPackToolName = (tool: string): tool is PackToolName =>
+  (PACK_TOOLS as readonly string[]).includes(tool);
+
+const newJobId = (): string =>
+  `job_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * Wait for a job, but only for as long as we are allowed to.
+ *
+ * Returns the terminal row if it reached one in time, or undefined if the budget ran out while
+ * it was still working — which is not a failure, just an answer we have to give differently.
+ */
+async function awaitJobWithin(
+  ctx: AppContext,
+  jobId: string,
+  budgetMs: number,
+): Promise<JobRow | undefined> {
+  const deadline = Date.now() + budgetMs;
+
+  for (;;) {
+    const job = ctx.store.getJob(jobId);
+    if (job && (job.state === "done" || job.state === "failed" || job.state === "cancelled")) {
+      return job;
+    }
+    if (Date.now() >= deadline) return undefined;
+    await new Promise((resolve) => setTimeout(resolve, Math.min(250, deadline - Date.now())));
+  }
+}
+
+/** What a buyer gets when the pack outlived the budget. A receipt, not an apology. */
+function pendingPayload(ctx: AppContext, tool: string, fee: number, jobId: string): unknown {
+  return {
+    ok: true,
+    service: tool,
+    priceUsdt: fee,
+    delivered: false,
+    jobId,
+    state: "running",
+    note:
+      "Your payment settled and the work is running. It outlived the response budget, so it is " +
+      "being finished as a durable job rather than held on this connection. Nothing further is " +
+      "owed and nothing is lost.",
+    poll: "Call oce_job_status with this jobId. It is free.",
+    collect: "When state is 'done', call oce_job_result. Also free.",
+    retrieve:
+      "Replaying this exact paid request also works: once the job finishes, the same payment " +
+      "nonce returns the finished pack instead of this notice.",
+    publicPage: `${ctx.publicBaseUrl}/j/${jobId}`,
+  };
+}
+
+/**
+ * Turn a finished job into the deliverable the buyer paid for, or an honest failure.
+ *
+ * `undefined` means "no answer yet" — the caller keeps whatever it already had.
+ */
+function settledJobPayload(
+  ctx: AppContext,
+  tool: string,
+  fee: number,
+  job: JobRow,
+): { payload: unknown; isError: boolean } | undefined {
+  if (job.state === "done" && job.packId) {
+    const pack = ctx.store.getPack(job.packId);
+    if (pack) {
+      return {
+        payload: { ok: true, service: tool, priceUsdt: fee, delivered: true, jobId: job.id, deliverable: packResult(ctx, pack) },
+        isError: false,
+      };
+    }
+  }
+
+  if (job.state === "failed" || job.state === "cancelled") {
+    return {
+      payload: {
+        ok: false,
+        service: tool,
+        priceUsdt: fee,
+        delivered: false,
+        jobId: job.id,
+        state: job.state,
+        error: job.error ?? "the run produced no pack",
+        refund: "Nothing was delivered, so the payment is booked as owed back to you at /stats.",
+      },
+      isError: true,
+    };
+  }
+
+  return undefined;
+}
+
+/**
+ * A replay of a paid request must answer with the BEST truth available now, not the truth that
+ * was available when the connection dropped.
+ *
+ * This is what closes the marketplace loop. The buyer's first call returns a pending job handle
+ * because the pack outlived the budget; their client then replays the same paid request — which
+ * is exactly what `agent complete` does — and by then the job has usually finished. Handing back
+ * the stale "still running" notice would strand them on a pack they own. So: if the cached
+ * response was a pending handle and the job has since reached a terminal state, rebuild it into
+ * the real deliverable and rewrite the cache, so every later replay is instant.
+ */
+function upgradeStoredResponse(ctx: AppContext, key: string, stored: StoredResponse): StoredResponse {
+  const payload = stored.payload as
+    | { delivered?: boolean; jobId?: string; service?: string; priceUsdt?: number }
+    | undefined;
+
+  if (!payload || payload.delivered !== false || !payload.jobId) return stored;
+
+  const job = ctx.store.getJob(payload.jobId);
+  if (!job) return stored;
+
+  const settled = settledJobPayload(ctx, payload.service ?? job.tool, payload.priceUsdt ?? 0, job);
+  if (!settled) return stored;
+
+  const upgraded: StoredResponse = {
+    ...settled,
+    ...(stored.paymentResponse ? { paymentResponse: stored.paymentResponse } : {}),
+  };
+
+  ctx.store.completeIdempotencyKey(key, upgraded);
+  return upgraded;
 }
 
 /* ----------------------------------------------------- plain x402 service */
@@ -615,10 +770,26 @@ export function buildApp(ctx: AppContext): Express {
 
   /* -------------------------------------------------------------------- mcp */
 
-  /** The fee registered for the plain-HTTP toast service on the shared /mcp URL. */
+  /**
+   * The fee a bare /mcp probe is quoted — and it MUST equal the fee registered on the
+   * marketplace for the service listed at that URL, because the buyer's flow validates the
+   * quote against the listing and sets its budget from it. A mismatch is not cosmetic: it
+   * fails the purchase before any payment is attempted.
+   *
+   * /mcp is now the endpoint of exactly ONE service, Toast, after the other seven moved to
+   * their own /x402/<tool> routes on 2026-07-28. So the honest quote is Toast's real price,
+   * and defaulting to it means the probe tracks the listing instead of drifting from it —
+   * the old hard-coded 0.02 was correct only while /mcp was a shared multi-service route.
+   *
+   * This is only right BECAUSE the others moved off /mcp first. If another service is ever
+   * listed back onto this URL at a different price, a single flat challenge starts mis-pricing
+   * one of them. Give new services their own route.
+   */
   const plainX402Fee = (): number => {
-    const configured = Number(process.env["OCE_X402_PROBE_FEE"] ?? 0.02);
-    return Number.isFinite(configured) && configured > 0 ? configured : 0.02;
+    const configured = Number(process.env["OCE_X402_PROBE_FEE"] ?? PRICES[LEGACY_PLAIN_TOOL]);
+    return Number.isFinite(configured) && configured > 0
+      ? configured
+      : PRICES[LEGACY_PLAIN_TOOL];
   };
 
   const plainFee = (tool: PlainHttpToolName, legacySharedRoute: boolean): number =>
@@ -660,6 +831,10 @@ export function buildApp(ctx: AppContext): Express {
       return;
     }
 
+    // The clock the buyer's client is running starts before this and ends after it. Everything
+    // below — validation, settlement, the work itself — spends the same budget.
+    const receivedAt = Date.now();
+
     let input: unknown;
     try {
       input = plainToolInput(req, tool, ctx.deps.clock.now());
@@ -693,7 +868,7 @@ export function buildApp(ctx: AppContext): Express {
       });
 
       if (claim.status === "replay") {
-        replayPlain(res, claim.response as StoredResponse);
+        replayPlain(res, upgradeStoredResponse(ctx, idempotencyKey, claim.response as StoredResponse));
         return;
       }
       if (claim.status === "in_flight") {
@@ -743,11 +918,52 @@ export function buildApp(ctx: AppContext): Express {
     }
 
     try {
+      // A pack is minutes of work and the buyer's client hangs up at thirty seconds. Run it as
+      // a durable job and wait only for what is left of the budget: in-band if it lands, a job
+      // handle if it does not. Short services (critique, verification) stay synchronous —
+      // they finish in seconds and the queue only knows how to run packs.
+      const budget = ctx.marketplaceBudgetMs ?? MARKETPLACE_BUDGET_MS;
+
+      if (isPackToolName(tool) && ctx.jobs) {
+        // Whatever settlement left us. A slow settlement means we wait LESS, never that we
+        // fall back to running the pack on this connection — that is the failure mode.
+        const remaining = Math.max(0, budget - (Date.now() - receivedAt));
+        const jobId = newJobId();
+
+        ctx.store.createJob({
+          id: jobId,
+          tool,
+          args: input as Record<string, unknown>,
+          payerRef: order?.payerRef ?? "free",
+          priceUsdt: order?.priceUsdt ?? 0,
+          ...(order ? { orderId: order.id } : {}),
+        });
+        ctx.jobs.kick();
+
+        const finished = remaining > 0 ? await awaitJobWithin(ctx, jobId, remaining) : undefined;
+        const settled = finished ? settledJobPayload(ctx, tool, fee, finished) : undefined;
+
+        // Whatever we hand back is what a replay of this payment must hand back too — including
+        // the pending notice, which the replay path later upgrades once the job is done.
+        const result = settled ?? { payload: pendingPayload(ctx, tool, fee, jobId), isError: false };
+
+        if (idempotencyKey) {
+          ctx.store.completeIdempotencyKey(idempotencyKey, {
+            ...result,
+            ...(paymentResponse ? { paymentResponse } : {}),
+          } satisfies StoredResponse);
+        }
+
+        res.status(200).type("application/json").json(result.payload);
+        return;
+      }
+
       const deliverable = await executePlainHttpTool(requestCtx, tool, input);
       const payload = {
         ok: true,
         service: tool,
         priceUsdt: fee,
+        delivered: true,
         deliverable,
       };
 
@@ -761,6 +977,7 @@ export function buildApp(ctx: AppContext): Express {
 
       res.status(200).type("application/json").json(payload);
     } catch (error) {
+      ctx.deps.log?.(`plain x402 ${tool} failed after settlement`, error);
       if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
       if (order) {
         ctx.store.oweRefund({
@@ -893,7 +1110,11 @@ export function buildApp(ctx: AppContext): Express {
           });
 
           if (claim.status === "replay") {
-            replay(res, (body as { id?: unknown }).id, claim.response as StoredResponse);
+            replay(
+              res,
+              (body as { id?: unknown }).id,
+              upgradeStoredResponse(ctx, idempotencyKey, claim.response as StoredResponse),
+            );
             return;
           }
           if (claim.status === "in_flight") {

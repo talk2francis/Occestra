@@ -632,19 +632,23 @@ describe("http surface", () => {
       now: () => NOW,
     }));
 
-    // GET discovery advertises the marketplace-registered plain-service fee. Production keeps
-    // this probe at 0.02 USDT independently of the richer MCP toast tool's current price.
+    // GET discovery advertises the marketplace-registered fee for the service listed at /mcp.
+    // That used to be a flat 0.02 probe, because /mcp was a shared multi-service URL. Since
+    // 2026-07-28 the other seven services have their own /x402/<tool> routes and Toast is the
+    // ONLY service listed here, so the probe quotes Toast's real price. It has to: the buyer's
+    // flow validates this quote against the listing and takes its budget from it, so a probe
+    // that disagrees with the marketplace fails the purchase before any payment is attempted.
     const get = await fetch(`${base}/mcp`, { headers: { accept: "application/json" } });
     expect(get.status).toBe(402);
     const getBody = await get.json();
     expect(getBody.accepts[0].asset).toBe(DEFAULT_ASSET);
     expect(getBody.accepts[0].network).toBe("eip155:196");
-    expect(getBody.accepts[0].amount).toBe("20000");
+    expect(getBody.accepts[0].amount).toBe("100000");
     expect(getBody.accepts[0].decimals).toBe(6);
     expect(get.headers.get("PAYMENT-REQUIRED")).toBeTruthy();
 
     // Attempt 1 from the review report: signed GET, no business body, legacy X-PAYMENT header.
-    const getProof = await paymentProof(0.02, "plain-get");
+    const getProof = await paymentProof(0.1, "plain-get");
     const paidGet = await fetch(`${base}/mcp`, {
       headers: { accept: "application/json", "X-PAYMENT": getProof },
     });
@@ -655,7 +659,7 @@ describe("http surface", () => {
     const getResult = await paidGet.json();
     expect(getResult.ok).toBe(true);
     expect(getResult.service).toBe("oce_write_toast");
-    expect(getResult.priceUsdt).toBe(0.02);
+    expect(getResult.priceUsdt).toBe(0.1);
     expect(getResult.deliverable.artifacts[0].kind).toBe("toast");
 
     // A network retry of the same paid GET is the same answer, never a second settlement.
@@ -666,7 +670,7 @@ describe("http surface", () => {
     expect(replayedGet.headers.get("Idempotency-Replayed")).toBe("true");
 
     // Attempt 2 from the review report: signed POST with a business body and JSON-only Accept.
-    const postProof = await paymentProof(0.02, "plain-post");
+    const postProof = await paymentProof(0.1, "plain-post");
     const paidPost = await fetch(`${base}/mcp`, {
       method: "POST",
       headers: {
@@ -688,7 +692,7 @@ describe("http surface", () => {
     // A buyer replay may retain its JSON-RPC tools/call envelope while accepting JSON only. It is
     // still the registered plain x402 service, not an MCP stream, and must settle + deliver rather
     // than falling into StreamableHTTPServerTransport's 406 response.
-    const wrappedProof = await paymentProof(0.02, "plain-jsonrpc-post");
+    const wrappedProof = await paymentProof(0.1, "plain-jsonrpc-post");
     const wrapped = await fetch(`${base}/mcp`, {
       method: "POST",
       headers: {
@@ -782,7 +786,9 @@ describe("http surface", () => {
     ];
 
     for (const [index, sample] of cases.entries()) {
-      const fee = sample.tool === "oce_write_toast" ? 0.02 : PRICES[sample.tool];
+      // No special case for toast any more: /mcp lists exactly one service now, so its probe
+      // fee IS the toast list price rather than a separate shared-route number.
+      const fee = PRICES[sample.tool];
       const proof = await paymentProof(fee, `plain-service-${index}`);
       const response = await fetch(`${base}/mcp`, {
         method: "POST",

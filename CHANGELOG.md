@@ -9,6 +9,34 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Made Occestra purchasable through the OKX marketplace at all. `agent task-402-pay` replays a
+  paid endpoint and cuts the connection at **exactly 30.0 seconds** — measured from a Caddy
+  access log added for the purpose, which recorded `status 0, duration 30.0` three times in a
+  row. Pack tools take 80–130 seconds, so every marketplace-routed purchase of a pack had been
+  failing, and failing in the worst available way: our side kept working, settled the payment
+  and finished the pack into a socket nobody was holding, while the buyer's client reported a
+  transport error and got nothing. This was the whole of the 2026-07-28 test failure and it had
+  nothing to do with which endpoint was listed — `/mcp` and `/x402/<tool>` failed identically.
+  A paid response now lives inside a budget measured from the moment the request arrives:
+  settlement spends part of it, and whatever remains is how long we may wait for the pack. If it
+  lands in time the buyer gets it in-band exactly as before; if it does not they get 200 and a
+  durable job handle, because the work is already paid for and continues regardless. A slow
+  settlement now means we wait less, never that we fall back to holding the connection.
+- Made a replay return the best truth available now rather than the truth from when the
+  connection dropped. A first call that hands back a pending job handle is followed by the
+  buyer's client replaying the same paid request — which is precisely what `agent complete`
+  does — so a replay whose job has since finished is rebuilt into the real deliverable and the
+  cache is rewritten, making every later replay instant. This is the step that closes the
+  marketplace loop.
+- Corrected the bare `/mcp` probe price. It was pinned at a flat 0.02, which was right while
+  `/mcp` was a shared multi-service URL and wrong the moment seven services moved to their own
+  `/x402/<tool>` routes and Toast became the only service listed there. The buyer's flow
+  validates that quote against the listing and takes its budget from it, so the mismatch would
+  have failed a purchase before any payment was attempted. The probe now defaults to the listed
+  tool's real price and tracks the price list instead of drifting from it.
+- Added `scripts/x402-buy.mjs`, which buys a service on the live rail and keeps the result, so a
+  marketplace task that was paid through escrow can be handed real work rather than a placeholder.
+
 - Fixed the worst failure a paid marketplace can have: taking the fee and returning nothing.
   A third-party buyer ran the listing on 2026-07-28, paid 0.60 USD₮0 across two attempts and
   received no deliverable at all. Settlement confirmed the transfer with viem's
