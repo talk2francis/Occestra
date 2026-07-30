@@ -204,7 +204,13 @@ describe("a paid pack never outlives the buyer's connection", () => {
     expect(body["ok"]).toBe(true);
     expect(body["delivered"]).toBe(false);
     expect(body["jobId"]).toEqual(expect.any(String));
-    expect(body["poll"]).toContain("oce_job_status");
+    // The notice must name something a plain HTTP buyer can actually FETCH. It used to say
+    // "call oce_job_status", which exists only over MCP JSON-RPC — so a buyer holding a paid,
+    // unfinished job followed the instruction literally and hit a wall.
+    expect(body["poll"]).toContain(`/j/${body["jobId"]}`);
+    expect(body["collect"]).toContain(`/j/${body["jobId"]}/result`);
+    expect(body["statusUrl"]).toMatch(/^https?:\/\//);
+    expect(body["resultUrl"]).toMatch(/^https?:\/\//);
 
     // The whole point. Generous margin so the assertion is about the budget, not the CI box.
     expect(elapsed).toBeLessThan(3_000);

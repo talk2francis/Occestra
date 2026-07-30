@@ -113,8 +113,8 @@ async function askJson<T>(
     const end = body.lastIndexOf(close);
     const candidate = start >= 0 && end > start ? body.slice(start, end + 1) : body;
 
-    try {
-      const parsed = args.schema.safeParse(JSON.parse(candidate));
+    const validate = (value: unknown): { ok: true; value: T } | { ok: false; error: string } => {
+      const parsed = args.schema.safeParse(value);
       if (parsed.success) return { ok: true, value: parsed.data };
       return {
         ok: false,
@@ -122,26 +122,108 @@ async function askJson<T>(
           .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
           .join("; "),
       };
+    };
+
+    try {
+      return validate(JSON.parse(candidate));
     } catch (error) {
+      // TRUNCATION IS THE COMMON CASE, AND IT IS SALVAGEABLE.
+      //
+      // A paid plan came back generic because the planner's reply died mid-array:
+      // "Expected ',' or ']' … at position 2492". `lastIndexOf(close)` then lands on some
+      // nested bracket and the slice is garbage. Rather than throw the whole occasion away,
+      // close what is open and re-validate — a plan with four complete blocks instead of five
+      // is worth incomparably more to the buyer than the generic shape they actually got.
+      // The schema is still the arbiter, so a bad salvage is rejected exactly as before.
+      const salvaged = closeTruncatedJson(candidate);
+      if (salvaged !== undefined) {
+        try {
+          const result = validate(JSON.parse(salvaged));
+          if (result.ok) return result;
+        } catch {
+          /* the salvage did not parse either; fall through to the real error */
+        }
+      }
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
   };
 
+  // Three chances, not two. Malformed JSON is usually a truncated reply, and a second repair
+  // costs one cheap call against a paid pack that would otherwise ship degraded.
+  const REPAIRS = 2;
+
   try {
-    const first = parse(await call());
-    if (first.ok) return first;
+    let attempt = parse(await call());
+    if (attempt.ok) return attempt;
 
-    const second = parse(
-      await call(
-        `Your previous reply could not be used. It failed validation with: ${first.error}\n\nReply with ONLY the corrected JSON. No prose, no code fence.`,
-      ),
-    );
-    if (second.ok) return second;
+    for (let repair = 1; repair <= REPAIRS; repair += 1) {
+      const note =
+        repair === 1
+          ? `Your previous reply could not be used. It failed validation with: ${attempt.ok ? "" : attempt.error}\n\nReply with ONLY the corrected JSON. No prose, no code fence.`
+          : `That still could not be used: ${attempt.ok ? "" : attempt.error}\n\nReply with ONLY valid, COMPLETE JSON — every bracket closed. If you are running out of room, return fewer items rather than an unfinished one. No prose, no code fence.`;
 
-    return { ok: false, error: `after one repair: ${second.error}` };
+      attempt = parse(await call(note));
+      if (attempt.ok) return attempt;
+    }
+
+    return { ok: false, error: `after ${REPAIRS} repairs: ${attempt.ok ? "" : attempt.error}` };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * Close a JSON document that stopped mid-way, dropping the unfinished tail.
+ *
+ * Walks the text tracking string state and bracket depth, rewinds to the last position where
+ * a value had cleanly ended, then closes whatever is still open. Returns undefined when there
+ * is nothing sensible to salvage. Whatever comes back is still schema-validated by the caller.
+ */
+export function closeTruncatedJson(text: string): string | undefined {
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+
+  // The rewind point, and — crucially — what was still open THERE. Closing whatever happens to
+  // be open at the end of a truncated document is wrong: the truncation usually sits inside a
+  // half-written element that we are about to discard.
+  let lastClean = -1;
+  let lastCleanStack: string[] = [];
+
+  const mark = (index: number): void => {
+    lastClean = index;
+    lastCleanStack = [...stack];
+  };
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i] as string;
+
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+
+    if (ch === '"') inString = true;
+    else if (ch === "{" || ch === "[") stack.push(ch === "{" ? "}" : "]");
+    else if (ch === "}" || ch === "]") {
+      // The closer must MATCH what it closes. A `}` shutting an array is not a truncation, it
+      // is a structurally broken document — salvaging it would emit invalid JSON of our own.
+      if (stack.pop() !== ch) return undefined;
+      mark(i);
+    } else if (ch === "," && stack.length > 0) {
+      // A comma proves the value before it finished. Rewind to just before the comma; the
+      // unfinished element after it is what we are dropping.
+      mark(i - 1);
+    }
+  }
+
+  // An unterminated string does NOT veto a salvage — it is the usual shape of a truncated
+  // reply, and `lastClean` is a safe point well before it.
+  if (lastClean < 0 || lastCleanStack.length === 0) return undefined;
+
+  return text.slice(0, lastClean + 1) + lastCleanStack.reverse().join("");
 }
 
 /* ------------------------------------------------------------- 1. work order */

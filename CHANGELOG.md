@@ -9,6 +9,37 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Stopped the Critique service certifying work it had never read. A buyer submitted a gala
+  run-of-show seeded with three overlapping blocks and it came back `pass: true, issues: [],
+  failedOn: null`, no axes scored. Two defects compounded: `SCHEMA_INVALID` only validated a
+  structured payload when the artifact *declared* `format: "json"`, so a schedule in any other
+  format skipped payload validation and passed — while every schedule, plan and budget check
+  abstained **to** it, by name, believing it had looked. With the model critic also unreachable,
+  nothing judged the artifact at all. The kind now decides whether a payload is owed rather than
+  the declared format, so the check the others defer to is the one that actually establishes the
+  truth; abstentions are recorded as abstentions instead of passes and are published as coverage
+  gaps; and a verdict reached by nobody — no critic, and a hard check that could not read the
+  artifact — is reported as `inconclusive`, never as a pass. Verified on the live rail: the same
+  gala schedule now returns FAIL with a quoted reason, and all three overlaps are named.
+- Gave a buyer holding a paid, unfinished job somewhere to go. The durable-job notice said "call
+  `oce_job_status`", which exists only over MCP JSON-RPC, so a plain HTTP buyer who followed the
+  instruction literally hit a wall. Added `GET /j/:id/result` — free, the plain-HTTP twin of
+  `oce_job_result` — and the notice now names fetchable URLs for both polling and collection
+  instead of tool names.
+- Fixed a paid plan that came back in UTC because the city was "Trieste". A buyer's anniversary
+  *lunch* was scheduled 18:00–21:25Z on the artifact they would have handed to guests. The
+  timezone table covered a few dozen cities and everything outside it fell to UTC; it is now
+  several times larger and falls back to the country when only that is recognisable. It still
+  refuses to guess for genuinely unknown places, and still refuses a single zone for countries
+  that span several — an admitted unknown beats a silent wrong answer.
+- Stopped throwing away a truncated plan. The planning model's reply died mid-array and the
+  pipeline gave up after one repair, shipping a generic shape instead of the buyer's occasion.
+  A truncated reply is now salvaged by rewinding to the last completed value and closing what was
+  open *there* — not at the end, which sits inside the half-written element being discarded — and
+  the repair budget went from one attempt to two. The schema remains the arbiter, so a bad salvage
+  is rejected exactly as before, and a structurally broken document (a `}` closing an array) is
+  declined rather than patched into invalid JSON of our own.
+
 - Made Occestra purchasable through the OKX marketplace at all. `agent task-402-pay` replays a
   paid endpoint and cuts the connection at **exactly 30.0 seconds** — measured from a Caddy
   access log added for the purpose, which recorded `status 0, duration 30.0` three times in a

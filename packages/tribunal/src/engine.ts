@@ -195,8 +195,26 @@ async function gradeOnce(args: {
   }
 
   const hard = hardFailures(deterministic).length;
-  const pass = passes(axes, hard, profile.axes);
-  const failedOn = pass ? null : failureClass(axes, hard, profile.axes);
+
+  // AN ABSTENTION IS NOT A PASS.
+  //
+  // `passes` treats a missing critic as "deterministic-only verdict", which is right only while
+  // the deterministic layer actually reached one. If the critic never answered AND a hard check
+  // abstained because it could not read the artifact, then nothing judged this at all — and
+  // saying "pass" would be certifying work we never looked at. Say so instead.
+  const abstained = deterministic.filter((r) => r.skipped && r.hard);
+  const inconclusive = !axes && abstained.length > 0;
+
+  const pass = !inconclusive && passes(axes, hard, profile.axes);
+  const failedOn = pass ? null : inconclusive ? "inconclusive" : failureClass(axes, hard, profile.axes);
+
+  if (inconclusive) {
+    issues.push(
+      `INCONCLUSIVE: no verdict was reached — the model critic was unavailable and ${abstained
+        .map((r) => r.id)
+        .join(", ")} could not read the artifact. This is not a pass.`,
+    );
+  }
 
   // Even a silent critic must hand the repair loop something actionable.
   if (!pass && !repairBrief) {

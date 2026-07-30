@@ -163,10 +163,30 @@ export async function checkSchemaInvalid(ctx: CheckContext): Promise<CheckResult
     budget: BudgetPayloadSchema,
   }[ctx.artifact.kind as "plan" | "schedule" | "budget"];
 
-  if (payloadSchema && ctx.artifact.format === "json") {
+  // THE KIND DECIDES THIS, NOT THE DECLARED FORMAT.
+  //
+  // This used to read `payloadSchema && ctx.artifact.format === "json"`, and that gap let an
+  // artifact through entirely unchecked. A buyer submitted a run-of-show as kind "schedule" in
+  // a non-json format: SCHEMA_INVALID skipped the payload and passed, while SCHEDULE_OVERLAP
+  // tried to parse it, could not, and abstained — to THIS check, which had never looked. With
+  // the model critic also unreachable that run returned pass:true, issues:[], no axes scored.
+  // The service certified an artifact nobody had read, which is the worst thing a product
+  // selling verified quality can do.
+  //
+  // So if the artifact CLAIMS to be a plan, schedule or budget, it owes us a readable payload
+  // whatever it says its format is. Every other check defers to this one, so this one has to
+  // be the place the truth is established.
+  if (payloadSchema) {
     const body = parseJson(ctx.artifact);
     if (body === undefined) {
-      return fail(id, true, `${ctx.artifact.kind} artifact does not contain parseable JSON.`);
+      return fail(
+        id,
+        true,
+        `${ctx.artifact.kind} artifact does not contain a parseable ${ctx.artifact.kind} payload.`,
+        [
+          `declared format "${ctx.artifact.format}"; the ${ctx.artifact.kind} checks cannot run without structured data`,
+        ],
+      );
     }
     const parsed = payloadSchema.safeParse(body);
     if (!parsed.success) {
@@ -200,7 +220,7 @@ export async function checkDateInvalid(ctx: CheckContext): Promise<CheckResult> 
   if (ctx.artifact.kind !== "plan") return pass(id, true, "Not a plan; no date to check.");
 
   const body = PlanPayloadSchema.safeParse(parseJson(ctx.artifact));
-  if (!body.success) return pass(id, true, "Plan payload unreadable; SCHEMA_INVALID owns this.");
+  if (!body.success) return skip(id, true, "Plan payload unreadable; SCHEMA_INVALID owns this.");
 
   const day = body.data.date.slice(0, 10);
   const parsed = new Date(`${day}T00:00:00.000Z`);
@@ -225,7 +245,7 @@ export async function checkScheduleOverlap(ctx: CheckContext): Promise<CheckResu
   if (ctx.artifact.kind !== "schedule") return pass(id, true, "Not a schedule.");
 
   const body = SchedulePayloadSchema.safeParse(parseJson(ctx.artifact));
-  if (!body.success) return pass(id, true, "Schedule payload unreadable; SCHEMA_INVALID owns this.");
+  if (!body.success) return skip(id, true, "Schedule payload unreadable; SCHEMA_INVALID owns this.");
 
   const items = [...body.data.items]
     .map((item) => ({ ...item, startMs: Date.parse(item.start), endMs: Date.parse(item.end) }))
@@ -271,7 +291,7 @@ export async function checkBudgetSum(ctx: CheckContext): Promise<CheckResult> {
   if (ctx.artifact.kind !== "budget") return pass(id, true, "Not a budget.");
 
   const body = BudgetPayloadSchema.safeParse(parseJson(ctx.artifact));
-  if (!body.success) return pass(id, true, "Budget payload unreadable; SCHEMA_INVALID owns this.");
+  if (!body.success) return skip(id, true, "Budget payload unreadable; SCHEMA_INVALID owns this.");
 
   const sum = body.data.lineItems.reduce((acc, item) => acc + item.amount, 0);
   const delta = Math.abs(sum - body.data.total);
@@ -304,7 +324,7 @@ export async function checkSourceMissing(ctx: CheckContext): Promise<CheckResult
    */
   if (ctx.artifact.kind === "schedule") {
     const body = SchedulePayloadSchema.safeParse(parseJson(ctx.artifact));
-    if (!body.success) return pass(id, true, "Schedule payload unreadable; SCHEMA_INVALID owns this.");
+    if (!body.success) return skip(id, true, "Schedule payload unreadable; SCHEMA_INVALID owns this.");
 
     const named = body.data.items.filter((item) => item.venue?.name);
     if (named.length === 0) {
@@ -326,7 +346,7 @@ export async function checkSourceMissing(ctx: CheckContext): Promise<CheckResult
   if (ctx.artifact.kind !== "plan") return pass(id, true, "Not a plan; no grounded claims.");
 
   const body = PlanPayloadSchema.safeParse(parseJson(ctx.artifact));
-  if (!body.success) return pass(id, true, "Plan payload unreadable; SCHEMA_INVALID owns this.");
+  if (!body.success) return skip(id, true, "Plan payload unreadable; SCHEMA_INVALID owns this.");
 
   const unsourced = body.data.claims.filter((claim) => claim.grounded && claim.source === undefined);
   if (unsourced.length > 0) {

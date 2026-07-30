@@ -188,11 +188,17 @@ function pendingPayload(ctx: AppContext, tool: string, fee: number, jobId: strin
       "Your payment settled and the work is running. It outlived the response budget, so it is " +
       "being finished as a durable job rather than held on this connection. Nothing further is " +
       "owed and nothing is lost.",
-    poll: "Call oce_job_status with this jobId. It is free.",
-    collect: "When state is 'done', call oce_job_result. Also free.",
+    // CONCRETE URLS, NOT TOOL NAMES. This notice used to say "call oce_job_status", which only
+    // exists over MCP JSON-RPC — so a plain HTTP buyer holding a paid, unfinished job followed
+    // the instruction literally and hit a wall. Anything named here has to be fetchable as-is.
+    poll: `GET ${ctx.publicBaseUrl}/j/${jobId} — free, returns state and progress.`,
+    collect: `GET ${ctx.publicBaseUrl}/j/${jobId}/result — free, returns the pack once state is 'done'.`,
     retrieve:
       "Replaying this exact paid request also works: once the job finishes, the same payment " +
       "nonce returns the finished pack instead of this notice.",
+    mcp: "Over MCP instead? The same two calls are oce_job_status and oce_job_result, both free.",
+    statusUrl: `${ctx.publicBaseUrl}/j/${jobId}`,
+    resultUrl: `${ctx.publicBaseUrl}/j/${jobId}/result`,
     publicPage: `${ctx.publicBaseUrl}/j/${jobId}`,
   };
 }
@@ -731,6 +737,45 @@ export function buildApp(ctx: AppContext): Express {
       ...(job.packId ? { keepsakeId: job.packId, keepsake: `${ctx.publicBaseUrl}/k/${job.packId}` } : {}),
       ...(job.error ? { error: job.error } : {}),
     });
+  });
+
+  /**
+   * Collect the finished pack over plain HTTP. Free, like oce_job_result.
+   *
+   * A buyer whose paid call converted to a durable job was being told to "call oce_job_result",
+   * which only exists over MCP JSON-RPC — so an ordinary HTTP buyer holding a paid, unfinished
+   * job had nowhere to go. `/j/:id` gave them a state but never the goods. This is the other
+   * half, and the pending notice now names both URLs outright.
+   */
+  app.get("/j/:id/result", (req, res) => {
+    const job = ctx.store.getJob(req.params.id);
+    if (!job) {
+      res.status(404).json({ error: "no job with that id" });
+      return;
+    }
+
+    if (job.state !== "done" || !job.packId) {
+      res.status(200).json({
+        jobId: job.id,
+        ready: false,
+        state: job.state,
+        ...(job.error ? { error: job.error } : {}),
+        note:
+          job.state === "failed" || job.state === "cancelled"
+            ? "This job produced no pack, and never will. Any payment for it is booked as owed back to you."
+            : "Not finished yet. Poll this URL, or the status URL, until state is 'done'.",
+        status: `${ctx.publicBaseUrl}/j/${job.id}`,
+      });
+      return;
+    }
+
+    const pack = ctx.store.getPack(job.packId);
+    if (!pack) {
+      res.status(404).json({ jobId: job.id, ready: false, error: "the pack for this job is gone" });
+      return;
+    }
+
+    res.json({ jobId: job.id, ready: true, ...packResult(ctx, pack) });
   });
 
   /* --------------------------------------------------- signed artifact bytes */

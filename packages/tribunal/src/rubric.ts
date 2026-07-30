@@ -368,7 +368,7 @@ export const THRESHOLDS = {
 
 /* ---------------------------------------------------------- pass / class ---*/
 
-export type FailureClass = "correctness" | "craft" | "both" | null;
+export type FailureClass = "correctness" | "craft" | "both" | "inconclusive" | null;
 
 /**
  * WHY an artifact failed, in the terms that matter to whoever is paying — judged against the
