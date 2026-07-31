@@ -44,9 +44,9 @@ six-way live audit (two themes × three viewports).
    sparse sparkle, offscreen freeze, software-renderer rejection and a real-device 55-FPS gate.
 3. **V2-5.2:** complete. Restrained card/grade/repair/role/route/toast/CTA/seal motion plus a
    real-store recent-seals marquee; all paths have reduced-motion fallbacks.
-4. **V2-5.3:** complete within the available assets. The persisted sound toggle defaults OFF and
-   enables only original seal foley. Ambience is intentionally pending a commercially licensed
-   track from the owner.
+4. **V2-5.3:** complete. The persisted sound toggle defaults OFF and gates both the original
+   seal foley and the owner-supplied ambience loop (added 2026-07-31; provenance in
+   `assets/AUDIO-LICENCE.md`, derived by `node scripts/audio-assets.mjs`).
 5. **Verification complete:** affected live surfaces passed 30/30 normal-motion and 30/30
    reduced-motion checks (two themes × three viewports). Lighthouse 13.4 actual-mobile is
    97/100/100/100 (LCP 0.5s, TBT 200ms, CLS 0). Both 10-second hero recordings and stills live
@@ -81,4 +81,5 @@ the script only catches mechanical defects.
   generic purple-gradient AI site.
 - The first render cannot hide above-the-fold text or eagerly evaluate Three.js. Both regressions
   previously took Lighthouse below the budget and are documented in `AGENTS.md`.
-- Audio remains opt-in, default OFF, and absent until a commercially licensed file is supplied.
+- Audio remains opt-in and default OFF. Nothing is fetched until the visitor asks for it, and a
+  remembered "on" waits for a real gesture — verified by `node apps/web/scripts/audio-check.mjs`.

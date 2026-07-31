@@ -3,7 +3,77 @@
 import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "oce-sound";
+const AMBIENCE_SRC = "/audio/ambience.mp3";
+
+/**
+ * Quiet enough to sit under reading, not over it. This is a room tone, not a soundtrack —
+ * if a visitor notices it before they notice the writing, it is too loud.
+ */
+const AMBIENCE_VOLUME = 0.18;
+const FADE_MS = 900;
+
 let sharedContext: AudioContext | undefined;
+
+/**
+ * One element for the whole site, created on first opt-in and never before.
+ *
+ * `preload="none"` is the point: the track is 8.5 MB, and a visitor who never touches the
+ * toggle must not pay a byte for it. Nothing is fetched until someone asks to hear it, and
+ * the browser then streams it rather than waiting for the whole file.
+ */
+let ambience: HTMLAudioElement | undefined;
+let fadeTimer: number | undefined;
+
+function ambienceElement(): HTMLAudioElement {
+  if (!ambience) {
+    ambience = new Audio();
+    ambience.preload = "none";
+    ambience.loop = true; // ~12 minutes, so most visits never reach the seam
+    ambience.volume = 0;
+    ambience.src = AMBIENCE_SRC;
+    ambience.dataset["oceAmbience"] = "true";
+    // Parked in the document rather than kept in a closure: it costs nothing, and it means
+    // the thing making noise on someone's machine can be inspected — by devtools, and by
+    // scripts/audio-check.mjs, which otherwise can only prove the file was fetched.
+    ambience.hidden = true;
+    document.body.append(ambience);
+  }
+  return ambience;
+}
+
+/** Ramp rather than cut — an ambience that snaps on is worse than no ambience. */
+function fadeTo(element: HTMLAudioElement, target: number, onDone?: () => void): void {
+  if (fadeTimer) window.clearInterval(fadeTimer);
+
+  const start = element.volume;
+  const startedAt = performance.now();
+
+  fadeTimer = window.setInterval(() => {
+    const progress = Math.min(1, (performance.now() - startedAt) / FADE_MS);
+    element.volume = start + (target - start) * progress;
+    if (progress >= 1) {
+      window.clearInterval(fadeTimer);
+      fadeTimer = undefined;
+      onDone?.();
+    }
+  }, 40);
+}
+
+function startAmbience(): void {
+  const element = ambienceElement();
+  // A promise rejection here is the browser's autoplay policy doing its job, not an error:
+  // stay silent and wait for a real gesture rather than fighting it.
+  void element.play().then(
+    () => fadeTo(element, AMBIENCE_VOLUME),
+    () => undefined,
+  );
+}
+
+function stopAmbience(): void {
+  if (!ambience) return;
+  const element = ambience;
+  fadeTo(element, 0, () => element.pause());
+}
 
 function primeAudio() {
   sharedContext ??= new window.AudioContext();
@@ -37,10 +107,13 @@ function softSealNote() {
 }
 
 /**
- * Default OFF, persisted only after an explicit click. The commercially
- * licensed ambience track is intentionally not guessed or generated here;
- * when the owner supplies it this component is the single place to wire the
- * loop. For now the opt-in gates the seal foley and nothing else.
+ * Default OFF, persisted only after an explicit click.
+ *
+ * Nothing here ever plays uninvited: no autoplay, no "this site would like to play sound"
+ * prompt, no sound on a first visit. A visitor who never touches the toggle never downloads
+ * the track and never hears anything. The owner-supplied ambience is wired to the same single
+ * opt-in that already gated the seal foley, and a remembered "on" still waits for a real
+ * gesture, because a remembered preference is not consent the browser will accept.
  */
 export function SoundToggle({ className = "" }: { className?: string }) {
   const [enabled, setEnabled] = useState(false);
@@ -56,8 +129,12 @@ export function SoundToggle({ className = "" }: { className?: string }) {
     enabledRef.current = remembered;
     setEnabled(remembered);
 
+    // A remembered "on" is a preference, not a gesture. Browsers require the latter, so the
+    // ambience waits here for the visitor's first real interaction with the page.
     const unlock = () => {
-      if (enabledRef.current) primeAudio();
+      if (!enabledRef.current) return;
+      primeAudio();
+      startAmbience();
     };
     if (remembered) {
       window.addEventListener("pointerdown", unlock, { once: true, passive: true });
@@ -79,7 +156,16 @@ export function SoundToggle({ className = "" }: { className?: string }) {
     const next = !enabledRef.current;
     enabledRef.current = next;
     setEnabled(next);
-    if (next) primeAudio();
+
+    // The click itself is the gesture, so this is the one moment the ambience is allowed to
+    // begin — and the only moment the file is ever fetched.
+    if (next) {
+      primeAudio();
+      startAmbience();
+    } else {
+      stopAmbience();
+    }
+
     try {
       localStorage.setItem(STORAGE_KEY, next ? "on" : "off");
     } catch {

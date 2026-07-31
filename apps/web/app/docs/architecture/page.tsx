@@ -113,8 +113,9 @@ export default function ArchitectureDoc() {
           repair, active roles pulse, finished cards settle, and the seal&apos;s guilloché turns
           during the press. The recent-seals ribbon is populated from anonymized public store
           data, never invented activity. Sound follows the same restraint: persisted, default
-          off, and limited to a soft seal foley until a commercially licensed ambience track is
-          supplied.
+          off, and never fetched at all until you ask for it — one opt-in gates both a soft seal
+          foley and a quiet looping room tone, and a remembered preference still waits for a
+          real gesture rather than starting on its own.
         </p>
       </Section>
 
