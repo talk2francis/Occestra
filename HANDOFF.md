@@ -77,8 +77,11 @@ the script only catches mechanical defects.
 
 - Gallery and marquee content comes from real packs/store data; never invent volume or output.
 - Open Graph imagery is theme-stable.
-- Daylight remains the brand's reflective editorial face; Nocturne glows without turning into a
-  generic purple-gradient AI site.
+- **Nocturne is the default since 2026-07-31 (owner's call)** — the pre-paint script no longer
+  consults `prefers-color-scheme`, so every visitor opens at night unless they have chosen
+  otherwise. A stored choice still wins and still persists. Daylight remains the brand's
+  reflective editorial face and is one click away; Nocturne still must not drift into a generic
+  purple-gradient AI site. Verified by `node apps/web/scripts/theme-default-check.mjs`.
 - The first render cannot hide above-the-fold text or eagerly evaluate Three.js. Both regressions
   previously took Lighthouse below the budget and are documented in `AGENTS.md`.
 - Audio remains opt-in and default OFF. Nothing is fetched until the visitor asks for it, and a

@@ -55,10 +55,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAF7F2" },
-    { media: "(prefers-color-scheme: dark)", color: "#17131C" },
-  ],
+  // Nocturne ink, unconditionally — the site now opens at night regardless of the OS setting,
+  // so keying browser chrome to prefers-color-scheme would paint a light address bar above a
+  // dark page for every light-mode visitor. `applyTheme` rewrites this when the toggle flips.
+  themeColor: "#17131C",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
