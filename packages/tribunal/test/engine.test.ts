@@ -173,7 +173,10 @@ describe("the published rubric IS the shipped rubric", () => {
     const json = rubricAsJson();
     expect(json.oqsVersion).toBe(OQS_VERSION);
     expect(json.maxRepairs).toBe(MAX_REPAIRS);
-    expect(json.checks).toHaveLength(13);
+    // 14 since SCHEDULE_CONSTRAINT joined: a schedule may not cross a bound the client
+    // stated in the brief. This count is pinned on purpose — a check the engine runs but the
+    // published standard does not list would break the equality the whole claim rests on.
+    expect(json.checks).toHaveLength(14);
     expect(json.profiles.map((p) => p.id)).toEqual(["visual", "written", "plan", "pack"]);
     // The visual profile carries subject_fidelity — the axis the map incident needed.
     const visual = json.profiles.find((p) => p.id === "visual")!;
@@ -185,6 +188,10 @@ describe("the published rubric IS the shipped rubric", () => {
       "SOURCE_MISSING",
       "BUDGET_SUM_MISMATCH",
       "SCHEDULE_OVERLAP",
+      // New: a running order that crosses a timing bound the client stated in the brief. The
+      // Trieste lunch shipped at 18:00-21:25 against "nobody before 12:30" and "finished by
+      // 19:30" — both the buyer's own words, and nothing was checking them.
+      "SCHEDULE_CONSTRAINT",
       "DATE_INVALID",
       "DIM_ASPECT_MISMATCH",
       // New in OQS 1.0.1: unfinished text delivered to a buyer is a hard failure. It reads

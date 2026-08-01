@@ -352,10 +352,71 @@ function defaultPlainInput(tool: PlainHttpToolName, now: number): JsonObject {
   }
 }
 
+/**
+ * Fields whose value the buyer must supply themselves, because inventing one produces a
+ * confident answer to a question nobody asked.
+ *
+ * A buyer sent a brief for a lunch in Trieste using `location` rather than `city`. The city
+ * default filled in "Abuja", and the pipeline produced an internally consistent, well-graded
+ * plan for the wrong continent — venues, timezone and weather all faithfully wrong. Nothing
+ * could catch it downstream, because nothing about the artifact disagreed with itself.
+ *
+ * So these are defaulted ONLY for a genuinely bodyless replay, where a default is the honest
+ * way to answer a probe that asked nothing. The moment a buyer sends a body, a missing one of
+ * these is their omission to fix: they get a 400 naming the field, before any money moves.
+ */
+const MATERIAL_FIELDS: Partial<Record<PlainHttpToolName, readonly string[]>> = {
+  // A city, a date and a headcount are checkable claims about the world. Guess one and the
+  // whole plan is confidently, consistently wrong.
+  oce_plan_occasion: ["city", "date", "headcount"],
+  oce_design_invite: ["date"],
+};
+
+// The remaining defaults are deliberately NOT listed. "A keepsake with no invented personal
+// details", "A draft submitted for quality review" — those are neutral placeholders that
+// assert nothing about anybody, which is the opposite failure mode and the right behaviour
+// for a probe. They stay.
+
+/**
+ * Synonyms an agent buyer plausibly reaches for. Mapping the buyer's OWN value onto the field
+ * it belongs in is not invention — it is reading what they wrote. Only unambiguous pairs.
+ */
+const FIELD_ALIASES: Readonly<Record<string, string>> = {
+  location: "city",
+  place: "city",
+  town: "city",
+  guestCount: "headcount",
+  guest_count: "headcount",
+  guests: "headcount",
+  tone: "vibe",
+  mood: "vibe",
+  style: "styleId",
+};
+
+function applyAliases(body: JsonObject): JsonObject {
+  const out: JsonObject = { ...body };
+  for (const [alias, field] of Object.entries(FIELD_ALIASES)) {
+    if (out[alias] !== undefined && out[field] === undefined) out[field] = out[alias];
+  }
+  return out;
+}
+
 /** Normalize buyer envelopes and apply honest, tool-specific defaults for bodyless replays. */
 function plainToolInput(req: Request, tool: PlainHttpToolName, now: number): unknown {
-  const body = unwrappedPlainBody(req);
-  const defaults = defaultPlainInput(tool, now);
+  const raw = unwrappedPlainBody(req);
+  const body = applyAliases(raw);
+
+  // A bodyless replay asked nothing, so a default answers it honestly. A body that names some
+  // fields but not others is a brief with a hole in it, and the hole is the buyer's to fill.
+  const bodyless = Object.keys(raw).length === 0;
+  let defaults = defaultPlainInput(tool, now);
+
+  if (!bodyless) {
+    const material = MATERIAL_FIELDS[tool] ?? [];
+    defaults = Object.fromEntries(
+      Object.entries(defaults).filter(([key]) => !material.includes(key)),
+    );
+  }
 
   if (tool !== "oce_write_toast") {
     return plainHttpToolSchema(tool).parse({ ...defaults, ...body });

@@ -240,6 +240,88 @@ export async function checkDateInvalid(ctx: CheckContext): Promise<CheckResult> 
   return pass(id, true, "Plan date is real and matches the brief.");
 }
 
+/**
+ * A PLAN THAT CONTRADICTS THE BRIEF IS WRONG, HOWEVER WELL IT READS.
+ *
+ * A paid anniversary lunch came back scheduled 18:00–21:25 against a brief that said eleven
+ * guests could not arrive before 12:30 and the family needed to be finished by 19:30. Both
+ * sentences were in the request the buyer paid for. Nothing caught it: the overlap check saw
+ * no overlaps, the critic liked the prose, and the plan shipped contradicting the two facts
+ * its own buyer had supplied.
+ *
+ * That is the failure this whole Tribunal exists to prevent, so it is a HARD check. It reads
+ * only bounds the buyer actually stated — carried on the artifact as `constraints` — and when
+ * it fails it quotes their sentence back rather than paraphrasing it.
+ */
+export async function checkScheduleConstraint(ctx: CheckContext): Promise<CheckResult> {
+  const id: CheckId = "SCHEDULE_CONSTRAINT";
+  if (ctx.artifact.kind !== "schedule") return pass(id, true, "Not a schedule.");
+
+  const body = SchedulePayloadSchema.safeParse(parseJson(ctx.artifact));
+  if (!body.success) return skip(id, true, "Schedule payload unreadable; SCHEMA_INVALID owns this.");
+
+  const bounds = body.data.constraints;
+  if (!bounds || (!bounds.earliestStartLocal && !bounds.latestEndLocal)) {
+    return pass(id, true, "The brief stated no timing bound to hold the running order to.");
+  }
+
+  const items = body.data.items;
+  if (items.length === 0) return pass(id, true, "No items to place.");
+
+  // Compare on the wall clock the guest reads, which is what the buyer's sentence meant.
+  // `startLocal`/`endLocal` are the rendered local times; fall back to the ISO instant only
+  // when no zone was resolved, in which case both sides are UTC and still comparable.
+  const minutesOf = (value: string | undefined): number | undefined => {
+    if (!value) return undefined;
+    const match = /(\d{1,2}):(\d{2})/.exec(value);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : undefined;
+  };
+  const localMinutes = (
+    item: { start: string; end: string; startLocal?: string | undefined; endLocal?: string | undefined },
+    edge: "start" | "end",
+  ) =>
+    minutesOf(edge === "start" ? item.startLocal : item.endLocal) ??
+    minutesOf(new Date(edge === "start" ? item.start : item.end).toISOString().slice(11, 16));
+
+  const starts = items.map((item) => localMinutes(item, "start")).filter((v): v is number => v !== undefined);
+  const ends = items.map((item) => localMinutes(item, "end")).filter((v): v is number => v !== undefined);
+  if (starts.length === 0 || ends.length === 0) {
+    return skip(id, true, "Schedule items carry no readable times.");
+  }
+
+  const firstStart = Math.min(...starts);
+  const lastEnd = Math.max(...ends);
+  const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+  const evidence: string[] = [];
+  const earliest = minutesOf(bounds.earliestStartLocal);
+  const latest = minutesOf(bounds.latestEndLocal);
+
+  if (earliest !== undefined && firstStart < earliest) {
+    evidence.push(
+      `starts ${clock(firstStart)} but the brief says nothing can begin before ${clock(earliest)}`,
+    );
+  }
+  if (latest !== undefined && lastEnd > latest) {
+    evidence.push(
+      `still running at ${clock(lastEnd)} but the brief requires it finished by ${clock(latest)}`,
+    );
+  }
+
+  if (evidence.length > 0) {
+    return fail(id, true, "The running order breaks a timing bound the client stated.", [
+      ...evidence,
+      ...bounds.statedIn.map((line) => `they wrote: "${line}"`),
+    ]);
+  }
+
+  return pass(
+    id,
+    true,
+    `Runs ${clock(firstStart)}–${clock(lastEnd)}, inside every timing bound the brief stated.`,
+  );
+}
+
 export async function checkScheduleOverlap(ctx: CheckContext): Promise<CheckResult> {
   const id: CheckId = "SCHEDULE_OVERLAP";
   if (ctx.artifact.kind !== "schedule") return pass(id, true, "Not a schedule.");
@@ -635,26 +717,40 @@ export async function checkPlaceholderText(ctx: CheckContext): Promise<CheckResu
 
 /** Run every deterministic check that applies to this artifact. */
 export async function runChecks(ctx: CheckContext): Promise<CheckResult[]> {
-  const [schema, policy, date, schedule, budget, source, contrast, overflow, links, images, placeholder] =
-    await Promise.all([
-      checkSchemaInvalid(ctx),
-      checkPolicyViolation(ctx),
-      checkDateInvalid(ctx),
-      checkScheduleOverlap(ctx),
-      checkBudgetSum(ctx),
-      checkSourceMissing(ctx),
-      checkContrast(ctx),
-      checkTextOverflow(ctx),
-      checkLinks(ctx),
-      checkImage(ctx),
-      checkPlaceholderText(ctx),
-    ]);
+  const [
+    schema,
+    policy,
+    date,
+    schedule,
+    constraint,
+    budget,
+    source,
+    contrast,
+    overflow,
+    links,
+    images,
+    placeholder,
+  ] = await Promise.all([
+    checkSchemaInvalid(ctx),
+    checkPolicyViolation(ctx),
+    checkDateInvalid(ctx),
+    checkScheduleOverlap(ctx),
+    checkScheduleConstraint(ctx),
+    checkBudgetSum(ctx),
+    checkSourceMissing(ctx),
+    checkContrast(ctx),
+    checkTextOverflow(ctx),
+    checkLinks(ctx),
+    checkImage(ctx),
+    checkPlaceholderText(ctx),
+  ]);
 
   return sortFindings([
     schema,
     policy,
     date,
     schedule,
+    constraint,
     budget,
     source,
     contrast,

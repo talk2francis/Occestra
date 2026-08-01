@@ -311,6 +311,7 @@ export type CheckId =
   | "SOURCE_MISSING"
   | "BUDGET_SUM_MISMATCH"
   | "SCHEDULE_OVERLAP"
+  | "SCHEDULE_CONSTRAINT"
   | "DATE_INVALID"
   | "DIM_ASPECT_MISMATCH"
   | "PLACEHOLDER_TEXT"
@@ -333,6 +334,7 @@ export const CHECKS: readonly CheckSpec[] = [
   { id: "SOURCE_MISSING", scope: "grounded claims in plans", hard: true, description: "A factual claim (venue, hours, weather, price) ships without a source and a retrieval timestamp." },
   { id: "BUDGET_SUM_MISMATCH", scope: "budget", hard: true, description: "Line items do not sum to the stated total (tolerance $0.01)." },
   { id: "SCHEDULE_OVERLAP", scope: "schedule", hard: true, description: "Two schedule items overlap in time, or two venues are separated by an impossible gap (under 5 minutes to travel)." },
+  { id: "SCHEDULE_CONSTRAINT", scope: "schedule", hard: true, description: "The running order crosses a timing bound the client stated in the brief — starting before guests can arrive, or still running after the stated finish." },
   { id: "DATE_INVALID", scope: "plan", hard: true, description: "A date is not a real calendar date, or contradicts the occasion date." },
   { id: "DIM_ASPECT_MISMATCH", scope: "images", hard: true, description: "Rendered pixel dimensions do not match the dimensions the artifact was specified at." },
   { id: "PLACEHOLDER_TEXT", scope: "all copy (md, html, json)", hard: true, description: "Finished copy still contains a placeholder — [BRACKETS], YOUR X HERE, TBD, TK, XXX, or lorem ipsum. A placeholder that reaches a buyer ships looking deliberate, which is worse than an omission." },

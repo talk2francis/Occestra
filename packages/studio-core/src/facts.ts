@@ -45,6 +45,92 @@ export function briefContextFacts(context?: BriefContext): string[] {
   return lines;
 }
 
+/**
+ * The internal labels `briefContextFacts` adds, and what a GUEST should see instead.
+ *
+ * Those labels exist for a good reason — a model handed "no amplified music" stripped of its
+ * label can turn an avoidance into an instruction — so the labelled lines stay exactly as they
+ * are on the way IN. What went wrong was on the way out: the guest guide printed the raw list,
+ * so a reader got "Owner-established context:" in a document meant for them, and saw the
+ * wheelchair note twice — once as the buyer typed it, once relabelled.
+ *
+ * `null` means the line is production direction, not guest information, and is dropped.
+ */
+const GUEST_LABELS: ReadonlyArray<{ internal: string; guest: string | null }> = [
+  { internal: "Owner-established context:", guest: null },
+  { internal: "Tone requested:", guest: null },
+  { internal: "Owner-provided references:", guest: null },
+  { internal: "Dietary requirements:", guest: "Dietary:" },
+  { internal: "Accessibility requirements:", guest: "Access:" },
+  { internal: "Must include:", guest: "Please note:" },
+  { internal: "Must avoid:", guest: "Please avoid:" },
+];
+
+const normalise = (value: string): string =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * The "Good to know" list as a guest should read it: no internal labels, nothing said twice.
+ *
+ * A labelled line and the raw sentence it was built from say the same thing, so only one
+ * survives — the labelled one, because "Access: step-free throughout" is more useful to a
+ * guest than the same words loose in a list.
+ */
+export function guestFacingNotes(constraints: readonly string[]): string[] {
+  const kept: Array<{ label: string; body: string; norm: string }> = [];
+
+  for (const raw of constraints) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    const known = GUEST_LABELS.find((entry) =>
+      line.toLowerCase().startsWith(entry.internal.toLowerCase()),
+    );
+    if (known?.guest === null) continue; // production direction, not for guests
+
+    const body = known ? line.slice(known.internal.length).trim() : line;
+    if (!body) continue;
+
+    const norm = normalise(body);
+    const existing = kept.findIndex(
+      (entry) => entry.norm === norm || entry.norm.includes(norm) || norm.includes(entry.norm),
+    );
+
+    if (existing >= 0) {
+      // Same fact twice. Keep whichever carries a label, since that reads better to a guest.
+      if (known && !kept[existing]!.label) kept[existing] = { label: known.guest!, body, norm };
+      continue;
+    }
+
+    kept.push({ label: known?.guest ?? "", body, norm });
+  }
+
+  return kept.map((entry) => (entry.label ? `${entry.label} ${entry.body}` : entry.body));
+}
+
+/**
+ * Is this occasion held at somebody's own home?
+ *
+ * A housewarming for "my first apartment", with homemade jollof and a last block spent
+ * "relaxing barefoot", was given two commercial venues and a 3.5km route across Abuja between
+ * them — because the pipeline searched for venues unconditionally and never asked whether this
+ * occasion has a venue at all. Some do not, and inventing a route between restaurants for one
+ * that does not is worse than proposing nothing.
+ */
+export function isHomeHosted(...text: Array<string | undefined>): boolean {
+  const haystack = text.filter(Boolean).join(" • ").toLowerCase();
+  return [
+    /\bhouse\s?warming\b/,
+    /\bat\s+(?:my|our|his|her|their)\s+(?:new\s+|first\s+)?(?:home|place|flat|apartment|house)\b/,
+    /\b(?:my|our)\s+(?:new\s+|first\s+)?(?:flat|apartment|house|home)\b/,
+    /\bat\s+(?:mine|ours|theirs)\b/,
+    /\bat\s+home\b/,
+    /\b(?:back\s?garden|backyard|back\s+yard)\b/,
+    /\bat\s+(?:my|our)\s+(?:parents|mum|mom|dad|nan|gran)\w*\b/,
+    /\bhouse\s+party\b/,
+  ].some((pattern) => pattern.test(haystack));
+}
+
 /** A deterministic input-quality measure used by the corpus. It rewards usable,
  * bounded context—not verbosity—and gives the three detailed fixtures a measurable
  * claim without pretending it is an output-quality benchmark. */

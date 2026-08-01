@@ -9,6 +9,40 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Stopped every occasion starting at 18:00. That anchor was invisible for a dinner, which is
+  why it survived, and plainly wrong for a lunch, a brunch or an afternoon tea — a paid
+  anniversary lunch shipped scheduled 18:00–21:25. The start is now derived from what the buyer
+  wrote: an explicit start beats the occasion's own mealtime, which beats 18:00.
+- Made a stated timing constraint a bound the schedule cannot cross. That same lunch silently
+  contradicted two sentences in its own brief — eleven guests who could not arrive before 12:30,
+  and a family who needed to finish by 19:30 — and nothing caught it, because the plan did not
+  disagree with itself, only with the buyer. The running order is now pulled earlier to meet a
+  stated finish, never starts before guests can physically arrive, and the bounds travel on the
+  artifact so the new hard check `SCHEDULE_CONSTRAINT` can fail a violation and quote the
+  buyer's own sentence back. That takes the published standard to 14 checks.
+- Stopped inventing the buyer's brief. A plan sent with the city under `location` rather than
+  `city` had the gap filled from the bodyless-probe defaults with "Abuja", and produced a
+  well-graded, internally consistent plan for the wrong continent. Nothing downstream could
+  catch it: every check asks whether the artifact disagrees with itself or its brief, and this
+  one agreed perfectly with a brief nobody wrote. Material facts — city, date, headcount — are
+  now defaulted only for a genuinely bodyless probe; the moment a buyer sends a body, a missing
+  one is refused by name with `charged:false`. Obvious synonyms (`location`, `guestCount`,
+  `tone`) are read rather than ignored, because mapping the buyer's own value is the opposite of
+  inventing one. Neutral placeholders that assert nothing about anybody are untouched.
+- Stopped proposing venues for occasions held at home. A housewarming for "my first apartment"
+  was given two commercial venues and a 3.5km route across Abuja between them, because venue
+  search ran unconditionally and never asked whether the occasion has a venue at all. Home-hosted
+  occasions now skip the search and say so as a coverage gap.
+- Stopped the guest guide claiming research it had not done. "These are real, researched
+  candidates" printed unconditionally, including above a running order with no venue anywhere on
+  the page — an unbacked claim, printed by us, at the top. It now states what is true of that
+  guide, and the booking FAQ follows it.
+- Cleaned the guest-facing constraints. "Owner-established context:" — an internal field label —
+  was reaching a document written for guests, and the wheelchair note appeared twice: once as the
+  buyer typed it, once relabelled. The labels still go IN to the model, where they stop an
+  avoidance becoming an instruction; on the way out the list is de-duplicated, production
+  direction is dropped, and what remains reads as a guest would say it.
+
 - Stopped the Critique service certifying work it had never read. A buyer submitted a gala
   run-of-show seeded with three overlapping blocks and it came back `pass: true, issues: [],
   failedOn: null`, no axes scored. Two defects compounded: `SCHEMA_INVALID` only validated a

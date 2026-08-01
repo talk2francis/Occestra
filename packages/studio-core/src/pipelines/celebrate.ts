@@ -39,6 +39,8 @@ import {
 } from "../types.js";
 import { estimateTravel, layOutSchedule, type Block, type TimedBlock } from "./travel.js";
 import { localTimeToInstant, wallClock, zoneFor } from "../zones.js";
+import { formatClock, resolveStartMinutes } from "../occasion-time.js";
+import { guestFacingNotes, isHomeHosted } from "../facts.js";
 import {
   classifyImageFailure,
   ensureStored,
@@ -338,7 +340,21 @@ async function research(
 
   /* --- venues: category-aware, deduplicated, each carrying its source --- */
 
-  if (deps.places) {
+  // SOME OCCASIONS HAVE NO VENUE, AND SEARCHING ANYWAY INVENTS ONE.
+  //
+  // A housewarming for "my first apartment" — homemade jollof, a last block spent relaxing
+  // barefoot — was handed two commercial venues and a 3.5km route across Abuja between them,
+  // then 22 minutes back again. The search ran unconditionally, found real places, and slotted
+  // them in without ever asking whether this occasion happens somewhere you book.
+  const homeHosted = isHomeHosted(contract.occasion, contract.vibe, ...contract.constraints);
+
+  if (homeHosted) {
+    gaps.push(
+      "venues:home-hosted — this occasion is held at the host's own home, so no venues were searched and none are proposed",
+    );
+  }
+
+  if (deps.places && !homeHosted) {
     for (const query of queries.slice(0, 3)) {
       try {
         const found = await deps.places.search({
@@ -364,11 +380,13 @@ async function research(
         );
       }
     }
-  } else {
+  } else if (!homeHosted) {
     gaps.push("places:no-provider — this plan is not grounded in real venues");
   }
 
-  if (venues.length === 0 && deps.places) {
+  // "Nothing matched" is only worth saying when we actually looked. For a home-hosted
+  // occasion the absence of venues is the correct answer, not a shortfall.
+  if (venues.length === 0 && deps.places && !homeHosted) {
     gaps.push(`places:none-found — nothing matched in ${contract.city}; the plan names no real venue`);
   }
 
@@ -443,28 +461,51 @@ function buildSchedule(
     };
   });
 
-  // 18:00 is the honest default for an evening occasion — but 18:00 WHERE?
+  // WHEN, AND WHEN *WHERE* — two separate mistakes, both once made here.
   //
-  // This used to anchor at `${date}T18:00:00.000Z` while the comment beside it claimed
-  // "18:00 local-ish". For Lisbon in August (UTC+1) that renders as 19:00 on the guest's
-  // phone: everyone arrives an hour early. A plan whose times are wrong is not a plan.
-  // The start is now 18:00 on the clock IN THAT CITY, resolved through the platform's
-  // real IANA database. When we do not know the city's zone we say so, and use UTC — a
-  // guessed timezone is the same class of mistake as a guessed exchange rate.
+  // The zone half: this used to anchor at `${date}T18:00:00.000Z` while the comment beside it
+  // claimed "18:00 local-ish". For Lisbon in August (UTC+1) that renders as 19:00 on the
+  // guest's phone: everyone arrives an hour early. The start is now on the clock IN THAT CITY,
+  // resolved through the platform's real IANA database, and when we do not know the city's
+  // zone we say so and use UTC — a guessed timezone is a guessed exchange rate.
+  //
+  // The hour half: 18:00 was hardcoded for EVERY occasion, which is invisible for a dinner and
+  // plainly wrong for a lunch, a brunch or an afternoon tea — and in one paid plan it put an
+  // anniversary lunch at 18:00–21:25 while silently crossing two constraints the buyer had
+  // typed. The hour is now derived from what they actually wrote, and any stated bound is
+  // carried on the artifact so the Tribunal can fail a schedule that breaks it.
+  const totalMinutes = blocks.reduce((sum, block) => sum + block.minutes, 0);
+  const start = resolveStartMinutes({
+    occasion: contract.occasion,
+    vibe: contract.vibe,
+    lines: [
+      ...contract.constraints,
+      contract.vibe,
+      contract.occasion,
+      ...(contract.briefContext?.dontList ?? []),
+      ...(contract.briefContext?.doList ?? []),
+      contract.briefContext?.accessibilityNotes,
+    ],
+    totalMinutes,
+  });
+
   const zone = zoneFor(contract.city);
+  const hour = Math.floor(start.minutes / 60);
+  const minute = start.minutes % 60;
   const startInstant = zone
-    ? localTimeToInstant(contract.date, 18, zone)
-    : Date.parse(`${contract.date.slice(0, 10)}T18:00:00.000Z`);
+    ? localTimeToInstant(contract.date, hour, zone, minute)
+    : Date.parse(
+        `${contract.date.slice(0, 10)}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00.000Z`,
+      );
 
   const timed = layOutSchedule(new Date(startInstant).toISOString(), blocks);
 
-  const notes = zone
-    ? [
-        `All times are local to ${contract.city} (${zone}). The ISO timestamps are the exact instants; the "local" fields are what a guest will read on a clock.`,
-      ]
-    : [
-        `We could not resolve a timezone for "${contract.city}", so times are given in UTC. Check them against local time before you send this to anyone.`,
-      ];
+  const notes = [
+    zone
+      ? `All times are local to ${contract.city} (${zone}). The ISO timestamps are the exact instants; the "local" fields are what a guest will read on a clock.`
+      : `We could not resolve a timezone for "${contract.city}", so times are given in UTC. Check them against local time before you send this to anyone.`,
+    start.reason,
+  ];
 
   return {
     timed,
@@ -486,6 +527,23 @@ function buildSchedule(
         headcount: contract.headcount,
         timezone: zone ?? "UTC",
         notes,
+        // The buyer's own timing bounds, carried on the artifact rather than left in the
+        // brief. A schedule that crosses one is wrong, and SCHEDULE_CONSTRAINT can only say
+        // so — and quote the sentence it broke — if the bound travels with the plan.
+        ...(start.bounds.earliestStartMinutes !== undefined ||
+        start.bounds.latestEndMinutes !== undefined
+          ? {
+              constraints: {
+                ...(start.bounds.earliestStartMinutes !== undefined
+                  ? { earliestStartLocal: formatClock(start.bounds.earliestStartMinutes) }
+                  : {}),
+                ...(start.bounds.latestEndMinutes !== undefined
+                  ? { latestEndLocal: formatClock(start.bounds.latestEndMinutes) }
+                  : {}),
+                statedIn: start.bounds.evidence,
+              },
+            }
+          : {}),
         items: timed.map((block) => ({
           title: block.title,
           start: block.start,
@@ -699,6 +757,23 @@ function buildGuestGuide(
     })
     .join("\n");
 
+  // THE PAGE MUST NOT CLAIM RESEARCH IT DID NOT DO.
+  //
+  // This notice was printed unconditionally, so a guide listing "Arrival / The main event /
+  // Goodbyes" and no venue at all still told the reader "these are real, researched
+  // candidates". That is precisely the unbacked claim the standard exists to catch, printed
+  // by us, at the top of the page. It now says what is actually true of THIS guide.
+  const namesVenue = timed.some((block) => block.venue?.name);
+  const venueNotice = namesVenue
+    ? `<p class="note"><strong>Nothing here is booked.</strong> These are real, researched
+  candidates — not reservations. The host confirms the venue; until then, treat every
+  place and time on this page as a proposal.</p>`
+    : `<p class="note"><strong>No venue is named here, and nothing is booked.</strong> This
+  running order is the shape of the day; where each part happens is the host's to confirm.</p>`;
+
+  // The buyer's constraints, as a guest should read them: no internal labels, nothing twice.
+  const goodToKnow = guestFacingNotes(contract.constraints);
+
   const weatherLine = research.beyondForecastHorizon
     ? "The forecast does not reach this far ahead yet — we will not guess it."
     : research.weather
@@ -745,9 +820,7 @@ function buildGuestGuide(
     before the FAQ walks away believing there is a reservation. Occestra never claims a
     booking it did not make — so the page says so before it says anything else.
   -->
-  <p class="note"><strong>Nothing here is booked.</strong> These are real, researched
-  candidates — not reservations. The host confirms the venue; until then, treat every
-  place and time on this page as a proposal.</p>
+  ${venueNotice}
 
   <table>
 ${rows}
@@ -760,8 +833,8 @@ ${rows}
   <p>${escapeHtml(contract.vibe)}. Dress for the room, not for the photo.</p>
 
   ${
-    contract.constraints.length > 0
-      ? `<h2>Good to know</h2>\n  <ul>${contract.constraints
+    goodToKnow.length > 0
+      ? `<h2>Good to know</h2>\n  <ul>${goodToKnow
           .map((c) => `<li>${escapeHtml(c)}</li>`)
           .join("")}</ul>`
       : ""
@@ -770,7 +843,11 @@ ${rows}
   <h2>Questions</h2>
   <ul>
     <li><strong>Am I late?</strong> Arrive at the first time above. The schedule has slack, but not much.</li>
-    <li><strong>Is it booked?</strong> The host is confirming venues — nothing on this page is a reservation.</li>
+    <li><strong>Is it booked?</strong> ${
+      namesVenue
+        ? "The host is confirming venues — nothing on this page is a reservation."
+        : "There is no venue to book: the host is holding this one themselves."
+    }</li>
   </ul>
 
   <footer>Made by Occestra. Times and travel are estimates, not routed journeys.</footer>

@@ -282,8 +282,17 @@ function offsetMsAt(zone: string, at: number): number {
  * instant, and correct by the difference. Once more, because on a DST boundary the first
  * correction can land in the other side of the transition.
  */
-export function localTimeToInstant(dateIso: string, hour: number, zone: string): number {
-  const naive = Date.parse(`${dateIso.slice(0, 10)}T${String(hour).padStart(2, "0")}:00:00.000Z`);
+export function localTimeToInstant(
+  dateIso: string,
+  hour: number,
+  zone: string,
+  minute = 0,
+): number {
+  // Minutes matter now that the start is derived from the occasion rather than pinned to a
+  // whole hour: a lunch begins at 12:30, an afternoon tea at 15:30.
+  const hh = String(Math.floor(hour)).padStart(2, "0");
+  const mm = String(Math.floor(minute)).padStart(2, "0");
+  const naive = Date.parse(`${dateIso.slice(0, 10)}T${hh}:${mm}:00.000Z`);
 
   let instant = naive - offsetMsAt(zone, naive);
   instant = naive - offsetMsAt(zone, instant);

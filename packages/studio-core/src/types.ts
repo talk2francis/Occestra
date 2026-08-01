@@ -283,6 +283,20 @@ export const SchedulePayloadSchema = z.object({
   headcount: z.number().int().positive().optional(),
   timezone: z.string().optional(),
   notes: z.array(z.string()).default([]),
+  /**
+   * The buyer's own hard timing bounds, in local wall-clock time.
+   *
+   * Present only when they actually stated one. A schedule that crosses a bound is wrong
+   * however well it reads, so the bound travels ON the artifact — SCHEDULE_CONSTRAINT checks
+   * against it and quotes `statedIn` back, which is the sentence the buyer typed.
+   */
+  constraints: z
+    .object({
+      earliestStartLocal: z.string().optional(),
+      latestEndLocal: z.string().optional(),
+      statedIn: z.array(z.string()).default([]),
+    })
+    .optional(),
   items: z.array(ScheduleItemSchema).min(1),
 });
 export type SchedulePayload = z.infer<typeof SchedulePayloadSchema>;
