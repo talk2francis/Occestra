@@ -1064,24 +1064,82 @@ export function buildApp(ctx: AppContext): Express {
         return;
       }
 
-      const deliverable = await executePlainHttpTool(requestCtx, tool, input);
-      const payload = {
-        ok: true,
-        service: tool,
-        priceUsdt: fee,
-        delivered: true,
-        deliverable,
-      };
+      // THE SHORT SERVICES NEEDED THE BUDGET TOO.
+      //
+      // The budget above only guarded pack tools, because those are the minutes-long ones and
+      // they have a job queue to hand off to. Critique normally answers in about fifteen
+      // seconds, so it slipped under the wall unnoticed — until a denser artifact took past
+      // thirty, the buyer's client hung up, and the order was recorded PAID with nothing
+      // delivered. Exactly the failure the pack budget exists to prevent, on the one paid path
+      // it did not cover.
+      //
+      // There is no job to hand back here, so the receipt IS the payment nonce: the work runs
+      // on to completion and writes its result into the idempotency cache, and replaying the
+      // same paid request collects it. Nothing is charged twice and nothing is lost.
+      const work = executePlainHttpTool(requestCtx, tool, input).then(
+        (deliverable) => {
+          const done = { ok: true, service: tool, priceUsdt: fee, delivered: true, deliverable };
+          if (idempotencyKey) {
+            ctx.store.completeIdempotencyKey(idempotencyKey, {
+              payload: done,
+              isError: false,
+              ...(paymentResponse ? { paymentResponse } : {}),
+            } satisfies StoredResponse);
+          }
+          return done;
+        },
+        (error: unknown) => {
+          // The response may already have gone; this still has to settle the books.
+          if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);
+          if (order) {
+            ctx.store.oweRefund({
+              orderId: order.id,
+              payerRef: order.payerRef,
+              amountUsdt: order.priceUsdt,
+              tool: order.tool,
+              reason: `the plain x402 ${tool} service failed after settlement`,
+            });
+          }
+          throw error;
+        },
+      );
 
-      if (idempotencyKey) {
-        ctx.store.completeIdempotencyKey(idempotencyKey, {
-          payload,
-          isError: false,
-          ...(paymentResponse ? { paymentResponse } : {}),
-        } satisfies StoredResponse);
+      const budgetLeft = Math.max(
+        0,
+        (ctx.marketplaceBudgetMs ?? MARKETPLACE_BUDGET_MS) - (Date.now() - receivedAt),
+      );
+
+      let timer: NodeJS.Timeout | undefined;
+      const overran = Symbol("overran");
+      const raced = await Promise.race([
+        work,
+        new Promise<typeof overran>((resolve) => {
+          timer = setTimeout(() => resolve(overran), budgetLeft);
+          timer.unref?.();
+        }),
+      ]);
+      if (timer) clearTimeout(timer);
+
+      if (raced === overran) {
+        // Deliberately NOT cached: the real result is still coming and must be what a replay
+        // returns. Until then a replay honestly reports the work as still running.
+        res.status(200).type("application/json").json({
+          ok: true,
+          service: tool,
+          priceUsdt: fee,
+          delivered: false,
+          note:
+            "Your payment settled and the work is still running. It outlived the response " +
+            "budget, so it is being finished rather than held on this connection. Nothing " +
+            "further is owed and nothing is lost.",
+          collect:
+            "Replay this exact paid request — same payment nonce, same body — and it returns " +
+            "the finished result. Until it is ready the replay says so; it is never a second charge.",
+        });
+        return;
       }
 
-      res.status(200).type("application/json").json(payload);
+      res.status(200).type("application/json").json(raced);
     } catch (error) {
       ctx.deps.log?.(`plain x402 ${tool} failed after settlement`, error);
       if (idempotencyKey) ctx.store.releaseIdempotencyKey(idempotencyKey);

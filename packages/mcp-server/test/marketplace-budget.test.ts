@@ -70,7 +70,7 @@ function slowText(delayMs: number): EngineDeps["text"] {
   } as EngineDeps["text"];
 }
 
-function makeApp(over: { budgetMs: number; textDelayMs: number }): {
+function makeApp(over: { budgetMs: number; textDelayMs: number; critiqueDelayMs?: number }): {
   base: string;
   store: Store;
   jobs: JobQueue;
@@ -83,7 +83,15 @@ function makeApp(over: { budgetMs: number; textDelayMs: number }): {
   const deps: EngineDeps = {
     text: slowText(over.textDelayMs),
     image: new FakeImageModel(),
-    critique: new FakeCritique(88),
+    // Critique does not go through the text port, so slowing that one leaves it instant.
+    critique: over.critiqueDelayMs
+      ? ({
+          judge: async (request: unknown) => {
+            await new Promise((resolve) => setTimeout(resolve, over.critiqueDelayMs));
+            return new FakeCritique(88).judge(request as never);
+          },
+        } as EngineDeps["critique"])
+      : new FakeCritique(88),
     storage: store.storage,
     clock: new FixedClock(NOW),
     weather: new FakeWeather(),
@@ -273,6 +281,40 @@ describe("a paid pack never outlives the buyer's connection", () => {
     expect(replayed["delivered"]).toBe(false);
     expect(store.jobQueueHealth().queued + 1).toBeGreaterThan(0);
   });
+});
+
+describe("the short services are inside the budget too", () => {
+  it("hands back a collect-by-replay receipt when a critique outlives the budget", async () => {
+    // Critique is not a pack tool, so it never went through the job queue and the original
+    // budget did not cover it. It normally answers in ~15s and slipped under the wall until a
+    // denser artifact took past thirty: the buyer's client hung up and the order was recorded
+    // PAID with nothing delivered. There is no job handle to give, so the payment nonce is the
+    // receipt — the work runs on and a replay collects it.
+    const { base } = makeApp({ budgetMs: 300, textDelayMs: 0, critiqueDelayMs: 4_000 });
+    const header = await payment("oce_critique");
+
+    const started = Date.now();
+    const res = await fetch(`${base}/x402/oce_critique`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "PAYMENT-SIGNATURE": header,
+      },
+      body: JSON.stringify({
+        kind: "toast",
+        brief: "A ninety-second retirement toast, warm and specific.",
+        text: "To Amalia, who read thirty-one harvests in the soil before the vines said a word.",
+      }),
+    });
+    const elapsed = Date.now() - started;
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(200);
+    expect(body["delivered"]).toBe(false);
+    expect(String(body["collect"])).toContain("Replay");
+    expect(elapsed).toBeLessThan(3_000);
+  }, 20_000);
 });
 
 describe("services that fit inside the budget are unchanged", () => {
