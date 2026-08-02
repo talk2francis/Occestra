@@ -13,18 +13,42 @@ interface ManagedSubmission {
 
 const storageKey = (id: string) => `oce-gallery-management:${id}`;
 
+/** The Gallery accepts a title of at most 100 characters. Kept in step with PublishBody. */
+const TITLE_MAX = 100;
+
+/**
+ * A sane default Gallery title, cut to something that will actually be accepted.
+ *
+ * `maxLength` on the input limits TYPING, not a value set in code — so a plan whose first
+ * artifact was titled with the whole 135-character occasion ("A retirement lunch for my old
+ * English teacher, Marguerite Sandoval, who is leaving after…") sat in state at full length,
+ * looked fine in the field, and was refused by the server the moment Publish was pressed.
+ * Cut on a word boundary so the suggestion reads like a title rather than a severed sentence.
+ */
+export function galleryTitle(raw: string): string {
+  const clean = raw.trim().replace(/\s+/g, " ");
+  if (clean.length <= TITLE_MAX) return clean;
+
+  const cut = clean.slice(0, TITLE_MAX);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > TITLE_MAX * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[,;:—–-]+$/, "").trim();
+}
+
 export function GalleryPublish({ pack, capability }: { pack: FinishedPack; capability?: StudioCapability }) {
   const isPrivate = pack.private === true || pack.studio === "remember";
   const delivered = useMemo(() => pack.artifacts.filter((artifact) => !artifact.undelivered), [pack.artifacts]);
   const images = delivered.filter((artifact) => artifact.format === "png" && artifact.url);
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(isPrivate ? "" : (pack.artifacts[0]?.title ?? ""));
+  const [title, setTitle] = useState(isPrivate ? "" : galleryTitle(pack.artifacts[0]?.title ?? ""));
   const [selected, setSelected] = useState<string[]>(isPrivate ? [] : delivered.map((artifact) => artifact.id));
   const [cover, setCover] = useState<string | undefined>(isPrivate ? undefined : images[0]?.id);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
   const [managed, setManaged] = useState<ManagedSubmission>();
+
+  const trimmedTitle = title.trim();
+  const titleOk = trimmedTitle.length >= 3 && trimmedTitle.length <= TITLE_MAX;
 
   useEffect(() => {
     try {
@@ -41,7 +65,7 @@ export function GalleryPublish({ pack, capability }: { pack: FinishedPack; capab
   };
 
   const publish = async () => {
-    if (!capability || title.trim().length < 3 || selected.length === 0 || !consent) return;
+    if (!capability || !titleOk || selected.length === 0 || !consent) return;
     setBusy(true);
     setMessage(undefined);
     try {
@@ -56,8 +80,15 @@ export function GalleryPublish({ pack, capability }: { pack: FinishedPack; capab
           consent: true,
         }),
       });
-      const body = (await response.json()) as ManagedSubmission & { error?: string };
-      if (!response.ok) throw new Error(body.error ?? "The Gallery submission could not be created.");
+      const body = (await response.json()) as ManagedSubmission & { error?: string; detail?: string };
+      // `detail` is the part that says WHICH field was wrong. Dropping it is how a title
+      // three characters too long became an unexplained "invalid Gallery submission".
+      if (!response.ok) {
+        throw new Error(
+          [body.error, body.detail].filter(Boolean).join(" — ") ||
+            "The Gallery submission could not be created.",
+        );
+      }
       const record = { packId: body.packId, publicPage: body.publicPage, managementToken: body.managementToken };
       window.localStorage.setItem(storageKey(pack.keepsakeId), JSON.stringify(record));
       setManaged(record);
@@ -118,7 +149,10 @@ export function GalleryPublish({ pack, capability }: { pack: FinishedPack; capab
           <div className="mt-3 space-y-3 border-t border-ink/8 pt-3">
             <label className="block text-[0.68rem] font-medium text-ink/65">
               Public title
-              <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} placeholder={isPrivate ? "Use a title without names or locations" : "Gallery title"} className="mt-1 w-full rounded-lg border border-ink/15 bg-panel/35 px-2.5 py-2 text-[0.76rem] text-ink outline-none focus:border-amethyst" />
+              <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={TITLE_MAX} placeholder={isPrivate ? "Use a title without names or locations" : "Gallery title"} className="mt-1 w-full rounded-lg border border-ink/15 bg-panel/35 px-2.5 py-2 text-[0.76rem] text-ink outline-none focus:border-amethyst" />
+              <span className={`mt-1 block text-right text-[0.62rem] tabular-nums ${titleOk || trimmedTitle.length === 0 ? "text-ink/40" : "text-fail"}`}>
+                {trimmedTitle.length}/{TITLE_MAX}{trimmedTitle.length > 0 && trimmedTitle.length < 3 ? " — at least 3" : ""}
+              </span>
             </label>
             <fieldset>
               <legend className="text-[0.68rem] font-medium text-ink/65">Artifacts to make public</legend>
@@ -144,7 +178,7 @@ export function GalleryPublish({ pack, capability }: { pack: FinishedPack; capab
               <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 accent-amethyst" />
               <span>{isPrivate ? "I reviewed these artifacts and understand the selected copies will be public. The original private pack, uploads, title and id remain hidden." : "I reviewed this title, cover and pack and want them discoverable in Occestra’s public Gallery."}</span>
             </label>
-            <button type="button" disabled={busy || title.trim().length < 3 || selected.length === 0 || !consent} onClick={() => void publish()} className="w-full rounded-full bg-ink px-4 py-2 text-[0.72rem] font-medium text-ground disabled:cursor-not-allowed disabled:opacity-35">
+            <button type="button" disabled={busy || !titleOk || selected.length === 0 || !consent} onClick={() => void publish()} className="w-full rounded-full bg-ink px-4 py-2 text-[0.72rem] font-medium text-ground disabled:cursor-not-allowed disabled:opacity-35">
               {busy ? "Publishing…" : isPrivate ? "Publish selected copies" : "Publish this pack"}
             </button>
           </div>

@@ -32,7 +32,17 @@ function buildSchema(profile: CritiqueProfile) {
 
   return z.object({
     ...scores,
-    issues: z.array(z.string()).max(12),
+    // BE GENEROUS ABOUT LENGTH, STRICT ABOUT MEANING.
+    //
+    // These were hard caps, and a critic that ran twenty words over on ONE sentence had its
+    // entire critique rejected — `citations.1.why: String must contain at most 400
+    // character(s)` — which surfaces as CRITIQUE_UNAVAILABLE and leaves the artifact graded on
+    // deterministic checks alone, every craft axis unscored. A real paid pack came back at 40%
+    // that way. Losing a whole judgement over a long sentence is a disproportion, so an
+    // over-long field is trimmed and an over-long list is capped, rather than thrown away.
+    // Nothing about the VERDICT is softened: the axis scores, the enum and the citation
+    // requirement are all still enforced exactly as before.
+    issues: z.array(z.string()).max(40).transform((list) => list.slice(0, 12)),
     // One per axis scored below its floor, quoting the exact defect. The engine DISCARDS an
     // uncited correctness failure and restores it to the floor, so a critic that cannot quote
     // the problem cannot fail the artifact for it.
@@ -40,11 +50,12 @@ function buildSchema(profile: CritiqueProfile) {
       .array(
         z.object({
           axis: z.enum(axisIds),
-          quote: z.string().min(1).max(400),
-          why: z.string().min(1).max(400),
+          quote: z.string().min(1).max(4000).transform((value) => value.slice(0, 400)),
+          why: z.string().min(1).max(4000).transform((value) => value.slice(0, 400)),
         }),
       )
-      .max(10)
+      .max(40)
+      .transform((list) => list.slice(0, 10))
       .default([]),
     repairBrief: z.string(),
   });

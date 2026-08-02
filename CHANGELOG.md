@@ -9,6 +9,23 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Fixed Gallery publishing rejecting a pack for a reason it would not disclose. The publish form
+  pre-fills its title from the pack's first artifact, and a plan titled with a 135-character
+  occasion sailed past the input's `maxLength` — which limits typing, not a value set in code —
+  straight into a server schema that caps titles at 100. The response said `invalid Gallery
+  submission`, and the client discarded the `detail` that would have said "at most 100
+  characters". The default title is now cut on a word boundary to something that will be
+  accepted, the button disables on the maximum as well as the minimum, a live counter shows the
+  limit, and the server's reason is surfaced instead of dropped. There is no quality gate on
+  publishing and never was: a pack that grades poorly is still the owner's to publish.
+- Stopped a long sentence destroying an entire critique. The critic's `citations[].why` and
+  `quote` were hard-capped at 400 characters and `issues` at 12, so a critic that ran twenty
+  words over on ONE line had its whole judgement rejected — surfacing as `CRITIQUE_UNAVAILABLE`,
+  which leaves the artifact graded on deterministic checks alone with every craft axis unscored.
+  A real paid pack came back at 40% that way. Over-long fields are now trimmed and over-long
+  lists capped rather than thrown away. Nothing about the verdict is softened: axis scores, the
+  axis enum and the citation requirement are enforced exactly as before.
+
 - Stopped every occasion starting at 18:00. That anchor was invisible for a dinner, which is
   why it survived, and plainly wrong for a lunch, a brunch or an afternoon tea — a paid
   anniversary lunch shipped scheduled 18:00–21:25. The start is now derived from what the buyer
