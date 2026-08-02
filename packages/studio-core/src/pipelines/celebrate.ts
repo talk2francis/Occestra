@@ -230,23 +230,50 @@ export function closeTruncatedJson(text: string): string | undefined {
 
 /* ------------------------------------------------------------- 1. work order */
 
+/**
+ * Generous about length, strict about meaning.
+ *
+ * A model that writes one descriptive sentence too long is still a model that understood the
+ * brief. These caps were hard, so `blocks.2.title: String must contain at most 80 character(s)`
+ * threw away an entire work order and the buyer got the generic fallback — "Arrival / The main
+ * event / Goodbyes" — for an occasion they had described in detail and paid for. Trimming a
+ * title is a cosmetic loss; discarding the plan is not.
+ *
+ * Minimums stay: an empty title is a real defect. Numbers stay exact: `minutes` and
+ * `venueIndex` are arithmetic the schedule depends on, and a wrong one is not a long one.
+ */
+function cutAtWord(value: string, cap: number): string {
+  const clean = value.trim().replace(/\s+/g, " ");
+  if (clean.length <= cap) return clean;
+
+  const cut = clean.slice(0, cap);
+  const lastSpace = cut.lastIndexOf(" ");
+  // Cut mid-word and a running order reads "…soft drinks, and a f", which looks broken to a
+  // guest. Fall back to the hard cut only when there is no sensible word boundary to use.
+  return (lastSpace > cap * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[\s,;:—–-]+$/, "");
+}
+
+const trimmed = (min: number, cap: number) =>
+  z.string().min(min).max(cap * 12).transform((value) => cutAtWord(value, cap));
+
 const WorkOrderSchema = z.object({
   /** How the host should think about the whole thing, in one line. */
-  throughline: z.string().min(4).max(240),
+  throughline: trimmed(4, 240),
   /** What kind of place this occasion actually needs. Drives the venue search. */
-  venueQueries: z.array(z.string().min(2).max(60)).min(1).max(3),
+  venueQueries: z.array(trimmed(2, 60)).min(1).max(12).transform((list) => list.slice(0, 3)),
   /** Ordered blocks. Durations in minutes; the SCHEDULE is laid out from these, not by the model. */
   blocks: z
     .array(
       z.object({
-        title: z.string().min(2).max(80),
+        title: trimmed(2, 80),
         minutes: z.number().int().min(10).max(360),
         /** 0-based index into the venue shortlist, or null to stay where we are. */
         venueIndex: z.number().int().min(0).max(9).nullable(),
       }),
     )
     .min(2)
-    .max(8),
+    .max(24)
+    .transform((list) => list.slice(0, 8)),
   /**
    * Budget weights by label. Normalised and forced to sum — the model never does arithmetic.
    *
@@ -256,7 +283,7 @@ const WorkOrderSchema = z.object({
    */
   budgetWeights: z
     .union([
-      z.array(z.object({ label: z.string().min(2).max(60), weight: z.number().min(0).max(1) })),
+      z.array(z.object({ label: trimmed(2, 60), weight: z.number().min(0).max(1) })),
       z.record(z.string(), z.number()),
     ])
     .transform((value) =>
@@ -265,9 +292,23 @@ const WorkOrderSchema = z.object({
         : Object.entries(value).map(([label, weight]) => ({ label, weight })),
     )
     .refine((value) => value.length >= 2 && value.length <= 8, "give between 2 and 8 budget lines"),
-  prepChecklist: z.array(z.string().min(4).max(160)).min(2).max(10),
+  /**
+   * THE TAIL IS ADVISORY, AND IT MUST NOT SINK THE PLAN.
+   *
+   * These are the LAST two keys the planner emits, so they are exactly where a truncated reply
+   * loses its content — and both used to carry a minimum. The salvage would rebuild the JSON
+   * correctly, and the schema would then reject it for a missing checklist, so the buyer got a
+   * fully generic plan instead of their own. That is a real paid pack graded 40% because the
+   * model ran out of room writing the last bullet of a to-do list.
+   *
+   * Absence is now tolerated: throughline, blocks and budgetWeights — the actual plan — survive
+   * a truncation, and the pack is honest about what is thin. Content that IS returned is
+   * validated exactly as before. Both consumers already handle an empty list: the contingency
+   * sheet simply adds no extra bullets, and PlanPayloadSchema.prepChecklist is `.default([])`.
+   */
+  prepChecklist: z.array(trimmed(4, 160)).max(30).transform((l) => l.slice(0, 10)).default([]),
   /** What could actually go wrong for THIS occasion, not generic advice. */
-  risks: z.array(z.string().min(4).max(200)).min(1).max(5),
+  risks: z.array(trimmed(4, 200)).max(20).transform((l) => l.slice(0, 5)).default([]),
 });
 
 export type WorkOrder = z.infer<typeof WorkOrderSchema>;
@@ -278,6 +319,7 @@ const WORK_ORDER_SYSTEM = [
   "Rules:",
   "- venueQueries: what KIND of place is needed, in the words a local would use ('wine bar', 'rooftop terrace', 'park with shade'). Not names of specific places — you do not know any.",
   "- blocks: the real shape of the occasion in order. Durations must be humane: people need to arrive, eat, and say goodbye. Do not schedule the toast before the food.",
+  "- Keep every block title under 80 characters — it is a row in a table a guest reads, not a sentence. Put the detail in prepChecklist, not the title.",
   "- budgetWeights: fractions of the total (they will be normalised). Reflect what this occasion actually costs — a picnic is not a plated dinner.",
   "- risks: what could genuinely go wrong for THIS occasion in THIS place at THIS time of year. Not 'people might be late'. Something a host would actually lose sleep over.",
   "- prepChecklist: what the host must DO, in the order they must do it.",
@@ -906,7 +948,11 @@ export async function runCelebrate(
     role: "planner",
     system: WORK_ORDER_SYSTEM,
     schema: WorkOrderSchema,
-    maxTokens: 1200,
+    // Six keys, two of them prose arrays. 1200 was not enough room and the reply kept dying
+    // mid-array — "Expected ',' or ']' after array element", three attempts in a row, on a
+    // pack the buyer had paid for. Truncation is the root cause; the tolerant tail above is
+    // the safety net for when it still happens.
+    maxTokens: 2400,
     prompt: [
       `Occasion: ${contract.occasion}`,
       `City: ${contract.city}${contract.country ? `, ${contract.country}` : ""}`,

@@ -190,7 +190,15 @@ export default async function GalleryPage() {
             <dl className="mt-7 grid max-w-2xl grid-cols-3 gap-3">
               <div className="rounded-xl border border-ink/10 bg-ground/70 p-3"><dt className="text-[0.62rem] text-ink/50">private packs</dt><dd className="mt-1 font-serif text-2xl text-ink">{activity.privatePacks}</dd></div>
               <div className="rounded-xl border border-ink/10 bg-ground/70 p-3"><dt className="text-[0.62rem] text-ink/50">anchored privately</dt><dd className="mt-1 font-serif text-2xl text-ink">{activity.anchoredPrivatePacks}</dd></div>
-              <div className="rounded-xl border border-ink/10 bg-ground/70 p-3"><dt className="text-[0.62rem] text-ink/50">public showcases</dt><dd className="mt-1 font-serif text-2xl text-ink">{activity.publicShowcases}</dd></div>
+              {/*
+                This counts ONLY redacted showcases made FROM a private keepsake — the query
+                requires pack_id <> source_pack_id, which is exactly what publishing a private
+                pack produces. Publishing a Celebrate or Launch pack publishes that pack itself,
+                so it is correctly not counted here. Labelled "public showcases" it read as
+                broken: a visitor sees published packs on the shelf above and a zero underneath.
+                These three figures are all about private work, and the label now says so.
+              */}
+              <div className="rounded-xl border border-ink/10 bg-ground/70 p-3"><dt className="text-[0.62rem] text-ink/50">showcases from private</dt><dd className="mt-1 font-serif text-2xl text-ink">{activity.publicShowcases}</dd></div>
             </dl>
           )}
         </div>

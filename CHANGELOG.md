@@ -9,6 +9,23 @@ change, and it says so in its own line.
 
 ## [Unreleased] — V2-6: the Studio workbench and judge-verifiable V2
 
+- Stopped a single over-long sentence collapsing a whole plan into the generic fallback. The
+  planner's work order was capped hard on every string, so `blocks.2.title: String must contain
+  at most 80 character(s)` — one descriptive title, from a model that had understood the brief
+  perfectly — discarded the entire order and the buyer received "Arrival / The main event /
+  Goodbyes" for an occasion they had described in detail and paid for. Three compounding causes,
+  all fixed: `maxTokens` was 1200 for six keys including two prose arrays, so replies were dying
+  mid-array; `prepChecklist` and `risks` are the last two keys emitted and both carried a
+  minimum, so the truncation salvage rebuilt the JSON correctly and the schema then rejected it
+  for a missing checklist; and the length caps were absolute rather than advisory. Now the token
+  budget is 2400, the advisory tail may be absent, over-long strings are trimmed on a word
+  boundary rather than rejected, and the planner is told the title limit up front. Minimums and
+  every number stay exact — `minutes` and `venueIndex` are arithmetic the schedule depends on.
+- Relabelled the Gallery's "public showcases" figure. It counts only redacted showcases created
+  *from a private keepsake*, which is what that privacy panel is about — so publishing a
+  Celebrate pack correctly left it at zero while the pack itself sat visible on the shelf above.
+  Accurate, and it read as broken. The number is unchanged; the label now says what it counts.
+
 - Fixed Gallery publishing rejecting a pack for a reason it would not disclose. The publish form
   pre-fills its title from the pack's first artifact, and a plan titled with a 135-character
   occasion sailed past the input's `maxLength` — which limits typing, not a value set in code —
