@@ -1,0 +1,2875 @@
+here are the full questions here
+
+Yes. I went through the live Occestra product, the public repo structure, the current GenLayer docs, the Builder/Points program, and what I could recover from your stored project material.
+
+One limitation first: I could not recover the exact Assay → GenLayer patch from the accessible account context/library, so I am not going to invent details about what we specifically changed there. I did find substantial Assay material, but not that GenLayer implementation. The approach you described—add the network, deploy something genuinely GenLayer-native, expose it in the product, then submit the repo/project as a Builder contribution—is nevertheless exactly the right strategy for Occestra.
+
+And Occestra is actually unusually well suited to GenLayer.
+
+My conclusion first
+
+I would not turn Occestra into a “GenLayer app.”
+
+Occestra should remain:
+
+Occestra on X Layer for payments + provenance, with GenLayer as its decentralized adjudication/quality-consensus layer.
+
+That gives us a very clean architecture:
+
+                    OCCESTRA
+
+      Planning · Creation · Tribunal · Packs
+                       │
+             ┌─────────┴─────────┐
+             │                   │
+             ▼                   ▼
+
+        X LAYER               GENLAYER
+   commerce/provenance     subjective consensus
+   ───────────────────     ─────────────────────
+   x402 payments            quality adjudication
+   A2MCP settlement         appeal/review
+   EIP-712 signatures       artifact assessment
+   KeepsakeRegistry         visual evaluation
+   manifest anchoring       natural-language rules
+
+That is much stronger than simply adding a “GenLayer supported” badge.
+
+Occestra currently already has a real local Tribunal, a published OQS quality standard, repair loops, X Layer provenance, A2MCP/A2A services, real-world grounding and a durable job system.
+
+GenLayer's own documentation explicitly identifies quality evaluation, content assessment, agent-delivered job evaluation, natural-language rules and milestone/dispute decisions as appropriate Intelligent Contract use cases.
+
+So the integration almost designs itself.
+
+The feature I would build
+Occestra Consensus Review
+
+Internally:
+
+OccestraQualityAdjudicator
+
+Externally:
+
+Consensus Review — independent GenLayer validators can review whether an Occestra Tribunal verdict is justified.
+
+This is the feature I would make the centre of the GenLayer submission.
+
+Not five unrelated GenLayer features.
+
+One deep, real, extremely defensible integration.
+
+Why this is such a good fit
+
+Right now Occestra says:
+
+The Tribunal grades every artifact against OQS.
+
+But ultimately Occestra controls:
+
+the critic,
+the models,
+the grading implementation,
+the rubric,
+the repair loop.
+
+That is already far better than generic AI generation—but there is still one philosophical weakness:
+
+Occestra grades Occestra.
+
+GenLayer solves exactly that.
+
+The upgraded system becomes:
+
+Artifact
+   ↓
+Occestra Tribunal
+   ↓
+PASS / FAIL
+   ↓
+Optional GenLayer Consensus Review
+   ↓
+Independent AI validators evaluate:
+"Was this verdict justified under OQS v1.2?"
+   ↓
+UPHELD / OVERTURNED / UNDETERMINED
+
+That changes the product claim from:
+
+“Our AI says our work meets our standard.”
+
+to:
+
+“Our grader makes the first decision. An independent decentralized AI-validator network can challenge it.”
+
+That is a substantial improvement to Occestra's trust model.
+
+Even better: don't make GenLayer duplicate the Tribunal
+
+This distinction matters.
+
+I do not recommend simply moving the entire Tribunal onto GenLayer.
+
+That would:
+
+slow ordinary Occestra jobs,
+increase complexity,
+add consensus costs to every artifact,
+make repair loops painful,
+duplicate a working system,
+degrade UX.
+
+Instead:
+
+Local Tribunal = fast quality gate.
+GenLayer = independent appellate/consensus layer.
+
+Think:
+
+TRIBUNAL
+first-instance review
+
+        ↓ optional/requested
+
+GENLAYER
+independent consensus review
+
+This is cleaner technically and conceptually.
+
+What GenLayer actually evaluates
+
+We should create a bounded evidence package.
+
+For every artifact submitted to GenLayer:
+
+{
+  "reviewId": "oce_gl_...",
+  "artifactHash": "0x...",
+  "artifactKind": "launch_hero",
+  "profile": "visual",
+  "oqsVersion": "1.2.0",
+
+  "localVerdict": "PASS",
+
+  "brief": {
+    "objective": "...",
+    "requiredElements": [],
+    "prohibitedElements": []
+  },
+
+  "artifact": {
+    "type": "image",
+    "url": "https://..."
+  },
+
+  "localTribunal": {
+    "composition": 85,
+    "legibility": 74,
+    "styleFidelity": 82,
+    "subjectFidelity": 88
+  }
+}
+
+It should be a frozen snapshot, not a mutable page.
+
+GenLayer then asks one narrow question
+
+Not:
+
+“What do you think about this artwork?”
+
+Too subjective.
+
+Instead:
+
+Given the artifact, its brief, the applicable OQS v1.2 visual profile and the Tribunal's claimed PASS verdict, is that verdict reasonably supported by the supplied evidence?
+
+Return:
+
+{
+  "decision": "UPHELD",
+  "scoreBand": "70-84",
+  "failureCodes": [],
+  "confidence": "high"
+}
+
+Or:
+
+{
+  "decision": "OVERTURNED",
+  "scoreBand": "50-69",
+  "failureCodes": [
+    "TEXT_LEGIBILITY",
+    "BRIEF_REQUIREMENT_MISSING"
+  ],
+  "confidence": "high"
+}
+
+The decision is the consensus-critical result.
+
+Free-form rationale does not need exact validator agreement.
+
+Why not consensus on an exact 0–100 score?
+
+Because that is asking GenLayer validators to agree on something unnecessarily fragile.
+
+GenLayer's documentation specifically recommends defining which output fields actually need agreement instead of demanding identical non-deterministic outputs.
+
+I would use:
+
+Decision
+UPHELD
+OVERTURNED
+UNDETERMINED
+Score band
+0–49
+50–69
+70–84
+85–100
+Normalized failure codes
+
+Such as:
+
+LEGIBILITY
+COMPOSITION
+BRIEF_MISMATCH
+STYLE_DRIFT
+FACTUAL_SUPPORT
+SOURCE_COVERAGE
+SCHEDULE_CONFLICT
+BUDGET_INCONSISTENCY
+PACK_INCOMPLETE
+
+That produces much better consensus.
+
+The very strong part: GenLayer supports image analysis
+
+This isn't theoretical.
+
+GenLayer Intelligent Contracts can send images to validator LLMs and can even screenshot/render web pages before analysing them.
+
+That means Occestra can demonstrate real decentralized visual judging.
+
+For example:
+
+Occestra generates invitation
+          ↓
+Tribunal = PASS
+          ↓
+Send public artifact into GenLayer
+          ↓
+Validators independently inspect image
+          ↓
+Consensus:
+UPHELD
+
+Or, much more impressive in a demo:
+
+Tribunal = PASS
+
+GenLayer:
+OVERTURNED
+Reason codes:
+- required venue date absent
+- text contrast inadequate
+
+Occestra:
+"Consensus disagreed with our own grader."
+
+That is an excellent product story.
+
+Important privacy rule
+
+This integration must not touch private Remember content by default.
+
+Occestra currently makes Remember uploads private, strips EXIF/GPS, avoids identifying people and only anchors a manifest hash on X Layer.
+
+GenLayer blockchain state is public.
+
+Therefore:
+
+Allowed automatically
+public Launch artifacts,
+public Celebrate artifacts,
+public gallery packs,
+explicitly published keepsakes,
+synthetic benchmark examples.
+Never automatically submit
+private photographs,
+personal names,
+private memory prose,
+voice memos,
+private reference links,
+unpublished keepsakes.
+
+Remember Studio gets:
+
+Request Consensus Review
+
+with explicit warning:
+
+This creates public blockchain activity. Only the prepared public evidence package will be submitted; your original photographs remain private.
+
+This is non-negotiable.
+
+Network foundation
+
+Current GenLayer's main production-like public testnet is Bradbury:
+
+GenLayer RPC: https://rpc-bradbury.genlayer.com
+Chain ID: 4221
+Currency: GEN
+GenLayer Chain RPC: https://rpc.testnet-chain.genlayer.com
+
+GenLayerJS already exposes:
+
+testnetBradbury
+
+and supports read/write clients plus wallet network switching.
+
+So our integration starts there.
+
+The repository architecture I recommend
+
+Occestra currently uses a clean npm monorepo with:
+
+studio-core
+tribunal
+receipts
+contracts
+providers
+mcp-server
+client
+
+I would not contaminate packages/contracts with GenLayer Python contracts, because that package currently represents the Solidity/X Layer world.
+
+Add:
+
+Occestra/
+│
+├── genlayer/
+│   ├── contracts/
+│   │   └── OccestraQualityAdjudicator.py
+│   │
+│   ├── tests/
+│   │   ├── direct/
+│   │   │   └── test_quality_adjudicator.py
+│   │   └── integration/
+│   │       └── test_bradbury_review.py
+│   │
+│   ├── fixtures/
+│   │   ├── visual-pass.json
+│   │   ├── visual-fail.json
+│   │   ├── copy-pass.json
+│   │   └── plan-fail.json
+│   │
+│   ├── gltest.config.yaml
+│   ├── pyproject.toml
+│   └── README.md
+│
+├── packages/
+│   ├── genlayer/
+│   │   ├── src/
+│   │   │   ├── client.ts
+│   │   │   ├── config.ts
+│   │   │   ├── reviews.ts
+│   │   │   ├── schemas.ts
+│   │   │   └── index.ts
+
+So there are two clean halves:
+
+/genlayer
+
+Actual Intelligent Contract code.
+
+packages/genlayer
+
+Occestra TypeScript adapter.
+
+Why this is better for GenLayer review
+
+A GenLayer steward opening the repo immediately sees:
+
+/genlayer/contracts
+/genlayer/tests
+/genlayer/README.md
+
+They do not have to hunt through the X Layer codebase trying to find what was actually built on GenLayer.
+
+That matters.
+
+Phase 1 — GenLayer network integration
+
+First commit:
+
+feat(genlayer): add Bradbury network foundation
+
+Install:
+
+npm install genlayer-js
+
+Add configuration:
+
+GENLAYER_NETWORK=testnetBradbury
+GENLAYER_RPC_URL=https://rpc-bradbury.genlayer.com
+
+GENLAYER_QUALITY_CONTRACT_ADDRESS=
+
+# only if server submits transactions
+GENLAYER_SUBMITTER_PRIVATE_KEY=
+
+Never:
+
+NEXT_PUBLIC_GENLAYER_PRIVATE_KEY
+
+Obviously.
+
+Dedicated faucet-funded Bradbury wallet only.
+
+Network client
+
+Something resembling:
+
+import { createClient } from "genlayer-js";
+import { testnetBradbury } from "genlayer-js/chains";
+
+export const genlayerReadClient = createClient({
+  chain: testnetBradbury,
+});
+
+Writing either occurs:
+
+A. Through user wallet
+
+Best decentralization.
+
+or
+
+B. Through Occestra's dedicated Bradbury submitter
+
+Best initial UX.
+
+I recommend B for V1, then A as optional UI.
+
+Why?
+
+A judge should be able to press:
+
+Request Consensus Review
+
+without configuring a wallet.
+
+Phase 2 — Intelligent Contract
+OccestraQualityAdjudicator.py
+
+This is the core contribution.
+
+Persistent state roughly:
+
+reviews[reviewId]
+
+Each record:
+
+reviewId
+artifactHash
+profile
+oqsVersion
+localVerdict
+consensusDecision
+scoreBand
+failureCodes
+createdAt
+requester
+
+Public write:
+
+request_review(...)
+
+Public views:
+
+get_review(review_id)
+get_review_by_artifact(hash)
+review_count()
+
+Possibly:
+
+latest_review(hash)
+What happens inside request_review()
+1. Fetch evidence
+
+GenLayer can directly fetch web resources inside Intelligent Contracts.
+
+Example:
+
+https://api.occestra.xyz/genlayer/evidence/oce_gl_xyz
+2. Verify shape
+
+Ensure:
+
+OQS version exists
+artifact hash matches request
+artifact kind supported
+evidence isn't empty
+3. Inspect artifact
+
+For text:
+
+LLM evaluation
+
+For image:
+
+image bytes/screenshot
+       +
+OQS evaluation prompt
+
+GenLayer directly supports sending images to validator LLMs.
+
+4. Validator consensus
+
+Use custom nondeterministic validation.
+
+I prefer:
+
+gl.vm.run_nondet_unsafe(...)
+
+over strict equality.
+
+Validator requirements:
+
+artifactHash        exact
+profile             exact
+oqsVersion          exact
+
+decision            exact
+
+scoreBand           same OR adjacent band
+
+critical failure    exact
+
+noncritical failures
+                    meaningful overlap
+Phase 3 — Immutable GenLayer evidence endpoint
+
+Add:
+
+GET /genlayer/evidence/:reviewId
+
+This must be immutable once created.
+
+No edits.
+
+Output contains only the minimum evidence validators require.
+
+We should not point GenLayer directly to:
+
+/k/:id
+
+because the rendered site may change.
+
+Instead:
+
+/api/genlayer/evidence/oce_gl_123.json
+
+frozen snapshot.
+
+Evidence integrity
+
+Create:
+
+evidenceHash
+
+from canonical JSON.
+
+Then:
+
+pack hash
+artifact hash
+evidence hash
+
+can all be linked.
+
+That gives us:
+
+X Layer
+pack provenance hash
+
+       ↕ same artifact
+
+GenLayer
+quality consensus
+
+Beautiful architecture.
+
+Phase 4 — Result ingestion
+
+When a GenLayer transaction is:
+
+ACCEPTED
+
+show:
+
+Consensus pending finalization.
+
+When:
+
+FINALIZED
+
+show:
+
+Consensus finalized.
+
+The SDK explicitly supports waiting for accepted or finalized status.
+
+Occestra should store:
+
+{
+  "network": "genlayer-bradbury",
+  "contractAddress": "...",
+  "transactionHash": "...",
+  "reviewId": "...",
+  "decision": "UPHELD",
+  "status": "FINALIZED"
+}
+Phase 5 — Product UI
+
+I would add GenLayer very carefully.
+
+Don't turn the homepage purple + crypto badges everywhere.
+
+Pack page
+
+Current:
+
+Tribunal
+PASS
+
+The Seal
+X Layer
+
+Upgrade:
+
+QUALITY
+
+Occestra Tribunal
+PASS
+
+Consensus Review
+UPHELD
+GenLayer · Bradbury
+↗ View decision
+
+Or:
+
+Consensus Review
+Not requested
+[ Request independent review ]
+If overturned
+
+This is where the integration becomes memorable.
+
+Occestra Tribunal
+PASS
+
+GenLayer Consensus
+OVERTURNED
+
+And beneath:
+
+Independent validator consensus found the local grade unsupported under OQS v1.2.
+
+Then:
+
+Send back for repair
+
+This reuses Occestra's existing repair engine.
+
+Now GenLayer actually affects product behaviour.
+
+This is a very strong loop
+GENERATE
+   ↓
+LOCAL TRIBUNAL
+   ↓
+PASS
+   ↓
+GENLAYER REVIEW
+   ↓
+OVERTURNED
+   ↓
+REPAIR
+   ↓
+TRIBUNAL
+   ↓
+GENLAYER REVIEW
+   ↓
+UPHELD
+
+That could become one of Occestra's strongest demonstrations.
+
+Phase 6 — /consensus or /genlayer page
+
+Create:
+
+occestra.xyz/consensus
+
+Not a giant documentation dump.
+
+Headline:
+
+Our grader doesn't get the final word.
+
+Subheading:
+
+Occestra can submit public artifacts for independent quality consensus on GenLayer.
+
+Show:
+
+Local Tribunal
+      ↓
+GenLayer validators
+      ↓
+UPHELD / OVERTURNED
+
+Then live:
+
+Contract address
+network
+reviews completed
+upheld
+overturned
+pending
+explorer link
+OQS version
+Phase 7 — MCP integration
+
+This is particularly valuable because Occestra already has an agent-facing product.
+
+You currently expose 13 MCP tools, including the one-cent oce_critique.
+
+Add:
+
+oce_consensus_review
+
+Input:
+
+{
+  "artifactId": "...",
+  "localReviewId": "...",
+  "public": true
+}
+
+Response:
+
+{
+  "jobId": "gljob_...",
+  "network": "genlayer-bradbury",
+  "status": "pending"
+}
+
+And either reuse:
+
+oce_job_status
+
+or add:
+
+oce_consensus_status
+
+I would reuse the existing durable job architecture.
+
+No need to invent another subsystem.
+
+Why this is particularly strong for agents
+
+Another agent could do:
+
+generate asset
+      ↓
+oce_critique
+      ↓
+Occestra says PASS
+      ↓
+oce_consensus_review
+      ↓
+GenLayer validators independently confirm
+
+That turns Occestra from:
+
+quality API
+
+into:
+
+consensus-backed quality infrastructure for other agents.
+
+That is directly relevant to GenLayer's agentic-economy thesis.
+
+Phase 8 — connect it to the current Seal
+
+This is the part I like most architecturally.
+
+Current Occestra:
+
+manifest
+   ↓
+EIP-712
+   ↓
+KeepsakeRegistry
+   ↓
+X Layer
+
+New:
+
+                    packHash
+                       │
+            ┌──────────┴───────────┐
+            ↓                      ↓
+        X LAYER                GENLAYER
+
+     provenance                judgment
+     who/when                  was grade justified?
+     immutable hash            AI validator consensus
+
+So the pack page can eventually show:
+
+PROVENANCE
+✓ X Layer sealed
+
+QUALITY CONSENSUS
+✓ GenLayer upheld
+
+These are different trust guarantees.
+
+Don't blur them.
+
+Do we need to bridge GenLayer back to X Layer?
+For the first Builder submission:
+
+No.
+
+I would deliberately not overbuild it.
+
+The product already links both networks using the same:
+
+packHash / artifactHash
+
+That's enough.
+
+Stretch integration: X Layer Consensus Registry
+
+Later we could deploy:
+
+OccestraConsensusRegistry.sol
+
+on X Layer.
+
+Mapping:
+
+artifactHash
+    =>
+genLayerContract
+genLayerReviewId
+decision
+
+A relayer would write finalized GenLayer results back to X Layer.
+
+But that introduces:
+
+relay security,
+synchronization,
+duplicate handling,
+finality assumptions,
+more contracts.
+
+Do it only after the core GenLayer submission is accepted and working.
+
+GenLayer does actually provide a bridge pattern
+
+GenLayer has published a cross-chain bridge boilerplate for exactly the pattern:
+
+EVM chain
+   ↔
+GenLayer Intelligent Contract
+
+with a relay service during the current phase.
+
+So this could later become:
+
+GenLayer verdict
+      ↓
+bridge
+      ↓
+X Layer
+      ↓
+ConsensusRegistry
+
+Very nice V2.
+
+Not V1.
+
+Second GenLayer feature I would consider later
+A2A Delivery Adjudication
+
+This is potentially even bigger than quality review.
+
+Occestra already sells negotiated A2A packages.
+
+Imagine:
+
+Buyer:
+"Complete Launch Pack"
+
+Scope:
+- hero
+- OG
+- thread
+- demo script
+- brand genome
+
+Price:
+10 USDT
+
+Occestra delivers pack
+
+Buyer disputes delivery
+
+      ↓
+
+GenLayer receives:
+agreed scope
+deliverables
+evidence
+
+      ↓
+
+ACCEPTED
+REVISE
+REJECTED
+
+GenLayer itself explicitly lists evaluating whether an agent-delivered job satisfied its requested scope as a use case.
+
+Eventually:
+
+ACCEPTED
+→ escrow release
+
+REVISE
+→ Occestra repair cycle
+
+REJECTED
+→ refund
+
+That is a very serious agent-commerce primitive.
+
+But I'd submit it as a later milestone.
+
+Third potential feature
+Consensus Launch Claim Verification
+
+Launch Studio produces marketing material.
+
+GenLayer could check:
+
+Are factual claims in this launch thread supported by the actual website/repository?
+
+It can render/fetch the site and use validator consensus.
+
+For example:
+
+"We support 12 integrations"
+
+GenLayer checks site/docs.
+
+Output:
+
+SUPPORTED
+UNSUPPORTED
+AMBIGUOUS
+
+This is good.
+
+But less fundamental than Tribunal adjudication.
+
+What I would NOT add
+
+This is important.
+
+Do not bolt on:
+
+GenLayer token payments,
+GenLayer NFT,
+meaningless GEN staking,
+random prediction market,
+voting,
+GenLayer social login,
+GenLayer as another provenance registry,
+a duplicate copy of KeepsakeRegistry,
+“powered by AI consensus” everywhere.
+
+That is hackathon integration theatre.
+
+The Builder program specifically says scoring considers novelty, complexity and impact, and emphasizes value added over raw numbers of submissions.
+
+One meaningful integration is better.
+
+Builder Points strategy
+
+This has changed somewhat from the older programme.
+
+The current GenLayer Portal says:
+
+Builders ship Intelligent Contracts and can earn up to 20% of the points they generate.
+
+The contribution system also requires steward review, GitHub-connected repositories and accepted contributions.
+
+Current Season 1 points convert every Sunday at 23:59 UTC, and the portal currently shows about 6.9M of 10M GLP distributed.
+
+So I would move reasonably fast.
+
+Not rushed code.
+
+But don't leave the submission sitting for weeks.
+
+What we submit
+
+I would submit this as:
+
+Contribution title
+
+Occestra Consensus Review — decentralized quality adjudication for AI-generated creative work
+
+Description:
+
+Occestra adds an independent GenLayer consensus layer to its existing published quality standard. Public artifacts graded by the local Tribunal can be submitted to a GenLayer Intelligent Contract, where independent AI validators inspect the evidence and decide whether the original verdict should be upheld or overturned.
+
+That immediately answers:
+
+Novelty
+
+AI system whose own grader can be independently challenged.
+
+Complexity
+web evidence,
+LLM validation,
+image processing,
+Equivalence Principle,
+async transaction state,
+existing production product integration.
+Impact
+
+Can be used by:
+
+Occestra users,
+other agents,
+agent marketplaces,
+creative tools,
+A2A workflows.
+What the GenLayer steward should be able to verify in <5 minutes
+
+This matters enormously.
+
+README section:
+
+GenLayer Integration
+
+Then:
+
+Network
+Testnet Bradbury — chain ID 4221
+
+Intelligent Contract
+OccestraQualityAdjudicator
+
+Contract address
+0x...
+
+Explorer
+https://explorer-bradbury...
+
+Live integration
+https://occestra.xyz/consensus
+
+Example finalized review
+https://...
+
+Source
+/genlayer/contracts/OccestraQualityAdjudicator.py
+
+Tests
+/genlayer/tests
+
+Run locally
+...
+
+No archaeology required.
+
+README diagram
+
+Add:
+
+                    Occestra
+                       │
+             ┌─────────┴─────────┐
+             │                   │
+        Local Tribunal       Public artifact
+             │                   │
+             └──── PASS/FAIL ────┘
+                       │
+                       ▼
+             GenLayer Bradbury
+                       │
+           independent validators
+                       │
+              ┌────────┴────────┐
+              │                 │
+            UPHELD          OVERTURNED
+              │                 │
+             ship              repair
+Tests I want before submission
+
+Official GenLayer tooling supports:
+
+lint,
+direct tests,
+integration tests.
+
+We should have all three.
+
+Contract tests
+
+At minimum:
+
+obvious passing visual → UPHELD
+obvious failing visual → OVERTURNED
+missing evidence → rejected
+malformed JSON → rejected
+unsupported OQS version → rejected
+wrong artifact hash → rejected
+private artifact → refused before contract submission
+text artifact review
+visual artifact review
+plan artifact review
+identical review id replay → idempotent/rejected
+provider/web failure → UNDETERMINED rather than fabricated decision
+Direct-mode fixtures
+
+This is particularly useful to Codex.
+
+genlayer/fixtures/
+   clear-pass/
+   clear-fail/
+   ambiguous/
+   unavailable-source/
+
+We should deliberately include ambiguity.
+
+A good adjudicator must sometimes say:
+
+UNDETERMINED.
+
+Security rules
+1. No user-supplied arbitrary URLs directly from contract calls
+
+Occestra prepares the evidence URL.
+
+Otherwise we create an on-chain SSRF-like/web-fetch abuse surface.
+
+Allow only:
+
+api.occestra.xyz/genlayer/evidence/*
+
+initially.
+
+2. Evidence snapshots immutable
+
+Once:
+
+oce_gl_123
+
+exists, its body cannot mutate.
+
+3. No secrets in evidence
+
+Never include:
+
+API keys,
+owner tokens,
+private storage URLs,
+salts,
+private photos,
+customer email,
+x402 payment signature.
+4. GenLayer submitter key isolated
+
+Only:
+
+server environment
+
+Dedicated Bradbury wallet.
+
+5. No automatic public review of Remember
+
+Explicit consent only.
+
+Stats
+
+Occestra already has /stats.
+
+Add:
+
+{
+  "genlayer": {
+    "network": "bradbury",
+    "reviews": 27,
+    "finalized": 24,
+    "upheld": 18,
+    "overturned": 4,
+    "undetermined": 2
+  }
+}
+
+Only real values.
+
+No seeded production metrics.
+
+Landing page change
+
+Tiny.
+
+Somewhere around The Tribunal:
+
+Our grader can be challenged.
+
+Public artifacts can be sent to GenLayer, where independent AI validators evaluate whether Occestra's verdict follows the published standard.
+
+Badge:
+
+GENLAYER · CONSENSUS REVIEW
+
+That's enough.
+
+Pack page change
+
+This is where the actual product integration lives.
+
+Something like:
+
+THE TRIBUNAL
+PASS · OQS v1.2
+
+INDEPENDENT REVIEW
+Not requested
+
+[ Ask GenLayer ]
+
+After:
+
+INDEPENDENT REVIEW
+UPHELD
+
+GenLayer Bradbury
+5 validators · finalized
+↗ inspect transaction
+Demo
+
+This submission needs a very short technical demo.
+
+0–10 sec
+
+Occestra artifact.
+
+10–20
+
+Local Tribunal:
+
+PASS
+20–30
+
+Click:
+
+Ask GenLayer.
+
+30–50
+
+Show:
+
+5 independent validators
+review pending
+50–65
+
+Finalized:
+
+OVERTURNED
+65–75
+
+Occestra automatically creates repair brief.
+
+75–90
+
+New artifact:
+
+Tribunal PASS
+GenLayer UPHELD
+X Layer SEALED
+
+End screen:
+
+Creation on Occestra.
+Adjudication on GenLayer.
+Provenance on X Layer.
+
+That is a very compelling architecture story.
+
+My priority ranking
+Feature	Priority	Why
+Bradbury network/client	P0	Required foundation
+QualityAdjudicator IC	P0	Actual GenLayer value
+GenLayer evidence snapshots	P0	Makes validator checks reproducible
+Direct + integration tests	P0	Steward credibility
+Deploy to Bradbury	P0	Builder eligibility/value
+Consensus status in pack UI	P0	Proves integration is used
+/consensus page	P1	Excellent steward/demo surface
+MCP consensus tool	P1	Strong agent-economy fit
+Stats integration	P1	Shows real usage
+Auto-repair after overturn	P1	Strong product consequence
+A2A delivery adjudication	P2	Excellent second contribution
+X Layer ↔ GenLayer bridge	P2	Powerful but unnecessary initially
+ConsensusRegistry on X Layer	P3	Only after bridge is justified
+What I expect the first implementation to touch
+
+Something approximately like:
+
+NEW
+/genlayer/contracts/OccestraQualityAdjudicator.py
+/genlayer/tests/direct/...
+/genlayer/tests/integration/...
+/genlayer/fixtures/...
+/genlayer/gltest.config.yaml
+/genlayer/README.md
+
+NEW
+/packages/genlayer/
+  package.json
+  src/client.ts
+  src/config.ts
+  src/reviews.ts
+  src/schemas.ts
+
+MODIFY
+package.json
+.env.example
+
+MODIFY
+packages/mcp-server/
+  evidence route
+  review job
+  GenLayer poll/finalize worker
+
+MODIFY
+packages/studio-core/
+  consensus review domain schema
+
+MODIFY
+apps/web/
+  consensus page
+  pack review panel
+  GenLayer status UI
+
+MODIFY
+README.md
+CHANGELOG.md
+assets/architecture.svg
+
+The existing repository organization makes this very natural. Occestra is already separated into domain logic, Tribunal, receipts/contracts, providers and MCP infrastructure rather than being one giant application.
+
+Suggested commit sequence
+
+Don't let Codex produce one monstrous commit.
+
+Commit 1
+feat(genlayer): add Bradbury network foundation
+Commit 2
+feat(genlayer): add consensus quality adjudicator
+Commit 3
+test(genlayer): add direct and Bradbury integration coverage
+Commit 4
+feat(consensus): connect Occestra Tribunal reviews to GenLayer
+Commit 5
+feat(web): surface independent GenLayer consensus reviews
+Commit 6
+feat(mcp): expose consensus-backed artifact review
+Commit 7
+docs(genlayer): add deployed contract, architecture and builder proof
+
+That Git history tells the story for the steward.
+
+One more thing: legitimate activity matters now
+
+Since the Portal currently describes Builders as earning from Intelligent Contracts and the current system converts weekly, don't merely deploy one contract and never touch it.
+
+After deployment we should run a real benchmark corpus:
+
+5 obvious-pass visuals
+5 obvious-fail visuals
+5 pieces of copy
+5 plan artifacts
+
+These are legitimate integration tests.
+
+Record:
+
+local verdict,
+GenLayer verdict,
+agreement rate,
+overturned cases,
+latency,
+undetermined cases.
+
+Then publish:
+
+GENLAYER-EVALUATION.md
+
+Example:
+
+20 artifacts
+17 local/consensus agreements
+2 local verdicts overturned
+1 undetermined
+
+That turns network activity into actual research/evaluation, not points farming.
+
+GenLayer explicitly lists performance benchmarks, technical research and project milestones as valid Builder contributions.
+
+What I would do immediately after you connect GitHub
+
+Once the repository is actually connected, I would first not let Codex modify anything.
+
+I would do a precise repository audit of:
+
+current AGENTS.md,
+package dependency graph,
+Tribunal schemas,
+current pack schema,
+anchor worker,
+existing job persistence,
+apps/web pack view,
+.env.example,
+CI,
+deployment/runbook.
+
+Then I can give you a file-by-file implementation specification for your VPS Codex bot, rather than a generic prompt.
+
+And because GitHub is available to me once you connect it, I can also lay down the initial foundation myself—e.g. the /genlayer skeleton, TypeScript adapter interfaces, docs and test fixtures—then your Codex/OpenClaw bot on the VPS can handle the heavier implementation/deployment work.
+
+The core scope I would lock right now
+
+Occestra remains X Layer-native. GenLayer Bradbury is added as an independent decentralized quality-adjudication layer. The existing Tribunal issues the fast local verdict; public/consented artifacts can be submitted to OccestraQualityAdjudicator, whose AI validators independently uphold or overturn that verdict. Overturns can enter Occestra's existing repair loop.
+
+That is the version I think gives us the best ratio of engineering effort : GenLayer relevance : Builder-points credibility : actual improvement to Occestra.
+
+CARRY ONR...ITS CONNECTED TO THE OTHER @TALK2FRANCIS GITHUB PROFILE
+
+Done — I’ve started the GenLayer integration directly in the connected talk2francis/Occestra repo, but I kept everything safely isolated on a new feature branch rather than touching main.
+
+The branch is:
+
+feat/genlayer-consensus-review
+
+I first verified that the connector has full push/admin access to the repo, then read Occestra’s actual AGENTS.md, current OQS implementation, studio domain types, package layout, MCP/server structure, and live architecture. The repo is already in a very good position for this because the Tribunal, receipts, X Layer contracts, jobs, uploads and MCP infrastructure are properly separated.
+
+I’ve now added the first real GenLayer foundation.
+
+What is already committed
+
+The central Intelligent Contract now exists at:
+
+genlayer/contracts/OccestraQualityAdjudicator.py
+
+Its role is exactly what we planned: GenLayer does not replace Occestra’s Tribunal. It independently adjudicates whether the Tribunal’s verdict is justified.
+
+The contract currently supports:
+
+UPHELD
+OVERTURNED
+UNDETERMINED
+OQS profile/version binding
+artifact-hash binding
+immutable Occestra evidence URLs
+public-consensus permission checking
+written/plan/pack adjudication
+vision-capable adjudication for visual artifacts
+normalized score bands
+normalized failure codes
+review lookup by ID
+review lookup by artifact hash
+persistent review count
+duplicate-review protection
+
+I initially laid down a strict-consensus version, then corrected that before leaving it in place. GenLayer’s current documentation explicitly says LLM calls should generally not use strict equality, because validators will naturally produce different prose. The contract now uses gl.vm.run_nondet_unsafe() with an independent validator that reruns the evaluation and compares stable fields instead: decision must match exactly, score bands may differ by one adjacent band, critical failures must not conflict, and non-critical failure-code sets need meaningful overlap. That is substantially more GenLayer-native.
+
+For visual work, the contract uses GenLayer’s image-processing capability: the frozen public artifact is rendered as a screenshot and supplied to vision-capable validator LLMs. This is particularly well suited to Occestra’s invitations, moodboards, keepsakes, launch heroes and OG graphics.
+
+I also added:
+
+genlayer/README.md
+
+That documents the trust split clearly:
+
+Occestra Tribunal → first-instance quality review
+GenLayer → independent consensus adjudication
+X Layer → payment + provenance
+
+This distinction is important because I do not want the eventual Builder submission looking like GenLayer was bolted onto an existing X Layer project for points.
+
+I added:
+
+GENLAYER-HANDOFF.md
+
+This is the detailed VPS/Codex execution document. It is not a vague prompt; it contains the next 12 implementation tickets, safety constraints, expected state machine, file areas to inspect, UI states, evidence design, MCP surface, benchmark requirements, deployment conditions, commit discipline, and explicit stop conditions.
+
+So when you hand this branch to your Codex/OpenClaw setup, the bot has a repository-native implementation specification instead of needing this chat context.
+
+I also added the GenLayer local test dependencies based on the current official project boilerplate:
+
+genlayer/requirements.txt
+
+And started direct-mode contract testing at:
+
+genlayer/tests/direct/test_quality_adjudicator.py
+
+The initial tests cover:
+
+Tribunal PASS → GenLayer UPHELD
+Tribunal PASS → GenLayer OVERTURNED
+evidence artifact-hash mismatch
+publicForConsensus=false
+duplicate review IDs
+
+The official GenLayer testing guidance recommends exactly this layered direct-mode approach with web/LLM mocks, strict mocks, pickling checks and separate consensus-validator testing.
+
+One particularly important adjustment after reading the real Occestra code
+
+Occestra’s live OQS is actually v1.2.0, not the older five-axis system we discussed earlier. The code now has four distinct profiles:
+
+visual
+written
+plan
+pack
+
+And the visual profile already includes subject_fidelity, while the written/plan/pack profiles have their own relevant axes.
+
+That makes the GenLayer integration better than the original proposal, because the Intelligent Contract can adjudicate the actual published OQS profile for that artifact type rather than pretending everything is scored using one generic creative rubric.
+
+The evidence system I’ve designed binds:
+
+artifactHash
+profile
+oqsVersion
+localVerdict
+publicForConsensus
+
+and GenLayer refuses to proceed when those values do not agree with the frozen snapshot.
+
+That helps prevent someone from feeding the contract one artifact but claiming the Tribunal graded another.
+
+Privacy is being enforced architecturally
+
+This is also now built into the contract design rather than just described in docs.
+
+The contract only accepts evidence from:
+
+https://api.occestra.xyz/genlayer/evidence/...
+
+and visual consensus artifacts from:
+
+https://api.occestra.xyz/genlayer/artifacts/...
+
+The server-side implementation still needs to create those routes, but once it does, arbitrary attacker-controlled URLs will not be accepted.
+
+And every evidence snapshot must explicitly contain:
+
+"publicForConsensus": true
+
+Otherwise the contract rejects it.
+
+That is particularly important for Remember Studio because the existing Occestra architecture already treats personal uploads as private and strips metadata before storage.
+
+What I deliberately have not done yet
+
+I have not deployed anything to Bradbury.
+
+I have not added a private key anywhere.
+
+I have not modified the production X Layer contract/payment code.
+
+I have not merged anything to main.
+
+And I have not guessed a GenLayer Intelligent Contract address.
+
+The next proper step belongs on your VPS because we need an executable environment to:
+
+check out the new branch,
+install the Python GenLayer tooling,
+lint the Intelligent Contract,
+run the direct tests,
+fix any SDK/version-specific syntax differences,
+install/pin the current genlayer-js,
+inspect the existing SQLite job tables in runtime,
+build the evidence endpoints,
+run the full Occestra TypeScript test suite,
+then deploy to Bradbury using a dedicated funded testnet wallet.
+
+The handoff file tells Codex to stop rather than guess if the current SDK differs from the documented APIs.
+
+The next development block
+
+Once your VPS bot checks out this branch, I want it to implement this flow:
+
+PUBLIC OCCESTRA ARTIFACT
+        │
+        ▼
+LOCAL OQS TRIBUNAL
+        │
+      PASS
+        │
+        ▼
+CREATE IMMUTABLE
+GENLAYER EVIDENCE
+        │
+        ▼
+OccestraQualityAdjudicator
+        │
+   GenLayer Validators
+        │
+ ┌──────┴─────────┐
+ ▼                ▼
+UPHELD         OVERTURNED
+ │                │
+ship            repair
+ │                │
+ └───────┬────────┘
+         ▼
+   X LAYER SEAL
+   remains separate
+
+The high-value product behaviour will be that an overturned GenLayer review can send the artifact back through Occestra’s existing repair loop, but we will only feed normalized GenLayer failure codes into the repair engine—not arbitrary validator prose.
+
+That gives us a genuinely consequential integration instead of a decorative consensus badge.
+
+For the eventual Builder submission, the strongest demo remains:
+
+Occestra Tribunal says PASS → GenLayer independently says OVERTURNED → Occestra repairs the artifact → GenLayer then UPHOLDS it → final pack is sealed on X Layer.
+
+That demonstrates creation, self-criticism, external decentralized adjudication, repair, and provenance in one loop.
+
+I’ve laid down enough now that your VPS Codex can begin from an actual engineered foundation instead of a blank branch. The immediate instruction for it is simply:
+
+git fetch origin
+git checkout feat/genlayer-consensus-review
+git pull
+cat AGENTS.md
+cat GENLAYER-HANDOFF.md
+cat genlayer/README.md
+
+Then have it execute GL-1 onward sequentially, stopping at every checkpoint if tests are not green.
+
+give me prompts i feed my bot to carry on
+
+Use these in order. I would not give the bot one gigantic “finish everything” prompt first; with Occestra’s current complexity, checkpointed prompts reduce the chance it breaks the existing OKX/X Layer production system.
+
+The branch and foundation we created are already isolated under feat/genlayer-consensus-review, and Occestra’s repo already separates the Tribunal, MCP server, receipts/contracts and studio core cleanly enough for this phased implementation.
+
+PROMPT 1 — Repository audit + validate the GenLayer foundation
+You are continuing development of Occestra, a live production-grade agent-native Occasion Studio.
+
+REPOSITORY:
+https://github.com/talk2francis/Occestra
+
+TARGET BRANCH:
+feat/genlayer-consensus-review
+
+DO NOT WORK ON main.
+DO NOT merge to main.
+DO NOT deploy anything yet.
+DO NOT modify the existing X Layer production contract, OKX x402 payment flow, or current production database until explicitly required.
+
+Start by running:
+
+git fetch origin
+git checkout feat/genlayer-consensus-review
+git pull origin feat/genlayer-consensus-review
+
+Then READ COMPLETELY before touching code:
+
+1. AGENTS.md
+2. GENLAYER-HANDOFF.md
+3. genlayer/README.md
+4. README.md
+5. packages/tribunal/src/rubric.ts
+6. packages/tribunal/src/engine.ts
+7. packages/studio-core/src/types.ts
+8. packages/mcp-server/src/store.ts
+9. packages/mcp-server/src/jobs.ts
+10. packages/mcp-server/src/http.ts
+11. packages/mcp-server/src/server.ts
+12. packages/mcp-server/src/pipelines.ts
+13. packages/mcp-server/src/anchor.ts
+14. packages/receipts
+15. packages/contracts
+16. .env.example
+17. package.json
+18. .github/workflows/ci.yml
+
+Your first task is NOT to add features.
+
+Your first task is to AUDIT the GenLayer foundation already committed on this branch.
+
+Inspect:
+
+genlayer/contracts/OccestraQualityAdjudicator.py
+genlayer/tests/direct/test_quality_adjudicator.py
+genlayer/requirements.txt
+
+Compare the Intelligent Contract implementation against the CURRENT installed/current official GenLayer SDK patterns rather than assuming our draft syntax is perfect.
+
+Check specifically:
+
+- Python import/API compatibility
+- gl.Contract declaration
+- @gl.public.write / @gl.public.view syntax
+- TreeMap storage
+- dataclass storage
+- gl.message.sender_address
+- nondeterministic web rendering
+- image/screenshot support
+- gl.nondet.exec_prompt
+- gl.vm.run_nondet_unsafe or current equivalent
+- equivalence-principle validator API
+- response_format syntax
+- accepted serialized storage types
+- direct testing API
+- GenLayer testing-suite versions
+- Bradbury network configuration
+
+If current GenLayer docs/package APIs differ from the branch implementation, FIX THE IMPLEMENTATION TO CURRENT REAL APIs.
+
+Do not preserve incorrect draft code merely because it already exists.
+
+Install the GenLayer Python environment in an isolated virtual environment.
+
+Suggested approach:
+
+cd genlayer
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+Then run the available GenLayer linter and direct tests.
+
+Requirements:
+
+1. Intelligent Contract must lint successfully.
+2. Direct tests must execute successfully.
+3. No external network should be required for deterministic direct tests.
+4. Web + LLM calls must be mocked in direct tests.
+5. Include tests for:
+   - local PASS upheld
+   - local PASS overturned
+   - local FAIL upheld
+   - local FAIL overturned
+   - undetermined evidence
+   - malformed evidence
+   - artifact hash mismatch
+   - wrong evidence origin
+   - publicForConsensus=false
+   - unsupported profile
+   - unsupported/invalid OQS version
+   - duplicate review id
+   - unavailable evidence
+   - visual review
+   - written review
+   - plan review
+
+VERY IMPORTANT CONSENSUS RULE:
+
+Do NOT require free-form validator prose to be byte-identical.
+
+Consensus should center on stable fields:
+decision = UPHELD | OVERTURNED | UNDETERMINED
+scoreBand
+criticalFailure
+normalized failureCodes
+
+Use a GenLayer-native equivalence strategy appropriate to nondeterministic LLM outputs.
+
+PRIVACY:
+
+The contract must never encourage arbitrary private content submission.
+Only explicitly public evidence snapshots are valid.
+Remember Studio data is PRIVATE BY DEFAULT.
+
+SECURITY:
+
+Do not allow arbitrary user URLs.
+For V1, evidence origin should be restricted to:
+https://api.occestra.xyz/genlayer/evidence/
+
+Visual artifacts should similarly be constrained to an Occestra-controlled public consensus asset endpoint.
+
+DO NOT PUT API KEYS OR PRIVATE KEYS IN THE REPO.
+
+After fixing the foundation:
+
+Run:
+npm ci
+npm run check
+
+Do not modify existing unrelated tests simply to make them green.
+
+At the end give me:
+
+A. files changed
+B. commands executed
+C. test/lint results
+D. any GenLayer API assumptions you corrected
+E. remaining blockers
+F. exact next recommended implementation step
+
+Then commit ONLY this checkpoint with a clean commit such as:
+
+fix(genlayer): align consensus adjudicator with current sdk
+
+STOP after that commit.
+Do not proceed to backend integration until I tell you.
+PROMPT 2 — Build the Occestra ↔ GenLayer TypeScript integration
+
+Once Prompt 1 is green:
+
+Continue on:
+
+feat/genlayer-consensus-review
+
+Read AGENTS.md and GENLAYER-HANDOFF.md again.
+
+We are now implementing the application-side GenLayer integration.
+
+GOAL:
+
+Create a dedicated TypeScript package:
+
+packages/genlayer
+
+This package must encapsulate ALL GenLayer network behavior and must not leak GenLayer-specific logic throughout studio-core or the MCP server.
+
+Use the current official genlayer-js SDK and current Bradbury network configuration.
+
+Target public network:
+
+GenLayer Bradbury testnet
+Chain ID: 4221
+
+Do not hardcode undocumented URLs if the SDK already provides a canonical Bradbury chain definition.
+
+PACKAGE RESPONSIBILITIES:
+
+packages/genlayer/
+  package.json
+  tsconfig.json
+  src/
+    config.ts
+    schemas.ts
+    evidence.ts
+    client.ts
+    reviews.ts
+    index.ts
+  tests/
+
+Create strict Zod schemas for:
+
+ConsensusDecision:
+UPHELD
+OVERTURNED
+UNDETERMINED
+
+ConsensusStatus:
+NOT_REQUESTED
+QUEUED
+SUBMITTED
+ACCEPTED
+FINALIZED
+FAILED
+
+ConsensusProfile:
+visual
+written
+plan
+pack
+
+ConsensusReview record:
+- reviewId
+- artifactId
+- artifactHash
+- profile
+- oqsVersion
+- localVerdict
+- evidenceHash
+- evidenceUrl
+- network
+- intelligentContractAddress
+- transactionHash optional
+- status
+- decision optional
+- scoreBand optional
+- criticalFailure optional
+- failureCodes[]
+- submittedAt optional
+- finalizedAt optional
+- errorCode optional
+
+EvidenceSnapshot schema should contain only bounded public evidence needed for adjudication.
+
+At minimum:
+
+{
+  schemaVersion,
+  reviewId,
+  createdAt,
+  artifactId,
+  artifactHash,
+  artifactKind,
+  profile,
+  oqsVersion,
+  localVerdict,
+  publicForConsensus,
+  brief,
+  rubric,
+  localTribunal,
+  artifact
+}
+
+IMPORTANT:
+
+Do not dump an entire private OccasionContract blindly.
+
+Build a REDACTED, purpose-specific evidence snapshot.
+
+For visual artifacts, artifact should contain a public immutable consensus URL.
+
+For text/plan artifacts, include the frozen text/payload itself only when explicitly public.
+
+Add canonical evidence hashing.
+
+Use the same discipline Occestra already uses for canonical manifest hashing: deterministic key ordering and reproducible hashes.
+
+Environment variables:
+
+GENLAYER_NETWORK=bradbury
+GENLAYER_RPC_URL=
+GENLAYER_QUALITY_CONTRACT_ADDRESS=
+GENLAYER_SUBMITTER_PRIVATE_KEY=
+
+Rules:
+
+- GENLAYER_SUBMITTER_PRIVATE_KEY is server-only.
+- Never expose it via NEXT_PUBLIC_*.
+- If no submitter key exists, read-only functionality should still work.
+- Missing GenLayer config must gracefully disable consensus submission rather than crash Occestra.
+
+Create helpers approximately equivalent to:
+
+isGenLayerConfigured()
+buildEvidenceSnapshot()
+hashEvidenceSnapshot()
+submitConsensusReview()
+getConsensusReview()
+waitForConsensusAccepted()
+waitForConsensusFinalized()
+
+Use current GenLayer SDK APIs, not invented APIs.
+
+Add mocked tests for configuration, evidence construction, hashing, submission mapping and status normalization.
+
+Update root package.json build/test pipeline so @occestra/genlayer participates correctly.
+
+Do NOT yet wire HTTP routes or UI.
+
+Run:
+
+npm run typecheck
+npm run build
+npm test
+
+Everything existing must remain green.
+
+Commit:
+
+feat(genlayer): add Bradbury client and evidence schemas
+
+STOP.
+PROMPT 3 — Immutable evidence endpoint + database persistence
+Continue from the latest commit on:
+
+feat/genlayer-consensus-review
+
+Read:
+AGENTS.md
+GENLAYER-HANDOFF.md
+packages/mcp-server/src/store.ts
+packages/mcp-server/src/http.ts
+packages/mcp-server/src/jobs.ts
+packages/genlayer/*
+
+GOAL:
+
+Create the production-grade evidence layer connecting an Occestra Tribunal report to GenLayer.
+
+Implement immutable consensus evidence snapshots.
+
+Endpoints:
+
+GET /genlayer/evidence/:reviewId
+
+and, where visual artifacts need a separately exposed public asset:
+
+GET /genlayer/artifacts/:reviewId
+
+or an equivalent safe immutable route.
+
+DO NOT expose arbitrary underlying storage paths.
+
+DATA MODEL:
+
+Extend the existing SQLite repository layer cleanly.
+
+Do not create a second database.
+
+Add a consensus_reviews table/migration following the existing store conventions.
+
+Suggested columns:
+
+review_id TEXT PRIMARY KEY
+artifact_id TEXT NOT NULL
+keepsake_id TEXT
+artifact_hash TEXT NOT NULL
+profile TEXT NOT NULL
+oqs_version TEXT NOT NULL
+local_verdict TEXT NOT NULL
+evidence_json TEXT NOT NULL
+evidence_hash TEXT NOT NULL
+public_for_consensus INTEGER NOT NULL
+network TEXT NOT NULL
+contract_address TEXT
+transaction_hash TEXT
+status TEXT NOT NULL
+decision TEXT
+score_band TEXT
+critical_failure TEXT
+failure_codes_json TEXT
+submitted_at TEXT
+finalized_at TEXT
+error_code TEXT
+created_at TEXT NOT NULL
+updated_at TEXT NOT NULL
+
+Use the repo's existing migration/schema initialization style.
+
+IMMUTABILITY REQUIREMENT:
+
+Once an evidence snapshot is created for reviewId:
+- evidence_json may NEVER be replaced
+- evidence_hash may NEVER change
+- artifact_hash may NEVER change
+- local verdict may NEVER change
+
+If another review is wanted after repair, create a NEW reviewId.
+
+Evidence endpoint must return the exact frozen snapshot.
+
+Add appropriate caching headers but do not make a mutable route appear immutable.
+
+PRIVACY:
+
+Only artifacts explicitly approved as publicForConsensus=true may generate a snapshot.
+
+Remember Studio:
+NO automatic consensus submission.
+NO raw private photographs.
+NO owner tokens.
+NO signed private URLs.
+NO private reference links.
+NO salts.
+NO emails.
+NO API keys.
+
+Create a server-side authorization/check function that refuses consensus preparation when privacy conditions are not satisfied.
+
+SECURITY:
+
+Do not accept evidence JSON directly from arbitrary clients.
+
+The server builds it from:
+- existing artifact
+- existing Tribunal result
+- current OQS rubric
+- explicit public consensus consent
+
+Validate artifact hash against actual stored artifact bytes/content before freezing.
+
+For visual assets:
+- copy/re-encode if necessary into a dedicated immutable/public consensus artifact representation
+- never expose private storage paths
+- strip metadata again defensively if applicable
+
+Create endpoints to inspect consensus review state:
+
+GET /genlayer/reviews/:reviewId
+
+Do NOT implement blockchain submission yet in this phase.
+
+Add tests for:
+- immutable snapshots
+- idempotent GET
+- private Remember rejection
+- hash mismatch rejection
+- missing Tribunal rejection
+- missing artifact rejection
+- public visual snapshot
+- public written snapshot
+- no private fields leakage
+
+Run all tests.
+
+Commit:
+
+feat(consensus): add immutable GenLayer evidence snapshots
+
+STOP.
+PROMPT 4 — Submit reviews to GenLayer + durable job integration
+Continue on feat/genlayer-consensus-review.
+
+GOAL:
+
+Integrate actual GenLayer consensus submission into Occestra's existing durable job infrastructure.
+
+Do NOT invent a new queue system if packages/mcp-server/src/jobs.ts already solves persistence/retry.
+
+We need this lifecycle:
+
+NOT_REQUESTED
+→ QUEUED
+→ SUBMITTED
+→ ACCEPTED
+→ FINALIZED
+
+Failure:
+→ FAILED
+
+Implement a review job such as:
+
+genlayer_consensus_review
+
+Inputs:
+reviewId
+
+Worker behavior:
+
+1. Load immutable evidence snapshot.
+2. Verify publicForConsensus=true.
+3. Confirm artifactHash/profile/OQS/localVerdict match frozen evidence.
+4. Confirm GenLayer config.
+5. Submit request_review() to OccestraQualityAdjudicator on Bradbury.
+6. Save transaction hash immediately.
+7. Poll/wait for accepted state using current genlayer-js semantics.
+8. Persist ACCEPTED.
+9. Continue until FINALIZED.
+10. Read the finalized contract review.
+11. Persist:
+   decision
+   scoreBand
+   criticalFailure
+   failureCodes
+   finalizedAt
+
+RETRY RULES:
+
+- retries must never create a second review for the same reviewId
+- blockchain submission must be idempotent where feasible
+- if tx hash already exists, resume polling rather than resubmitting
+- temporary RPC failure → retry
+- contract revert → terminal FAILED
+- malformed finalized result → terminal FAILED with sanitized errorCode
+- raw wallet/provider errors stay in logs, never public responses
+
+Do not leak private keys.
+
+Do not mix X Layer sealer key and GenLayer submitter key.
+
+They must remain separate credentials and separate trust domains.
+
+API:
+
+POST /genlayer/reviews
+
+Request should identify an existing public artifact/Tribunal result and explicit consent.
+
+It creates:
+- reviewId
+- immutable evidence
+- durable job
+
+Response:
+202 Accepted
+{
+  reviewId,
+  status: "QUEUED",
+  network: "genlayer-bradbury"
+}
+
+GET /genlayer/reviews/:reviewId
+
+returns current state.
+
+MCP:
+
+Add an agent-facing capability:
+
+oce_consensus_review
+
+Prefer integrating this into existing durable job semantics.
+
+Do not make the MCP call block while GenLayer finalizes.
+
+It should return job/review identifiers and tell the buyer to inspect status.
+
+If appropriate, reuse:
+oce_job_status
+oce_job_result
+
+rather than creating redundant tools.
+
+PRICING:
+
+Do not charge users for this yet unless existing product strategy explicitly requires it.
+For the Builder integration, keep consensus review free or clearly test-only until real GenLayer execution economics are measured.
+
+Add tests with mocked GenLayer client.
+
+Tests must cover:
+- successful finalized upheld
+- successful finalized overturned
+- undetermined
+- RPC outage
+- contract revert
+- restart/resume from SUBMITTED
+- restart/resume from ACCEPTED
+- duplicate HTTP request
+- duplicate worker execution
+- no private artifact submission
+
+Run full test suite.
+
+Commit:
+
+feat(consensus): connect Tribunal reviews to GenLayer
+
+STOP.
+PROMPT 5 — Make GenLayer affect Occestra’s repair loop
+
+This is the most important product phase.
+
+Continue on feat/genlayer-consensus-review.
+
+GOAL:
+
+A GenLayer verdict must have a REAL product consequence.
+
+Do not treat GenLayer as a decorative badge.
+
+Implement:
+
+LOCAL TRIBUNAL PASS
+→ GenLayer OVERTURNED
+→ eligible for Occestra repair
+→ regenerate/revise artifact
+→ local Tribunal rerun
+→ optional NEW GenLayer review
+
+IMPORTANT:
+
+A GenLayer result must NEVER mutate the historical local Tribunal report.
+
+The historical record should remain:
+
+localVerdict = PASS
+consensusDecision = OVERTURNED
+
+Then repair creates a new artifact version / new Tribunal report.
+
+Do NOT overwrite history.
+
+Create a normalized mapping from GenLayer failure codes into the existing repair system.
+
+Examples:
+
+LEGIBILITY
+→ improve text hierarchy/contrast/size
+
+COMPOSITION
+→ correct focal hierarchy/balance
+
+BRIEF_MISMATCH or SUBJECT_FIDELITY
+→ regenerate with subject-first repair brief
+
+STYLE_DRIFT
+→ tighten House Style constraints
+
+FACTUAL_SUPPORT
+→ remove unsupported claim or reground
+
+SOURCE_COVERAGE
+→ retrieve/add missing source
+
+SCHEDULE_CONFLICT
+→ recompute schedule
+
+BUDGET_INCONSISTENCY
+→ reconcile line items
+
+PACK_INCOMPLETE
+→ identify missing requested deliverable
+
+CRITICAL SAFETY RULE:
+
+Do NOT feed arbitrary validator free-form prose directly into generation prompts.
+
+Only use normalized trusted fields:
+decision
+criticalFailure code
+failureCodes
+possibly bounded score band
+
+The server should construct its own repair brief from those codes.
+
+Allow maximum additional consensus-triggered repair cycles.
+
+Do not permit infinite:
+GenLayer → repair → GenLayer → repair loops.
+
+Suggested maximum:
+1 consensus-triggered repair automatically
+additional review requires explicit user/agent request.
+
+If local Tribunal FAILS already:
+GenLayer may review it, but an UPHELD FAIL should not trigger pointless regeneration outside the existing local repair rules.
+
+Add explicit lineage:
+
+artifactVersion 1
+  local PASS
+  GL OVERTURNED
+
+artifactVersion 2
+  repairedFrom v1
+  local PASS
+  GL UPHELD
+
+Expose that lineage in the domain model/API.
+
+Add tests proving history is preserved.
+
+Run full test suite.
+
+Commit:
+
+feat(consensus): route overturned reviews into bounded repair
+
+STOP.
+PROMPT 6 — Build the public GenLayer UI
+Continue on feat/genlayer-consensus-review.
+
+Read the existing Amethyst Daylight design system and current pack pages before designing anything.
+
+DO NOT turn Occestra into a crypto dashboard.
+DO NOT redesign the entire product.
+DO NOT add loud GenLayer branding.
+DO NOT use generic glowing blockchain graphics.
+
+GenLayer should feel native to Occestra.
+
+Build:
+
+/consensus
+
+Purpose:
+Explain independent GenLayer adjudication and show real reviews.
+
+Primary statement:
+
+"Our grader doesn't get the final word."
+
+Supporting idea:
+
+Occestra's Tribunal makes the fast first-instance quality decision.
+Public artifacts can then be independently reviewed by GenLayer's decentralized AI validators.
+
+Show the trust split clearly:
+
+CREATE / GRADE
+Occestra
+
+ADJUDICATE
+GenLayer
+
+PROVE
+X Layer
+
+On public pack/artifact pages add a restrained Consensus Review panel.
+
+States:
+
+NOT REQUESTED
+"Independent review not requested"
+[Ask GenLayer]
+
+QUEUED
+"Waiting to submit"
+
+SUBMITTED
+"Submitted to GenLayer"
+
+ACCEPTED
+"Consensus accepted · awaiting finality"
+
+FINALIZED + UPHELD
+"Independent review upheld the Tribunal"
+
+FINALIZED + OVERTURNED
+"Independent review disagreed with the Tribunal"
+
+FINALIZED + UNDETERMINED
+"Validators could not reach a reliable determination"
+
+FAILED
+"Consensus review unavailable"
+with no false claim of verification.
+
+Show:
+- Bradbury network
+- contract address
+- review id
+- transaction hash/explorer link
+- OQS version
+- local verdict
+- GenLayer decision
+- failure codes
+- artifact version
+- timestamps
+
+Do not expose raw chain/provider errors.
+
+For Remember:
+button absent by default unless artifact is explicitly published/public.
+
+Add accessibility and reduced-motion behavior.
+
+Use Playwright to test:
+desktop
+tablet
+mobile
+Daylight
+Nocturne
+
+Take screenshots.
+
+Inspect them visually.
+
+Fix:
+overflow
+dead space
+poor hierarchy
+tiny blockchain metadata
+mobile clipping
+theme contrast
+loading-state shifts
+
+Run Lighthouse if feasible.
+
+Update architecture diagram to show:
+
+Occestra Tribunal
+       ↓
+GenLayer Consensus Review
+       ↓
+upheld / overturned
+       ↓
+bounded repair
+       ↓
+X Layer Seal remains separate
+
+Run full repo tests.
+
+Commit:
+
+feat(web): surface GenLayer consensus adjudication
+
+STOP.
+PROMPT 7 — Bradbury deployment
+
+Use this only after every local test is green.
+
+Continue on feat/genlayer-consensus-review.
+
+We are now ready for a REAL GenLayer Bradbury deployment.
+
+DO NOT deploy until:
+
+- GenLayer contract lint passes
+- direct tests pass
+- TypeScript tests pass
+- npm run check passes
+- no secrets exist in git
+- dedicated GenLayer wallet is configured
+- wallet is funded with Bradbury testnet GEN
+- production X Layer keys remain untouched
+
+Use a SEPARATE dedicated wallet for GenLayer.
+
+Never reuse:
+OCE_SEALER_KEY
+OKX payment treasury key
+X Layer registry deployer key
+
+Use:
+GENLAYER_SUBMITTER_PRIVATE_KEY
+
+Confirm Bradbury network from CURRENT official GenLayer config/docs before deploying.
+
+Deploy:
+
+OccestraQualityAdjudicator
+
+Record:
+
+network
+chain id
+contract address
+deployment transaction hash
+deployer address
+deployment timestamp
+explorer URL
+GenLayer SDK/tool versions
+
+Update:
+
+genlayer/README.md
+GENLAYER-HANDOFF.md if appropriate
+README.md
+.env.example
+CHANGELOG.md
+
+Do not put private key in any of those files.
+
+Then run at least THREE REAL smoke reviews:
+
+1. clear public visual pass
+2. deliberately weak public visual
+3. written artifact
+
+For each:
+- freeze evidence
+- submit
+- wait for finalization
+- read result from Intelligent Contract
+- persist result in Occestra
+- verify UI/API displays exactly what chain state says
+
+If any review behaves unexpectedly:
+DO NOT fabricate a clean result.
+Document it.
+
+Create GENLAYER-EVALUATION.md containing initial live findings.
+
+Commit:
+
+feat(genlayer): deploy quality adjudicator to Bradbury
+
+STOP.
+
+Return to me with:
+- contract address
+- explorer URL
+- deploy tx
+- wallet/deployer public address
+- smoke review transaction IDs
+- outcomes
+- test results
+- anything still not production-safe
+PROMPT 8 — Benchmark it properly for GenLayer Builder scoring
+Continue on feat/genlayer-consensus-review.
+
+GOAL:
+
+Produce a real benchmark demonstrating that GenLayer adds measurable value to Occestra.
+
+Do not farm meaningless transactions.
+Do not fabricate usage.
+Do not cherry-pick only successes.
+
+Create a controlled public benchmark corpus of approximately 20–30 artifacts.
+
+Include:
+
+VISUAL:
+- obvious good compositions
+- intentionally poor legibility
+- wrong subject
+- style drift
+- rendering defects
+
+WRITTEN:
+- specific grounded writing
+- generic AI filler
+- unsupported claim
+- wrong voice
+- poor structure
+
+PLAN:
+- valid grounded plan
+- missing source
+- impossible schedule
+- inconsistent budget
+- poor uncertainty disclosure
+
+Prefer synthetic/public content.
+No private customer material.
+
+For every case record:
+
+caseId
+artifactKind
+profile
+expected issue
+local Tribunal verdict
+local axis results
+GenLayer decision
+GenLayer score band
+failure codes
+agreement/disagreement
+latency
+transaction hash
+finalization status
+notes
+
+Calculate:
+
+- local ↔ GenLayer agreement rate
+- overturn rate
+- undetermined rate
+- obvious-failure catch rate
+- median GenLayer latency
+- p95 latency if sample permits
+- consensus result distribution
+- number of local false positives caught
+- number of local false negatives caught
+- average repair result after GenLayer overturn where tested
+
+Do not claim statistical significance from a tiny sample.
+
+Publish:
+
+GENLAYER-EVALUATION.md
+
+Include honest examples where GenLayer:
+- improved the decision
+- agreed with Occestra
+- was uncertain
+- produced an unexpected result
+
+Update /consensus to expose only real aggregate counts.
+
+No seeded/fake numbers.
+
+Commit:
+
+test(genlayer): publish consensus benchmark corpus
+
+STOP.
+PROMPT 9 — Builder submission polish
+Continue on feat/genlayer-consensus-review.
+
+We are preparing Occestra for GenLayer Builder review.
+
+Audit the entire branch from the perspective of a GenLayer steward who has five minutes and has never seen Occestra.
+
+The steward must immediately understand:
+
+1. What Occestra already was.
+2. What was genuinely added for GenLayer.
+3. Why GenLayer is necessary rather than decorative.
+4. Where the Intelligent Contract source lives.
+5. How consensus works.
+6. How to test it.
+7. Where it is deployed.
+8. Where to see a finalized real review.
+9. What user/product behavior changes after an overturn.
+10. How privacy is protected.
+
+README must contain a concise dedicated section:
+
+## GenLayer — Independent Quality Consensus
+
+Include:
+
+Network:
+GenLayer Bradbury
+
+Intelligent Contract:
+OccestraQualityAdjudicator
+
+Contract:
+<REAL ADDRESS>
+
+Explorer:
+<REAL URL>
+
+Source:
+genlayer/contracts/OccestraQualityAdjudicator.py
+
+Tests:
+genlayer/tests/
+
+Live product:
+https://occestra.xyz/consensus
+
+Real finalized review:
+<REAL URL>
+
+Benchmark:
+GENLAYER-EVALUATION.md
+
+Explain in one paragraph:
+
+Occestra's local Tribunal provides fast quality grading and repair. GenLayer acts as an independent appellate layer: decentralized AI validators inspect a frozen public evidence snapshot and decide whether the Tribunal's PASS/FAIL verdict should be upheld, overturned, or left undetermined. An overturn can trigger a bounded repair; provenance remains separately anchored on X Layer.
+
+Create/update architecture artwork if necessary.
+
+Add a 90-second demo guide:
+
+0–10 sec:
+artifact generated
+
+10–20:
+Tribunal PASS
+
+20–30:
+Ask GenLayer
+
+30–50:
+consensus pending
+
+50–65:
+OVERTURNED
+
+65–78:
+Occestra repairs
+
+78–87:
+new review UPHELD
+
+87–90:
+X Layer provenance + GenLayer consensus
+
+End line:
+
+"Created by Occestra. Adjudicated by GenLayer. Proven on X Layer."
+
+Audit repository for:
+TODOs
+fake addresses
+placeholder transaction hashes
+broken links
+dead docs
+stale OQS versions
+incorrect chain IDs
+uncommitted screenshots
+secrets
+test fixtures presented as production
+
+Run:
+
+git grep -n "TODO\\|PLACEHOLDER\\|YOUR_\\|0x000000"
+npm run check
+
+Run GenLayer lint/tests again.
+
+Commit:
+
+docs(genlayer): prepare consensus review for builder submission
+
+Then STOP.
+
+Do not merge main.
+Give me the exact Builder-submission copy you recommend.
+One command prompt for your OpenClaw/Codex bot
+
+If your bot is reliable enough to autonomously iterate, you can start it with this supervisory prompt before Prompt 1:
+
+You are the senior implementation engineer responsible for the Occestra GenLayer integration.
+
+Treat AGENTS.md as the canonical repository constitution and GENLAYER-HANDOFF.md as the feature specification.
+
+Work only on:
+feat/genlayer-consensus-review
+
+The architecture is fixed:
+
+Occestra Tribunal = fast local first-instance quality review
+GenLayer = independent decentralized quality adjudication
+X Layer = commerce/payment + provenance
+
+Do not collapse these responsibilities.
+
+Your priority order is:
+
+correctness
+privacy
+real GenLayer functionality
+reliability
+tests
+product consequence
+documentation
+visual polish
+
+Never optimize for appearing integrated.
+
+Optimize for actually being integrated.
+
+Never:
+- fabricate transactions
+- fabricate benchmark results
+- fake validator consensus
+- hardcode a fake contract address
+- expose private Remember material
+- put secrets in git
+- weaken existing tests
+- silently alter OKX payment behavior
+- alter X Layer provenance semantics
+- automatically merge to main
+- deploy when local tests are failing
+
+Read the current official GenLayer APIs whenever implementation syntax is uncertain.
+Do not blindly trust old snippets in documentation or branch drafts.
+
+At every phase:
+1. inspect existing implementation
+2. make the smallest coherent change
+3. add tests
+4. run relevant tests
+5. run repo-wide regression tests
+6. inspect git diff
+7. commit cleanly
+8. report what changed
+9. STOP at the requested checkpoint
+
+If you discover that the proposed design conflicts with current GenLayer SDK/network behavior, do not force it. Explain the conflict and implement the closest architecture that preserves Occestra's trust model.
+
+The finished integration must be strong enough that a GenLayer steward can clone the repository, locate the Intelligent Contract immediately, run its tests, inspect a real Bradbury deployment, trigger a real review, and understand why GenLayer materially improves Occestra.
+
+I’d feed Prompt 1 now. Once your bot sends its completion report, bring that report here before you give it Prompt 2; I can review what it actually changed and tighten the next phase around the real code rather than letting mistakes compound.
