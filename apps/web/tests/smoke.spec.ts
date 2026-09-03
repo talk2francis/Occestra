@@ -261,3 +261,27 @@ test("Studio mobile controls keep every pane and room reachable", async ({ page 
   await page.getByRole("button", { name: "Brief", exact: true }).click();
   await expect(page.getByText("Launch room", { exact: true }).first()).toBeVisible();
 });
+
+test("the stylesheet actually loads — a 200 page with no CSS is still a broken page", async ({ page }) => {
+  // Next's standalone output excludes .next/static and public; a deploy that forgets to copy
+  // them serves every page as a healthy 200 with every asset 404ing, so the site renders as
+  // raw text and unstyled boxes. No status check catches that. This does.
+  const failed: string[] = [];
+  page.on("response", (r) => {
+    if (r.status() >= 400 && /\/_next\/static\/|\.(css|js|png|jpg|svg|woff2?)$/.test(r.url())) {
+      failed.push(`${r.status()} ${r.url()}`);
+    }
+  });
+
+  await page.goto(BASE, { waitUntil: "networkidle" });
+  expect(failed, `assets failed to load:\n${failed.join("\n")}`).toHaveLength(0);
+
+  // And prove the CSS was not merely fetched but applied.
+  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+  const font = await page.evaluate(() => {
+    const h = document.querySelector("h1");
+    return h ? getComputedStyle(h).fontFamily : "";
+  });
+  expect(font).toContain("Fraunces");
+});

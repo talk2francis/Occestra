@@ -9,7 +9,8 @@
     "start": "next start --port 3010",
     "typecheck": "tsc --noEmit",
     "audit": "node scripts/audit.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "postbuild": "node scripts/standalone-assets.mjs"
   },
   "dependencies": {
     "@occestra/tribunal": "*",
