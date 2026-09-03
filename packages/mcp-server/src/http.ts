@@ -648,6 +648,82 @@ export function buildApp(ctx: AppContext): Express {
     res.type("text/markdown").send(rubricAsMarkdown());
   });
 
+  /* ------------------------------------------- GenLayer consensus evidence */
+
+  // The three public GenLayer surfaces. Two of them are fetched by validators on a public
+  // chain, which is why they serve stored bytes verbatim and never re-render anything: a
+  // review is a ruling about specific bytes, and regenerating them would quietly change what
+  // was adjudicated after the fact.
+
+  // The frozen evidence snapshot. Immutable by construction — the row is written once and
+  // this hands back exactly what was written, so the hash a validator computes still matches.
+  app.get("/genlayer/evidence/:reviewId", (req, res) => {
+    const review = ctx.store.consensusReview(String(req.params["reviewId"] ?? ""));
+    if (!review) {
+      res.status(404).json({ error: "no consensus review with that id" });
+      return;
+    }
+    res
+      .type("application/json")
+      // Safe to cache forever precisely because nothing can ever change here.
+      .set("Cache-Control", "public, max-age=31536000, immutable")
+      .set("X-Occestra-Evidence-Hash", review.evidenceHash)
+      .send(review.evidenceJson);
+  });
+
+  // The frozen public asset a validator renders for a visual review. This is a copy taken at
+  // freeze time, not a pointer into pack storage — a later repair must not be able to change
+  // the image that an existing review already ruled on. No storage key is ever exposed.
+  app.get("/genlayer/artifacts/:reviewId", (req, res) => {
+    const reviewId = String(req.params["reviewId"] ?? "");
+    const review = ctx.store.consensusReview(reviewId);
+    if (!review) {
+      res.status(404).json({ error: "no consensus review with that id" });
+      return;
+    }
+    const bytes = ctx.store.consensusArtifact(reviewId);
+    if (!bytes) {
+      res.status(404).json({ error: "this review has no frozen visual artifact" });
+      return;
+    }
+    res
+      .type("image/png")
+      .set("Cache-Control", "public, max-age=31536000, immutable")
+      .send(Buffer.from(bytes));
+  });
+
+  // Review state. Deliberately not the whole row: evidence_json is served at its own URL, and
+  // raw provider errors stay in the logs — a caller gets a sanitized code, never a stack.
+  app.get("/genlayer/reviews/:reviewId", (req, res) => {
+    const review = ctx.store.consensusReview(String(req.params["reviewId"] ?? ""));
+    if (!review) {
+      res.status(404).json({ error: "no consensus review with that id" });
+      return;
+    }
+    res.json({
+      reviewId: review.reviewId,
+      artifactId: review.artifactId,
+      artifactHash: review.artifactHash,
+      profile: review.profile,
+      oqsVersion: review.oqsVersion,
+      localVerdict: review.localVerdict,
+      evidenceHash: review.evidenceHash,
+      evidenceUrl: `/genlayer/evidence/${encodeURIComponent(review.reviewId)}`,
+      network: review.network,
+      ...(review.contractAddress ? { intelligentContractAddress: review.contractAddress } : {}),
+      ...(review.transactionHash ? { transactionHash: review.transactionHash } : {}),
+      status: review.status,
+      ...(review.decision ? { decision: review.decision } : {}),
+      ...(review.scoreBand ? { scoreBand: review.scoreBand } : {}),
+      ...(review.criticalFailure ? { criticalFailure: review.criticalFailure } : {}),
+      failureCodes: review.failureCodes,
+      ...(review.submittedAt ? { submittedAt: review.submittedAt } : {}),
+      ...(review.finalizedAt ? { finalizedAt: review.finalizedAt } : {}),
+      ...(review.errorCode ? { errorCode: review.errorCode } : {}),
+      createdAt: review.createdAt,
+    });
+  });
+
   /* ------------------------------------------------------ a2a capabilities */
 
   // Public: what Occestra takes on as negotiated work, priced and specified.

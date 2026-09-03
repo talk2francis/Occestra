@@ -144,6 +144,33 @@ export interface StoreConfig {
   baseUrl?: string;
 }
 
+/** One consensus review, as stored. Evidence fields are write-once — see createConsensusReview. */
+export interface ConsensusReviewRow {
+  reviewId: string;
+  artifactId: string;
+  keepsakeId?: string;
+  artifactHash: string;
+  profile: string;
+  oqsVersion: string;
+  localVerdict: string;
+  /** The exact bytes served at the evidence URL. Never regenerated. */
+  evidenceJson: string;
+  evidenceHash: string;
+  network: string;
+  contractAddress?: string;
+  transactionHash?: string;
+  status: string;
+  decision?: string;
+  scoreBand?: string;
+  criticalFailure?: string;
+  failureCodes: string[];
+  submittedAt?: string;
+  finalizedAt?: string;
+  errorCode?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class Store {
   private readonly db: Database.Database;
   private readonly dataDir: string;
@@ -362,6 +389,38 @@ export class Store {
         detail  TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_audit_pack ON audit_log(pack_id, at);
+
+      -- GenLayer consensus reviews. The evidence columns are write-once by contract, not
+      -- just by convention: validators fetched those exact bytes and ruled on them, so
+      -- rewriting them would retroactively change what was adjudicated. A re-review after
+      -- repair gets a NEW review_id and leaves this row alone.
+      CREATE TABLE IF NOT EXISTS consensus_reviews (
+        review_id            TEXT PRIMARY KEY,
+        artifact_id          TEXT NOT NULL,
+        keepsake_id          TEXT,
+        artifact_hash        TEXT NOT NULL,
+        profile              TEXT NOT NULL,
+        oqs_version          TEXT NOT NULL,
+        local_verdict        TEXT NOT NULL,
+        evidence_json        TEXT NOT NULL,
+        evidence_hash        TEXT NOT NULL,
+        public_for_consensus INTEGER NOT NULL,
+        network              TEXT NOT NULL,
+        contract_address     TEXT,
+        transaction_hash     TEXT,
+        status               TEXT NOT NULL,
+        decision             TEXT,
+        score_band           TEXT,
+        critical_failure     TEXT,
+        failure_codes_json   TEXT,
+        submitted_at         TEXT,
+        finalized_at         TEXT,
+        error_code           TEXT,
+        created_at           TEXT NOT NULL,
+        updated_at           TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_consensus_artifact ON consensus_reviews(artifact_id, created_at);
+      CREATE INDEX IF NOT EXISTS idx_consensus_status ON consensus_reviews(status);
 
       CREATE INDEX IF NOT EXISTS idx_artifacts_pack ON artifacts(pack_id);
       CREATE INDEX IF NOT EXISTS idx_seals_unanchored ON seals_pending(anchored_at);
@@ -1470,6 +1529,183 @@ export class Store {
       },
       signedUrl: async (key, ttlSeconds) => this.signedUrlFor(key, ttlSeconds),
     };
+  }
+
+  /* ----------------------------------------------------- consensus reviews */
+
+  /**
+   * Freezes one review. Fails loudly if the id already exists.
+   *
+   * INSERT, never INSERT OR REPLACE. The whole guarantee of this feature is that the evidence
+   * a validator read is the evidence we still serve, and an upsert here would silently break
+   * that the first time a retry raced. A second opinion is a second review_id.
+   */
+  createConsensusReview(row: ConsensusReviewRow): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `INSERT INTO consensus_reviews
+           (review_id, artifact_id, keepsake_id, artifact_hash, profile, oqs_version,
+            local_verdict, evidence_json, evidence_hash, public_for_consensus, network,
+            contract_address, transaction_hash, status, decision, score_band, critical_failure,
+            failure_codes_json, submitted_at, finalized_at, error_code, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        row.reviewId,
+        row.artifactId,
+        row.keepsakeId ?? null,
+        row.artifactHash,
+        row.profile,
+        row.oqsVersion,
+        row.localVerdict,
+        row.evidenceJson,
+        row.evidenceHash,
+        1,
+        row.network,
+        row.contractAddress ?? null,
+        null,
+        "QUEUED",
+        null,
+        null,
+        null,
+        JSON.stringify([]),
+        null,
+        null,
+        null,
+        now,
+        now,
+      );
+  }
+
+  /**
+   * Advances a review's lifecycle. Touches only the mutable columns.
+   *
+   * evidence_json, evidence_hash, artifact_hash and local_verdict are deliberately absent from
+   * this statement — they are not updatable through any path in the codebase.
+   */
+  updateConsensusReview(
+    reviewId: string,
+    patch: {
+      status?: string;
+      transactionHash?: string;
+      contractAddress?: string;
+      decision?: string;
+      scoreBand?: string;
+      criticalFailure?: string;
+      failureCodes?: readonly string[];
+      submittedAt?: string;
+      finalizedAt?: string;
+      errorCode?: string;
+    },
+  ): void {
+    const sets: string[] = [];
+    const values: unknown[] = [];
+    const put = (column: string, value: unknown) => {
+      if (value === undefined) return;
+      sets.push(`${column} = ?`);
+      values.push(value);
+    };
+
+    put("status", patch.status);
+    put("transaction_hash", patch.transactionHash);
+    put("contract_address", patch.contractAddress);
+    put("decision", patch.decision);
+    put("score_band", patch.scoreBand);
+    put("critical_failure", patch.criticalFailure);
+    put("failure_codes_json", patch.failureCodes ? JSON.stringify([...patch.failureCodes]) : undefined);
+    put("submitted_at", patch.submittedAt);
+    put("finalized_at", patch.finalizedAt);
+    put("error_code", patch.errorCode);
+    if (sets.length === 0) return;
+
+    sets.push("updated_at = ?");
+    values.push(new Date().toISOString(), reviewId);
+    this.db.prepare(`UPDATE consensus_reviews SET ${sets.join(", ")} WHERE review_id = ?`).run(...values);
+  }
+
+  consensusReview(reviewId: string): ConsensusReviewRow | undefined {
+    const row = this.db
+      .prepare("SELECT * FROM consensus_reviews WHERE review_id = ?")
+      .get(reviewId) as Record<string, unknown> | undefined;
+    return row ? this.toConsensusReviewRow(row) : undefined;
+  }
+
+  /** Every review for one artifact, oldest first — this is the lineage a repair extends. */
+  consensusReviewsForArtifact(artifactId: string): ConsensusReviewRow[] {
+    const rows = this.db
+      .prepare("SELECT * FROM consensus_reviews WHERE artifact_id = ? ORDER BY created_at ASC")
+      .all(artifactId) as Record<string, unknown>[];
+    return rows.map((row) => this.toConsensusReviewRow(row));
+  }
+
+  /** Real counts only — /consensus must never show a seeded number. */
+  consensusStats(): Record<string, number> {
+    const row = this.db
+      .prepare(
+        `SELECT
+           COUNT(*)                                                          AS reviews,
+           SUM(CASE WHEN status = 'FINALIZED' THEN 1 ELSE 0 END)             AS finalized,
+           SUM(CASE WHEN decision = 'UPHELD' THEN 1 ELSE 0 END)              AS upheld,
+           SUM(CASE WHEN decision = 'OVERTURNED' THEN 1 ELSE 0 END)          AS overturned,
+           SUM(CASE WHEN decision = 'UNDETERMINED' THEN 1 ELSE 0 END)        AS undetermined,
+           SUM(CASE WHEN status IN ('QUEUED','SUBMITTED','ACCEPTED') THEN 1 ELSE 0 END) AS pending,
+           SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END)                AS failed
+         FROM consensus_reviews`,
+      )
+      .get() as Record<string, number | null>;
+    return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, Number(v ?? 0)]));
+  }
+
+  private toConsensusReviewRow(row: Record<string, unknown>): ConsensusReviewRow {
+    return {
+      reviewId: row["review_id"] as string,
+      artifactId: row["artifact_id"] as string,
+      ...(row["keepsake_id"] ? { keepsakeId: row["keepsake_id"] as string } : {}),
+      artifactHash: row["artifact_hash"] as string,
+      profile: row["profile"] as string,
+      oqsVersion: row["oqs_version"] as string,
+      localVerdict: row["local_verdict"] as string,
+      evidenceJson: row["evidence_json"] as string,
+      evidenceHash: row["evidence_hash"] as string,
+      network: row["network"] as string,
+      ...(row["contract_address"] ? { contractAddress: row["contract_address"] as string } : {}),
+      ...(row["transaction_hash"] ? { transactionHash: row["transaction_hash"] as string } : {}),
+      status: row["status"] as string,
+      ...(row["decision"] ? { decision: row["decision"] as string } : {}),
+      ...(row["score_band"] ? { scoreBand: row["score_band"] as string } : {}),
+      ...(row["critical_failure"] ? { criticalFailure: row["critical_failure"] as string } : {}),
+      failureCodes: JSON.parse(String(row["failure_codes_json"] ?? "[]")) as string[],
+      ...(row["submitted_at"] ? { submittedAt: row["submitted_at"] as string } : {}),
+      ...(row["finalized_at"] ? { finalizedAt: row["finalized_at"] as string } : {}),
+      ...(row["error_code"] ? { errorCode: row["error_code"] as string } : {}),
+      createdAt: row["created_at"] as string,
+      updatedAt: row["updated_at"] as string,
+    };
+  }
+
+  /* -------------------------------------------- frozen consensus artifacts */
+
+  /**
+   * Writes the immutable public copy a validator will render.
+   *
+   * A copy, not a reference. The pack's own artifact can be regenerated by a repair, and the
+   * URL a validator fetched must keep showing the image that was actually judged.
+   */
+  putConsensusArtifact(reviewId: string, bytes: Uint8Array): string {
+    const key = `genlayer/${reviewId}`;
+    const path = this.pathFor(key);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, bytes);
+    return key;
+  }
+
+  consensusArtifact(reviewId: string): Uint8Array | undefined {
+    try {
+      return new Uint8Array(readFileSync(this.pathFor(`genlayer/${reviewId}`)));
+    } catch {
+      return undefined;
+    }
   }
 
   close(): void {
