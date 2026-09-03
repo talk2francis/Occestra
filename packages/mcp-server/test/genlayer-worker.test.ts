@@ -340,3 +340,31 @@ describe("reading the chain's status", () => {
     expect(numeric.consensusReview(REVIEW_ID)!.decision).toBeUndefined();
   });
 });
+
+describe("recording a verdict as soon as it exists", () => {
+  it("stores the ruling at ACCEPTED, without claiming finality", async () => {
+    // The contract's state is readable once validators agree. On Bradbury finality trails by
+    // a long way, and waiting for it before recording anything left a decided review showing
+    // as pending for hours.
+    const store = seed({ status: "SUBMITTED", transactionHash: "0xtx" });
+    const c = chain({ status: async () => "ACCEPTED" });
+    await worker(store, c).tick();
+
+    const after = store.consensusReview(REVIEW_ID)!;
+    expect(after.status).toBe("ACCEPTED");
+    expect(after.decision).toBe("OVERTURNED");
+    expect(after.failureCodes).toEqual(["FACTUAL_SUPPORT"]);
+    // Not finalized, and it does not pretend to be.
+    expect(after.finalizedAt).toBeUndefined();
+  });
+
+  it("stamps finalizedAt only at FINALIZED", async () => {
+    const store = seed({ status: "ACCEPTED", transactionHash: "0xtx" });
+    const c = chain({ status: async () => "FINALIZED" });
+    await worker(store, c).tick();
+
+    const after = store.consensusReview(REVIEW_ID)!;
+    expect(after.status).toBe("FINALIZED");
+    expect(after.finalizedAt).toBeTruthy();
+  });
+});

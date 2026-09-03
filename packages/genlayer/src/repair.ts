@@ -48,6 +48,36 @@ const REPAIR_INSTRUCTIONS: Record<FailureCode, string> = {
     "The budget does not add up. Reconcile the line items against the total and show the arithmetic.",
   PACK_INCOMPLETE:
     "A requested deliverable is missing from the pack. Identify which, and produce it.",
+  // OQS axis names, which is what validators actually reach for when told to prefer codes
+  // already present in the evidence.
+  BRIEF_SATISFACTION:
+    "The pack does not answer what was actually asked. Re-read the brief and address the request as posed, not an adjacent one.",
+  BUDGET_CONSISTENCY:
+    "The budget does not reconcile. Make the line items sum to the stated total and show the arithmetic.",
+  COMPLETENESS:
+    "Something the brief asked for is absent. Identify which deliverable is missing and produce it.",
+  CONTINGENCY:
+    "The fallbacks are generic. Give real alternatives keyed to the actual forecast, venue and constraints.",
+  CROSS_ARTIFACT_CONSISTENCY:
+    "The artifacts contradict each other. Make the date, city, names and times agree across the whole pack.",
+  DATE_VALIDITY:
+    "A date does not hold up. Correct it against the calendar and the stated constraints.",
+  DEFECTS:
+    "There is a rendering defect. Regenerate and remove the specific artefact — warped anatomy, duplicated elements, or garbled pseudo-lettering.",
+  PLATFORM_FIT:
+    "This is the wrong shape for where it will live. Match the length, aspect and register the medium actually calls for.",
+  SCHEDULE_FEASIBILITY:
+    "The schedule cannot be executed. Recompute it so nothing overlaps and travel time between locations is real.",
+  SPECIFICITY:
+    "Sentences could be pasted into copy about something else entirely. Replace them with concrete facts drawn from the brief.",
+  STRUCTURE:
+    "There is no shape to follow. Give it an entry point, ordered parts and a landing instead of one undifferentiated run.",
+  STYLE_FIDELITY:
+    "The artifact does not hold its House Style. Keep the palette, type and treatment exactly, and let the composition change instead.",
+  UNCERTAINTY_DISCLOSURE:
+    "Something unconfirmed is stated as settled. Say plainly what is not booked or not verified.",
+  VOICE:
+    "The register is wrong for the moment and audience. Rewrite it as a person would say it, not as boilerplate.",
   // These two describe a review that could not happen, not work that was found wanting.
   ARTIFACT_UNAVAILABLE: "",
   INVALID_VALIDATOR_OUTPUT: "",

@@ -190,16 +190,39 @@ export type ConsensusReview = z.infer<typeof ConsensusReviewSchema>;
  * consensus layer into Occestra's own generator.
  */
 export const FAILURE_CODES = [
-  "LEGIBILITY",
-  "COMPOSITION",
+  // Cross-cutting names the adjudication prompt asks for.
   "BRIEF_MISMATCH",
-  "SUBJECT_FIDELITY",
   "STYLE_DRIFT",
-  "FACTUAL_SUPPORT",
-  "SOURCE_COVERAGE",
   "SCHEDULE_CONFLICT",
   "BUDGET_INCONSISTENCY",
   "PACK_INCOMPLETE",
+  // Every OQS axis id, upper-cased.
+  //
+  // Added after watching real validators. Asked to prefer codes already present in the
+  // evidence, they reach for the rubric's own axis names — the first live overturn came back
+  // with FACTUAL_SUPPORT, PLATFORM_FIT, SPECIFICITY, STRUCTURE and VOICE, of which the
+  // original list recognised exactly one and silently dropped four. Dropping a code the
+  // validators actually used, in Occestra's own vocabulary, threw away most of the finding.
+  "BRIEF_SATISFACTION",
+  "BUDGET_CONSISTENCY",
+  "COMPLETENESS",
+  "COMPOSITION",
+  "CONTINGENCY",
+  "CROSS_ARTIFACT_CONSISTENCY",
+  "DATE_VALIDITY",
+  "DEFECTS",
+  "FACTUAL_SUPPORT",
+  "LEGIBILITY",
+  "PLATFORM_FIT",
+  "SCHEDULE_FEASIBILITY",
+  "SOURCE_COVERAGE",
+  "SPECIFICITY",
+  "STRUCTURE",
+  "STYLE_FIDELITY",
+  "SUBJECT_FIDELITY",
+  "UNCERTAINTY_DISCLOSURE",
+  "VOICE",
+  // A review that could not happen, rather than work found wanting.
   "ARTIFACT_UNAVAILABLE",
   "INVALID_VALIDATOR_OUTPUT",
 ] as const;

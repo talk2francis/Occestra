@@ -159,7 +159,8 @@ export class ConsensusWorker {
     }
 
     const status = normalizeTransactionStatus(raw);
-    if (status !== "FINALIZED") {
+
+    if (status !== "ACCEPTED" && status !== "FINALIZED") {
       if (status !== review.status) {
         this.cfg.store.updateConsensusReview(review.reviewId, { status });
       }
@@ -168,17 +169,27 @@ export class ConsensusWorker {
       return;
     }
 
+    // The contract's state is already readable at ACCEPTED — validators have agreed and the
+    // ruling is written. Finality is the stronger guarantee that follows, and on Bradbury it
+    // trails by a long way. Waiting for it before recording anything would leave a decided
+    // review showing as pending for hours, so the verdict is stored as soon as it exists and
+    // the status still says which guarantee it currently carries.
     const onChain = await this.chain.read(this.cfg.config, review.reviewId);
     const outcome = toConsensusOutcome(onChain);
 
     this.cfg.store.updateConsensusReview(review.reviewId, {
-      status: "FINALIZED",
+      status,
       decision: outcome.decision,
       scoreBand: outcome.scoreBand,
       ...(outcome.criticalFailure ? { criticalFailure: outcome.criticalFailure } : {}),
       failureCodes: outcome.failureCodes,
-      finalizedAt: new Date().toISOString(),
+      ...(status === "FINALIZED" ? { finalizedAt: new Date().toISOString() } : {}),
     });
+
+    if (status === "ACCEPTED") {
+      // Keep watching for finality, but slowly — the ruling will not change.
+      this.cfg.store.backoffConsensusReview(review.reviewId, Date.now() + BASE_BACKOFF_MS * 20);
+    }
   }
 
   private fail(review: ConsensusReviewRow, code: string): void {

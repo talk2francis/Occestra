@@ -71,10 +71,14 @@ function headline(review: ConsensusReviewView): { title: string; note: string; v
       verdict: "info",
     };
   }
-  if (review.status === "ACCEPTED") {
+  // ACCEPTED with a decision is a real ruling — validators agreed and the contract state is
+  // written. Finality is the stronger guarantee that follows, and on Bradbury it trails by a
+  // long way, so hiding a decided review behind it would show pending for hours. The verdict
+  // is shown, and the weaker guarantee is stated rather than glossed.
+  if (review.status === "ACCEPTED" && !review.decision) {
     return {
       title: "Consensus accepted · awaiting finality",
-      note: "Validators have agreed. The result is not final yet.",
+      note: "Validators have agreed. Reading back the ruling.",
       verdict: "info",
     };
   }
@@ -125,8 +129,10 @@ export function ConsensusPanel({
   requestHref?: string;
 }) {
   const { title, note, verdict } = headline(review);
-  const pending = review.status === "QUEUED" || review.status === "SUBMITTED" || review.status === "ACCEPTED";
-  const finalized = review.status === "FINALIZED";
+  const decided = Boolean(review.decision) && (review.status === "FINALIZED" || review.status === "ACCEPTED");
+  const pending =
+    review.status === "QUEUED" || review.status === "SUBMITTED" || (review.status === "ACCEPTED" && !decided);
+  const finalized = decided;
 
   return (
     <section
@@ -184,6 +190,13 @@ export function ConsensusPanel({
         <p className="mt-4 text-[0.85rem] leading-relaxed text-ink/60">
           This is version {review.artifactVersion ?? 2}, made after an earlier version was
           overturned. The earlier review still stands, unchanged.
+        </p>
+      )}
+
+      {decided && review.status === "ACCEPTED" && (
+        <p className="mt-4 text-[0.85rem] leading-relaxed text-ink/60">
+          Validators have agreed and this ruling is recorded on chain. It is not yet final —
+          finality follows, and does not change what they decided.
         </p>
       )}
 
