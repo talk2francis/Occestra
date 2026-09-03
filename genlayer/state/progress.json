@@ -6,7 +6,7 @@
     "name": "GenLayer Bradbury testnet",
     "chainId": 4221
   },
-  "currentPhase": "P3",
+  "currentPhase": "P4",
   "phases": [
     {
       "id": "P1",
@@ -20,7 +20,7 @@
         "every gl.* call in the contract is verified against the installed SDK source, not docs memory",
         "direct tests run offline with web + LLM mocked",
         "direct tests cover: local PASS upheld, PASS overturned, FAIL upheld, FAIL overturned, undetermined, malformed evidence, artifact hash mismatch, wrong evidence origin, publicForConsensus=false, unsupported profile, invalid OQS version, duplicate review id, unavailable evidence, visual/written/plan review",
-        "consensus compares stable fields (decision, scoreBand, criticalFailure, normalized failureCodes) \u2014 never free-form prose",
+        "consensus compares stable fields (decision, scoreBand, criticalFailure, normalized failureCodes) — never free-form prose",
         "npm run check stays green",
         "no unrelated existing test was weakened to go green"
       ],
@@ -29,7 +29,7 @@
     },
     {
       "id": "P2",
-      "title": "packages/genlayer \u2014 Bradbury client + evidence schemas",
+      "title": "packages/genlayer — Bradbury client + evidence schemas",
       "status": "complete",
       "commit": "09595c198896a9583b106c382c25e6267de4156b",
       "commitMessage": "feat(genlayer): add Bradbury client and evidence schemas",
@@ -50,11 +50,11 @@
     {
       "id": "P3",
       "title": "Immutable evidence endpoints + consensus_reviews persistence",
-      "status": "in_progress",
-      "commit": null,
+      "status": "complete",
+      "commit": "7f508c9192eff9aff3d2f7ec6e3f8ed7293956d5",
       "commitMessage": "feat(consensus): add immutable GenLayer evidence snapshots",
       "acceptance": [
-        "consensus_reviews table added via the existing store migration style \u2014 no second database",
+        "consensus_reviews table added via the existing store migration style — no second database",
         "GET /genlayer/evidence/:reviewId returns the exact frozen snapshot, byte-stable across calls",
         "GET /genlayer/artifacts/:reviewId serves a frozen public consensus asset, never a private storage path",
         "GET /genlayer/reviews/:reviewId returns review state",
@@ -71,7 +71,7 @@
     {
       "id": "P4",
       "title": "Durable job submission to GenLayer",
-      "status": "pending",
+      "status": "in_progress",
       "commit": null,
       "commitMessage": "feat(consensus): connect Tribunal reviews to GenLayer",
       "acceptance": [
@@ -98,7 +98,7 @@
       "acceptance": [
         "a GenLayer verdict never mutates a historical local Tribunal report",
         "repair produces a NEW artifact version with explicit repairedFrom lineage",
-        "only normalized fields (decision, criticalFailure, failureCodes, score band) reach the repair brief \u2014 never validator prose",
+        "only normalized fields (decision, criticalFailure, failureCodes, score band) reach the repair brief — never validator prose",
         "at most 1 automatic consensus-triggered repair; further review requires explicit request",
         "an UPHELD local FAIL does not trigger pointless regeneration",
         "lineage is exposed in the domain model and API",
@@ -156,12 +156,12 @@
       "commit": null,
       "commitMessage": "test(genlayer): publish consensus benchmark corpus",
       "acceptance": [
-        "20-30 synthetic/public artifacts across visual, written, plan \u2014 no private customer material",
+        "20-30 synthetic/public artifacts across visual, written, plan — no private customer material",
         "per-case record of expected issue, local verdict, axis results, GenLayer decision, band, codes, agreement, latency, tx hash, finalization",
         "agreement rate, overturn rate, undetermined rate, catch rate, median + p95 latency, false positives/negatives caught",
         "no claim of statistical significance from a small sample",
         "honest examples where GenLayer improved, agreed, was uncertain, and surprised us",
-        "/consensus exposes only real aggregate counts \u2014 no seeded numbers"
+        "/consensus exposes only real aggregate counts — no seeded numbers"
       ],
       "blockers": [],
       "notes": []
