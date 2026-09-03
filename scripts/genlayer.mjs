@@ -45,7 +45,11 @@ const PROTECTED = [
  * the GenLayer submitter key pasted into an env file that is not the example.
  */
 const SECRETS = [
-  [/\b0x[0-9a-fA-F]{64}\b/, "raw 32-byte private key"],
+  // Matching bare 0x+64hex is useless in this repo: every transaction hash, manifest hash and
+  // seal leaf has that shape, and all of them are public and meant to be committed. It fired
+  // on the GenLayer deploy tx hash the moment there was one. A key is identified by what it
+  // is assigned TO, so that is what this matches.
+  [/(private_?key|secret_?key|sealer_?key|mnemonic|seed_?phrase)["']?\s*[:=]\s*["']?0x[0-9a-fA-F]{64}/i, "assigned private key"],
   [/\bsk-[A-Za-z0-9_-]{20,}/, "OpenAI-style secret key"],
   [/GENLAYER_SUBMITTER_PRIVATE_KEY\s*=\s*["']?0x[0-9a-fA-F]{10,}/, "populated GenLayer submitter key"],
   [/NEXT_PUBLIC_[A-Z_]*(PRIVATE_KEY|SECRET|SEED)/, "secret exposed under NEXT_PUBLIC_"],

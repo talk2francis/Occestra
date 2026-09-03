@@ -134,8 +134,37 @@ console.log(`  Deploying ${CONTRACT} to ${chain.name} (chain ${chain.id})...\n`)
 const txHash = await client.deployContract({ code, args: [] });
 console.log(`  deploy tx: ${txHash}`);
 
-const receipt = await client.waitForTransactionReceipt({ hash: txHash, status: "FINALIZED" });
-const address = receipt?.data?.contract_address ?? receipt?.contract_address;
+// ACCEPTED means the validators agreed and the contract exists; FINALIZED is the stronger
+// guarantee that follows minutes later. Waiting only for FINALIZED at the SDK's 150s default
+// makes a successful deploy exit non-zero — which happened here once, and would have been
+// read as "deploy failed, try again", i.e. a second contract and a wasted balance.
+const accepted = await client.waitForTransactionReceipt({
+  hash: txHash,
+  status: "ACCEPTED",
+  interval: 5_000,
+  retries: 120,
+});
+const address = accepted?.recipient ?? accepted?.data?.contract_address;
+console.log(`  accepted: ${accepted?.statusName} · validators ${accepted?.resultName} · ${accepted?.txExecutionResultName}`);
+
+if (accepted?.resultName && accepted.resultName !== "AGREE") {
+  console.error(`\n  Validators did not agree (${accepted.resultName}). Not recording this as a deployment.\n`);
+  process.exit(1);
+}
+
+console.log("  waiting for finality (this takes minutes; the contract is already usable)...");
+try {
+  const finalized = await client.waitForTransactionReceipt({
+    hash: txHash,
+    status: "FINALIZED",
+    interval: 10_000,
+    retries: 180,
+  });
+  console.log(`  finalized: ${finalized?.statusName}`);
+} catch {
+  // Not fatal, and not something to hide: the contract is deployed and readable either way.
+  console.log("  still not finalized — the contract is live regardless; re-check the tx later.");
+}
 
 // Everything a steward needs to verify this independently, printed once, from real values.
 console.log("\n  DEPLOYED\n");

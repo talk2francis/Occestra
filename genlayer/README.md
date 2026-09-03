@@ -67,6 +67,36 @@ Allowed by default:
 
 Require explicit owner consent before reviewing Remember material. Original private photos, voice notes, owner tokens, salts, emails, payment signatures, and private reference URLs must never appear in the GenLayer evidence snapshot.
 
+## Deployed
+
+| | |
+| --- | --- |
+| Network | GenLayer Bradbury testnet |
+| Chain ID | 4221 |
+| Intelligent Contract | `OccestraQualityAdjudicator` |
+| **Address** | **`0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9`** |
+| Deploy transaction | `0x8dfe44cc2823bc5d0f230b3a342c2481c41958a1b1f9927661e262310e983d1b` |
+| Deployer | `0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342` |
+| Deployed | 2026-09-03 |
+| Explorer | https://explorer-bradbury.genlayer.com/ |
+| Validators | 3 initial · result `AGREE` · `FINISHED_WITH_RETURN` |
+| GenVM runner | `py-genlayer:1jb45aa8…` (GenVM v0.3.0-rc7) |
+
+Verify it yourself without cloning anything:
+
+```js
+import { createClient, chains } from "genlayer-js";
+const client = createClient({ chain: chains.testnetBradbury });
+await client.readContract({
+  address: "0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9",
+  functionName: "review_count",
+  args: [],
+});
+```
+
+The deployer wallet is dedicated to GenLayer. It is not the X Layer sealer, the OKX payment
+treasury, or the KeepsakeRegistry deployer — separate credential, separate trust domain.
+
 ## Network target and toolchain
 
 Initial deployment target: **GenLayer Bradbury testnet, chain id 4221**.

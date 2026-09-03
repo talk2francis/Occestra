@@ -149,7 +149,8 @@
       "notes": [
         "Submitter/deployer wallet 0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342, key in /root/.occestra-secrets/genlayer.env (chmod 600, separate file from occestra.env). Funding ask: 10 GEN. Live fee data 2026-09-03: baseFee 0.119 gwei, SDK adds flat 2 gwei priority -> ~2.12 gwei effective; ~0.064 GEN per tx at a pessimistic 30M gas; deploy + 3 smoke + 30 benchmark + 10 retries = ~2.8 GEN.",
         "AWAITING OWNER: wallet must be funded before any deploy. Verify balance with eth_getBalance before P7 starts.",
-        "Deploy tooling ready: scripts/genlayer-deploy.mjs --check passes every gate except funding. Benchmark corpus (25 cases) + harness ready at scripts/genlayer-benchmark.mjs --run. Both blocked on the wallet."
+        "Deploy tooling ready: scripts/genlayer-deploy.mjs --check passes every gate except funding. Benchmark corpus (25 cases) + harness ready at scripts/genlayer-benchmark.mjs --run. Both blocked on the wallet.",
+        "DEPLOYED 2026-09-03: OccestraQualityAdjudicator at 0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9 on Bradbury (chain 4221). Deploy tx 0x8dfe44cc2823bc5d0f230b3a342c2481c41958a1b1f9927661e262310e983d1b, deployer 0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342, 3 validators AGREE, FINISHED_WITH_RETURN. review_count() reads 0 and all four methods resolve. GOTCHA: the SDK's waitForTransactionReceipt defaults to 50x3s=150s, which is shorter than GenLayer finality — a successful deploy exited non-zero and looked like a failure. Never redeploy on that signal; read the tx first."
       ]
     },
     {
