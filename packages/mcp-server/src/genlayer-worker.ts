@@ -84,7 +84,12 @@ export class ConsensusWorker {
         status: async (config: GenLayerConfig, hash: string) => {
           const { createReadClient } = await import("@occestra/genlayer");
           const tx = await createReadClient(config).getTransaction({ hash: hash as never });
-          return (tx as { status?: string } | undefined)?.status;
+          // `status` is the NUMERIC enum; `statusName` is the string the mapping compares
+          // against. Reading the number made every state fall through to SUBMITTED, so a
+          // review whose validators disagreed would have polled forever instead of failing.
+          // Only running it against the chain surfaced this.
+          const raw = tx as { status?: number | string; statusName?: string } | undefined;
+          return raw?.statusName ?? (typeof raw?.status === "string" ? raw.status : undefined);
         },
         read: getConsensusReview,
       }

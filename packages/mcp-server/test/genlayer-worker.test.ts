@@ -321,3 +321,22 @@ describe("failure", () => {
     expect(store.consensusReview(REVIEW_ID)!.status).toBe("FAILED");
   });
 });
+
+describe("reading the chain's status", () => {
+  it("acts on statusName, not the numeric status enum", async () => {
+    // The SDK returns both: status is a number, statusName is the string this maps against.
+    // Reading the number made everything look like SUBMITTED, so a consensus breakdown polled
+    // forever instead of terminating. This asserts the shape the worker actually consumes.
+    const store = seed({ status: "SUBMITTED", transactionHash: "0xtx" });
+    const c = chain({ status: async () => "UNDETERMINED" });
+    await worker(store, c).tick();
+    expect(store.consensusReview(REVIEW_ID)!.status).toBe("FAILED");
+
+    const numeric = seed({ status: "SUBMITTED", transactionHash: "0xtx" });
+    // A numeric status must never be silently treated as progress.
+    const cNum = chain({ status: async () => String(6) });
+    await worker(numeric, cNum).tick();
+    // "6" is not a name we recognise, so it stays pending rather than being read as a verdict.
+    expect(numeric.consensusReview(REVIEW_ID)!.decision).toBeUndefined();
+  });
+});
