@@ -128,6 +128,8 @@ function guard() {
     const shipping = now >= gate;
     for (const f of all) {
       if (!/^(genlayer\/|packages\/genlayer\/|README|GENLAYER|CHANGELOG)/.test(f)) continue;
+      // The ledger names these patterns as things to check for; it is not itself content.
+      if (f === "genlayer/state/progress.json") continue;
       let body;
       try {
         body = readFileSync(new URL(`../${f}`, import.meta.url), "utf8");

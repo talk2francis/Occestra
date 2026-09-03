@@ -2,14 +2,17 @@
   "$comment": "Machine state for the Occestra x GenLayer build. scripts/genlayer.mjs reads and writes this. Never hand-edit `status` without also running `node scripts/genlayer.mjs guard`.",
   "mission": "Add GenLayer Bradbury as Occestra's independent quality-adjudication layer. Occestra Tribunal = fast first-instance grading. GenLayer = independent appellate consensus. X Layer = payment + provenance. These three never collapse into each other.",
   "branch": "feat/genlayer-consensus-review",
-  "network": { "name": "GenLayer Bradbury testnet", "chainId": 4221 },
-  "currentPhase": "P1",
+  "network": {
+    "name": "GenLayer Bradbury testnet",
+    "chainId": 4221
+  },
+  "currentPhase": "P3",
   "phases": [
     {
       "id": "P1",
       "title": "Audit + align the GenLayer foundation with the real SDK",
-      "status": "in_progress",
-      "commit": null,
+      "status": "complete",
+      "commit": "954cbe69e6152cd8b3e87ca19ddcbf73bef5691e",
       "commitMessage": "fix(genlayer): align consensus adjudicator with current sdk",
       "acceptance": [
         "genlayer python venv installs from pinned, mutually-compatible releases",
@@ -27,8 +30,8 @@
     {
       "id": "P2",
       "title": "packages/genlayer — Bradbury client + evidence schemas",
-      "status": "pending",
-      "commit": null,
+      "status": "complete",
+      "commit": "4aefb71430b3d3f91c6c0f0dcc3b78492a478b6e",
       "commitMessage": "feat(genlayer): add Bradbury client and evidence schemas",
       "acceptance": [
         "all GenLayer network behaviour is encapsulated in @occestra/genlayer; no genlayer-js import leaks into studio-core or mcp-server logic",
@@ -47,7 +50,7 @@
     {
       "id": "P3",
       "title": "Immutable evidence endpoints + consensus_reviews persistence",
-      "status": "pending",
+      "status": "in_progress",
       "commit": null,
       "commitMessage": "feat(consensus): add immutable GenLayer evidence snapshots",
       "acceptance": [
@@ -138,8 +141,13 @@
         "each smoke review is frozen, submitted, finalized, read back from chain, persisted, and matches what the UI/API display",
         "unexpected behaviour is documented, never fabricated into a clean result"
       ],
-      "blockers": ["requires owner confirmation of the funded Bradbury wallet"],
-      "notes": []
+      "blockers": [
+        "requires owner confirmation of the funded Bradbury wallet"
+      ],
+      "notes": [
+        "Submitter/deployer wallet 0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342, key in /root/.occestra-secrets/genlayer.env (chmod 600, separate file from occestra.env). Funding ask: 10 GEN. Live fee data 2026-09-03: baseFee 0.119 gwei, SDK adds flat 2 gwei priority -> ~2.12 gwei effective; ~0.064 GEN per tx at a pessimistic 30M gas; deploy + 3 smoke + 30 benchmark + 10 retries = ~2.8 GEN.",
+        "AWAITING OWNER: wallet must be funded before any deploy. Verify balance with eth_getBalance before P7 starts."
+      ]
     },
     {
       "id": "P8",
