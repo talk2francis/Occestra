@@ -6,7 +6,7 @@
     "name": "GenLayer Bradbury testnet",
     "chainId": 4221
   },
-  "currentPhase": "P5",
+  "currentPhase": "P6",
   "phases": [
     {
       "id": "P1",
@@ -94,8 +94,8 @@
     {
       "id": "P5",
       "title": "Overturn -> bounded repair, with preserved history",
-      "status": "in_progress",
-      "commit": null,
+      "status": "complete",
+      "commit": "f4caff20a44843dc70f98bcba368776915c4975b",
       "commitMessage": "feat(consensus): route overturned reviews into bounded repair",
       "acceptance": [
         "a GenLayer verdict never mutates a historical local Tribunal report",
@@ -112,7 +112,7 @@
     {
       "id": "P6",
       "title": "Public consensus UI in Amethyst Daylight",
-      "status": "pending",
+      "status": "in_progress",
       "commit": null,
       "commitMessage": "feat(web): surface GenLayer consensus adjudication",
       "acceptance": [
