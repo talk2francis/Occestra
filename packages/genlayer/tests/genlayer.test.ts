@@ -91,7 +91,7 @@ describe("configuration", () => {
 
   it("refuses to start if a secret is reachable from the browser bundle", () => {
     expect(() =>
-      readGenLayerConfig({ ...baseEnv, NEXT_PUBLIC_GENLAYER_PRIVATE_KEY: KEY }),
+      readGenLayerConfig({ ...baseEnv, NEXT_PUBLIC_GENLAYER_PRIVATE_KEY: KEY }), // guard:allow-fixture
     ).toThrow(/browser bundle/);
   });
 });
@@ -145,7 +145,7 @@ describe("evidence snapshots", () => {
       email: "someone@example.com",
       salt: "0xdeadbeef",
       signedUrl: "https://storage.example.com/x?sig=abc",
-      apiKey: "sk-live-abcdefghijklmnop",
+      apiKey: "sk-live-abcdefghijklmnop", // guard:allow-fixture
     } as unknown as EvidenceInputs;
 
     const serialized = serializeEvidenceSnapshot(buildEvidenceSnapshot(dirty));

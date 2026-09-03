@@ -117,11 +117,26 @@ function guard() {
       if (PROTECTED.includes(f)) fail.push(`modifies protected production file: ${f}`);
     }
 
-    const diff = git("diff", base, "--", ".");
+    // Tests that prove a secret gets REJECTED must contain something secret-shaped. Those
+    // lines carry an explicit marker, and the count is always printed — an escape hatch you
+    // can see being used is very different from one that works silently.
+    const ALLOW = "guard:allow-fixture";
+    const added = git("diff", base, "--", ".")
+      .split("\n")
+      .filter((l) => l.startsWith("+"));
+    let fixtures = 0;
     for (const [re, label] of SECRETS) {
-      const hit = diff.split("\n").find((l) => l.startsWith("+") && re.test(l));
-      if (hit) fail.push(`possible secret in the diff (${label})`);
+      for (const line of added) {
+        if (!re.test(line)) continue;
+        if (line.includes(ALLOW)) {
+          fixtures += 1;
+          continue;
+        }
+        fail.push(`possible secret in the diff (${label})`);
+        break;
+      }
     }
+    if (fixtures) warn.push(`${fixtures} secret-shaped line(s) exempted as test fixtures`);
 
     const gate = s.phases.findIndex((p) => p.id === "P7");
     const now = s.phases.findIndex((p) => p.id === s.currentPhase);
