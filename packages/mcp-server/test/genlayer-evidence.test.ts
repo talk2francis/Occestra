@@ -310,3 +310,94 @@ describe("the public endpoints", () => {
     expect(response.status).toBe(404);
   });
 });
+
+describe("lineage: a repair never edits the past", () => {
+  function seedReview(
+    store: Store,
+    reviewId: string,
+    extra: Record<string, unknown> = {},
+  ) {
+    store.createConsensusReview({
+      reviewId,
+      artifactId: "art_thread",
+      keepsakeId: "pack_1",
+      artifactHash: `0x${reviewId.length.toString(16).padStart(2, "0").repeat(32)}`,
+      profile: "written",
+      oqsVersion: "1.2.0",
+      localVerdict: "PASS",
+      evidenceJson: JSON.stringify({ reviewId }),
+      evidenceHash: `0x${"a".repeat(64)}`,
+      network: "genlayer-bradbury",
+      ...extra,
+    } as Parameters<typeof store.createConsensusReview>[0]);
+  }
+
+  it("keeps PASS and OVERTURNED side by side, then records the fix as a new version", async () => {
+    const { store } = makeApp();
+
+    // v1: we passed it, validators disagreed.
+    seedReview(store, "oce_gl_v1_review01");
+    store.updateConsensusReview("oce_gl_v1_review01", {
+      status: "FINALIZED",
+      decision: "OVERTURNED",
+      failureCodes: ["LEGIBILITY"],
+    });
+
+    // v2: the repair, reviewed again and upheld.
+    seedReview(store, "oce_gl_v2_review01", {
+      artifactVersion: 2,
+      repairedFrom: "oce_gl_v1_review01",
+    });
+    store.updateConsensusReview("oce_gl_v2_review01", {
+      status: "FINALIZED",
+      decision: "UPHELD",
+    });
+
+    const lineage = store.consensusLineage("art_thread");
+    expect(lineage).toHaveLength(2);
+
+    // The historical record is untouched. This pairing is the point of the whole feature:
+    // Occestra said PASS, somebody independent said no, and both statements survive.
+    const [v1, v2] = lineage;
+    expect(v1!.artifactVersion).toBe(1);
+    expect(v1!.localVerdict).toBe("PASS");
+    expect(v1!.decision).toBe("OVERTURNED");
+    expect(v1!.repairedFrom).toBeUndefined();
+
+    expect(v2!.artifactVersion).toBe(2);
+    expect(v2!.repairedFrom).toBe("oce_gl_v1_review01");
+    expect(v2!.decision).toBe("UPHELD");
+  });
+
+  it("counts consensus repairs so the loop stays bounded", () => {
+    const { store } = makeApp();
+    seedReview(store, "oce_gl_b1_review01");
+    expect(store.consensusRepairCount("art_thread")).toBe(0);
+
+    seedReview(store, "oce_gl_b2_review01", {
+      artifactVersion: 2,
+      repairedFrom: "oce_gl_b1_review01",
+    });
+    expect(store.consensusRepairCount("art_thread")).toBe(1);
+  });
+
+  it("serves the lineage in order over HTTP", async () => {
+    const { base, store } = makeApp();
+    seedReview(store, "oce_gl_h1_review01");
+    store.updateConsensusReview("oce_gl_h1_review01", {
+      status: "FINALIZED",
+      decision: "OVERTURNED",
+    });
+    seedReview(store, "oce_gl_h2_review01", {
+      artifactVersion: 2,
+      repairedFrom: "oce_gl_h1_review01",
+    });
+
+    const response = await fetch(`${base}/genlayer/lineage/art_thread`);
+    const body = (await response.json()) as { reviews: Record<string, unknown>[] };
+
+    expect(body.reviews).toHaveLength(2);
+    expect(body.reviews[0]!["decision"]).toBe("OVERTURNED");
+    expect(body.reviews[1]!["repairedFrom"]).toBe("oce_gl_h1_review01");
+  });
+});

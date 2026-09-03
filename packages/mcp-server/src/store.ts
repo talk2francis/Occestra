@@ -170,6 +170,10 @@ export interface ConsensusReviewRow {
   attempts: number;
   /** Epoch ms before which the worker leaves this row alone. Backoff, not a lock. */
   nextAttemptAt: number;
+  /** 1 for an original artifact; 2+ after a consensus-triggered repair. */
+  artifactVersion?: number;
+  /** The reviewId this version was produced in answer to. Absent on a first review. */
+  repairedFrom?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -421,6 +425,11 @@ export class Store {
         error_code           TEXT,
         attempts             INTEGER NOT NULL DEFAULT 0,
         next_attempt_at      INTEGER NOT NULL DEFAULT 0,
+        -- Lineage. A consensus-triggered repair creates a NEW artifact version and a NEW
+        -- review; the overturned one keeps its PASS and its OVERTURNED side by side forever,
+        -- because that pairing is the record of Occestra being wrong and saying so.
+        artifact_version     INTEGER NOT NULL DEFAULT 1,
+        repaired_from        TEXT,
         created_at           TEXT NOT NULL,
         updated_at           TEXT NOT NULL
       );
@@ -1554,8 +1563,8 @@ export class Store {
             local_verdict, evidence_json, evidence_hash, public_for_consensus, network,
             contract_address, transaction_hash, status, decision, score_band, critical_failure,
             failure_codes_json, submitted_at, finalized_at, error_code, attempts,
-            next_attempt_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            next_attempt_at, artifact_version, repaired_from, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         row.reviewId,
@@ -1581,6 +1590,8 @@ export class Store {
         null,
         0,
         0,
+        row.artifactVersion ?? 1,
+        row.repairedFrom ?? null,
         now,
         now,
       );
@@ -1677,6 +1688,26 @@ export class Store {
       .run(nextAttemptAt, new Date().toISOString(), reviewId);
   }
 
+  /**
+   * The full review lineage for an artifact, oldest first.
+   *
+   * This is what the pack page renders: v1 PASS / OVERTURNED, then v2 PASS / UPHELD. Nothing
+   * in this chain is ever rewritten — a later ruling is appended, never applied backwards.
+   */
+  consensusLineage(artifactId: string): ConsensusReviewRow[] {
+    return this.consensusReviewsForArtifact(artifactId);
+  }
+
+  /** How many consensus-triggered repairs this artifact has already had. Bounds the loop. */
+  consensusRepairCount(artifactId: string): number {
+    const row = this.db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM consensus_reviews WHERE artifact_id = ? AND repaired_from IS NOT NULL",
+      )
+      .get(artifactId) as { n: number };
+    return Number(row?.n ?? 0);
+  }
+
   /** Real counts only — /consensus must never show a seeded number. */
   consensusStats(): Record<string, number> {
     const row = this.db
@@ -1719,6 +1750,8 @@ export class Store {
       ...(row["error_code"] ? { errorCode: row["error_code"] as string } : {}),
       attempts: Number(row["attempts"] ?? 0),
       nextAttemptAt: Number(row["next_attempt_at"] ?? 0),
+      artifactVersion: Number(row["artifact_version"] ?? 1),
+      ...(row["repaired_from"] ? { repairedFrom: row["repaired_from"] as string } : {}),
       createdAt: row["created_at"] as string,
       updatedAt: row["updated_at"] as string,
     };

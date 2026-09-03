@@ -657,6 +657,29 @@ export function buildApp(ctx: AppContext): Express {
   // review is a ruling about specific bytes, and regenerating them would quietly change what
   // was adjudicated after the fact.
 
+  // Every review an artifact has ever had, oldest first. This is the endpoint that shows
+  // Occestra being overturned and then fixing it — v1 PASS/OVERTURNED, v2 PASS/UPHELD — and
+  // it reads the history rather than reconstructing it, because none of it is ever rewritten.
+  app.get("/genlayer/lineage/:artifactId", (req, res) => {
+    const reviews = ctx.store.consensusLineage(String(req.params["artifactId"] ?? ""));
+    res.json({
+      artifactId: String(req.params["artifactId"] ?? ""),
+      reviews: reviews.map((review) => ({
+        reviewId: review.reviewId,
+        artifactVersion: review.artifactVersion,
+        ...(review.repairedFrom ? { repairedFrom: review.repairedFrom } : {}),
+        localVerdict: review.localVerdict,
+        status: review.status,
+        ...(review.decision ? { decision: review.decision } : {}),
+        ...(review.scoreBand ? { scoreBand: review.scoreBand } : {}),
+        failureCodes: review.failureCodes,
+        artifactHash: review.artifactHash,
+        createdAt: review.createdAt,
+        ...(review.finalizedAt ? { finalizedAt: review.finalizedAt } : {}),
+      })),
+    });
+  });
+
   // Ask for an independent review. Returns immediately with a review id: GenLayer finality
   // takes minutes, and holding a marketplace client open across it is exactly the mistake the
   // pack job queue exists to avoid.
@@ -787,6 +810,8 @@ export function buildApp(ctx: AppContext): Express {
       ...(review.scoreBand ? { scoreBand: review.scoreBand } : {}),
       ...(review.criticalFailure ? { criticalFailure: review.criticalFailure } : {}),
       failureCodes: review.failureCodes,
+      artifactVersion: review.artifactVersion,
+      ...(review.repairedFrom ? { repairedFrom: review.repairedFrom } : {}),
       ...(review.submittedAt ? { submittedAt: review.submittedAt } : {}),
       ...(review.finalizedAt ? { finalizedAt: review.finalizedAt } : {}),
       ...(review.errorCode ? { errorCode: review.errorCode } : {}),
