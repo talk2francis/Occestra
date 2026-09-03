@@ -72,7 +72,7 @@ const CONTRACT = {
   locale: "en",
 };
 
-const packId = `oce_glsmoke_${Math.abs(hash(String(CASES.length) + CASES[0].data)).toString(36)}`;
+const packId = process.env.SMOKE_PACK_ID ?? `oce_glsmoke_${Math.abs(hash(String(CASES.length) + CASES[0].data)).toString(36)}`;
 function hash(s) {
   let h = 0;
   for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0;

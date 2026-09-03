@@ -22,6 +22,76 @@ mainnet) — built for the OKX.AI Genesis Hackathon.
 
 ---
 
+
+## GenLayer — Independent Quality Consensus
+
+Occestra grades its own work. The Tribunal is fast, versioned and public, but it is still
+Occestra's critic applying Occestra's rubric to Occestra's output, which never quite answers
+the obvious objection: *of course it passed.* GenLayer is the answer — an independent
+appellate layer where decentralized AI validators read a frozen public evidence snapshot and
+decide whether our PASS/FAIL verdict should be **UPHELD**, **OVERTURNED**, or left
+**UNDETERMINED**. An overturn triggers one bounded repair; provenance stays separately
+anchored on X Layer.
+
+| | |
+| --- | --- |
+| Network | GenLayer Bradbury testnet (chain **4221**) |
+| Intelligent Contract | `OccestraQualityAdjudicator` |
+| **Address** | [`0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9`](https://explorer-bradbury.genlayer.com/) |
+| Deploy transaction | `0x8dfe44cc2823bc5d0f230b3a342c2481c41958a1b1f9927661e262310e983d1b` |
+| Source | [`genlayer/contracts/OccestraQualityAdjudicator.py`](genlayer/contracts/OccestraQualityAdjudicator.py) |
+| Tests | [`genlayer/tests/direct/`](genlayer/tests/direct/) — 39, fully offline |
+| Live product | https://occestra.xyz/consensus |
+| Evidence endpoint | `https://api.occestra.xyz/genlayer/evidence/<reviewId>` |
+| Benchmark | [`GENLAYER-EVALUATION.md`](GENLAYER-EVALUATION.md) |
+
+Bradbury and Asimov are the **same** chain under two names — both RPCs report chain id 4221
+and identical block heights. Asimov is the current name.
+
+### Verify it in about a minute
+
+```bash
+# The contract is live and answering, without cloning anything:
+node -e "import('genlayer-js').then(async ({createClient,chains})=>{
+  const c=createClient({chain:chains.testnetBradbury});
+  console.log(await c.readContract({address:'0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9',
+    functionName:'review_count',args:[]}));
+})"
+
+# A real frozen evidence snapshot, exactly as validators fetch it:
+curl https://api.occestra.xyz/genlayer/evidence/oce_gl_a87dd733d53f4a23bedd
+
+# Run the contract's own tests, offline:
+cd genlayer && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/genvm-lint lint contracts/OccestraQualityAdjudicator.py
+.venv/bin/gltest tests/direct/ -q
+```
+
+The evidence body hashes to the `X-Occestra-Evidence-Hash` header it is served with, so anyone
+can confirm the bytes validators read are the bytes we still publish.
+
+### What it refuses
+
+Only artifacts explicitly approved for consensus are eligible; private Remember material is
+refused outright, before any content is read. The snapshot is built by naming every field that
+goes into it, never by copying an object and deleting what looks sensitive — no originals, no
+owner tokens, no salts, no signed URLs, no emails. The contract accepts evidence **only** from
+`api.occestra.xyz`, so a caller cannot turn validators into fetchers for a host they chose.
+That guard is verified on chain in
+[`tx 0x63b3e9cf…`](https://explorer-bradbury.genlayer.com/), which was refused with nothing
+stored.
+
+A snapshot also states whether our own model critic was reachable. A verdict resting on
+deterministic checks alone is a weaker claim than a fully graded one, and validators are told
+which they are looking at.
+
+### What an overturn actually does
+
+`OVERTURNED` feeds normalized failure codes — never validator prose — into Occestra's existing
+repair loop, producing a **new** artifact version. The original review is never rewritten: the
+record keeps our PASS and their OVERTURNED side by side, permanently, which is the point.
+
+
 ## Why this is different, in one honest paragraph
 
 Generic chat tools produce walls of text with no visual craft and no way to check their own work. Template tools produce what everyone else's output looks like, grounded in nothing. Occestra delivers the **finished occasion** — plan, schedule, budget, contingencies, invitations, keepsake art, launch kit — grounded in real venues, real forecasts, and your real website; graded by a rubric you can read; repaired when it fails; and sealed so the receipt outlives us. The anti-slop mechanism is not a promise: **it failed our own launch thread, twice, and that story is on our landing page** — because a standard that spares its owner is not a standard.
