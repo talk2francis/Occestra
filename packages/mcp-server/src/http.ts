@@ -5,17 +5,19 @@
  * The paywall sits between "which tool did you ask for" and "run it": we read the tool name
  * off the JSON-RPC body, price it, and gate it BEFORE any model is touched.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express, { type Express, type Request, type Response } from "express";
 import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
+import { networkLabel } from "@occestra/genlayer";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun } from "./demo.js";
 import { handleGalleryPublish, handleGalleryWithdraw } from "./showcase.js";
 import { PolicyRefusal, screenToolInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
+import { ConsensusRefused, prepareConsensusReview } from "./consensus.js";
 import {
   VERSION,
   buildServer,
@@ -654,6 +656,74 @@ export function buildApp(ctx: AppContext): Express {
   // chain, which is why they serve stored bytes verbatim and never re-render anything: a
   // review is a ruling about specific bytes, and regenerating them would quietly change what
   // was adjudicated after the fact.
+
+  // Ask for an independent review. Returns immediately with a review id: GenLayer finality
+  // takes minutes, and holding a marketplace client open across it is exactly the mistake the
+  // pack job queue exists to avoid.
+  app.post("/genlayer/reviews", async (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const keepsakeId = String(body["keepsakeId"] ?? "");
+    const artifactId = String(body["artifactId"] ?? "");
+    // Consent is explicit and affirmative. There is no default, and "not false" is not "true".
+    const consented = body["publicForConsensus"] === true;
+
+    if (!keepsakeId || !artifactId) {
+      res.status(400).json({ error: "keepsakeId and artifactId are required" });
+      return;
+    }
+    if (!ctx.genlayer) {
+      res.status(503).json({ error: "independent review is not configured on this deployment" });
+      return;
+    }
+
+    const pack = ctx.store.getPack(keepsakeId);
+    const artifact = pack?.artifacts.find((a) => a.id === artifactId);
+    if (!pack || !artifact) {
+      res.status(404).json({ error: "no such keepsake or artifact" });
+      return;
+    }
+
+    const reviewId = `oce_gl_${randomUUID().replace(/-/g, "").slice(0, 20)}`;
+    try {
+      const prepared = await prepareConsensusReview(ctx.store, {
+        pack,
+        artifact,
+        consented,
+        reviewId,
+        network: networkLabel(ctx.genlayer),
+        ...(ctx.genlayer.contractAddress ? { contractAddress: ctx.genlayer.contractAddress } : {}),
+      });
+
+      ctx.store.createConsensusReview({
+        reviewId,
+        artifactId,
+        keepsakeId,
+        artifactHash: prepared.snapshot.artifactHash,
+        profile: prepared.snapshot.profile,
+        oqsVersion: prepared.snapshot.oqsVersion,
+        localVerdict: prepared.snapshot.localVerdict,
+        evidenceJson: prepared.evidenceJson,
+        evidenceHash: prepared.evidenceHash,
+        network: networkLabel(ctx.genlayer),
+        ...(ctx.genlayer.contractAddress ? { contractAddress: ctx.genlayer.contractAddress } : {}),
+      } as Parameters<typeof ctx.store.createConsensusReview>[0]);
+
+      res.status(202).json({
+        reviewId,
+        status: "QUEUED",
+        network: networkLabel(ctx.genlayer),
+        evidenceUrl: `/genlayer/evidence/${reviewId}`,
+        poll: `/genlayer/reviews/${reviewId}`,
+      });
+    } catch (error) {
+      if (error instanceof ConsensusRefused) {
+        res.status(409).json({ error: error.message, code: error.code });
+        return;
+      }
+      ctx.deps.log?.("consensus preparation failed", error);
+      res.status(500).json({ error: "could not prepare an independent review" });
+    }
+  });
 
   // The frozen evidence snapshot. Immutable by construction — the row is written once and
   // this hands back exactly what was written, so the hash a validator computes still matches.

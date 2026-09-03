@@ -113,8 +113,14 @@ function guard() {
     const staged = git("diff", "--name-only", "HEAD").split("\n").filter(Boolean);
     const all = [...new Set([...changed, ...staged])];
 
+    // A protected file may be touched only if the ledger says so, in writing, with a reason.
+    // The point was never "never edit these" — it was "never edit these by accident".
+    const allowed = new Map((s.allowedProtectedEdits ?? []).map((e) => [e.file, e.reason]));
     for (const f of all) {
-      if (PROTECTED.includes(f)) fail.push(`modifies protected production file: ${f}`);
+      if (!PROTECTED.includes(f)) continue;
+      const reason = allowed.get(f);
+      if (reason) warn.push(`protected file ${f} edited under a recorded exception: ${reason}`);
+      else fail.push(`modifies protected production file: ${f}`);
     }
 
     // Tests that prove a secret gets REJECTED must contain something secret-shaped. Those

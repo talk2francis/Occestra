@@ -167,6 +167,9 @@ export interface ConsensusReviewRow {
   submittedAt?: string;
   finalizedAt?: string;
   errorCode?: string;
+  attempts: number;
+  /** Epoch ms before which the worker leaves this row alone. Backoff, not a lock. */
+  nextAttemptAt: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -416,6 +419,8 @@ export class Store {
         submitted_at         TEXT,
         finalized_at         TEXT,
         error_code           TEXT,
+        attempts             INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at      INTEGER NOT NULL DEFAULT 0,
         created_at           TEXT NOT NULL,
         updated_at           TEXT NOT NULL
       );
@@ -1548,8 +1553,9 @@ export class Store {
            (review_id, artifact_id, keepsake_id, artifact_hash, profile, oqs_version,
             local_verdict, evidence_json, evidence_hash, public_for_consensus, network,
             contract_address, transaction_hash, status, decision, score_band, critical_failure,
-            failure_codes_json, submitted_at, finalized_at, error_code, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            failure_codes_json, submitted_at, finalized_at, error_code, attempts,
+            next_attempt_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         row.reviewId,
@@ -1573,6 +1579,8 @@ export class Store {
         null,
         null,
         null,
+        0,
+        0,
         now,
         now,
       );
@@ -1639,6 +1647,36 @@ export class Store {
     return rows.map((row) => this.toConsensusReviewRow(row));
   }
 
+  /**
+   * Reviews the consensus worker should look at now.
+   *
+   * Ordered oldest-first and filtered by backoff. Note there is no claim/lease here: unlike
+   * the pack queue there is nothing to re-run, because the on-chain transaction hash is the
+   * real record of what happened. A second worker picking up the same row re-polls it; it
+   * cannot re-submit it.
+   */
+  actionableConsensusReviews(now = Date.now(), limit = 20): ConsensusReviewRow[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM consensus_reviews
+          WHERE status IN ('QUEUED', 'SUBMITTED', 'ACCEPTED')
+            AND next_attempt_at <= ?
+          ORDER BY created_at ASC
+          LIMIT ?`,
+      )
+      .all(now, limit) as Record<string, unknown>[];
+    return rows.map((row) => this.toConsensusReviewRow(row));
+  }
+
+  /** Records a failed attempt and when to try again. */
+  backoffConsensusReview(reviewId: string, nextAttemptAt: number): void {
+    this.db
+      .prepare(
+        "UPDATE consensus_reviews SET attempts = attempts + 1, next_attempt_at = ?, updated_at = ? WHERE review_id = ?",
+      )
+      .run(nextAttemptAt, new Date().toISOString(), reviewId);
+  }
+
   /** Real counts only — /consensus must never show a seeded number. */
   consensusStats(): Record<string, number> {
     const row = this.db
@@ -1679,6 +1717,8 @@ export class Store {
       ...(row["submitted_at"] ? { submittedAt: row["submitted_at"] as string } : {}),
       ...(row["finalized_at"] ? { finalizedAt: row["finalized_at"] as string } : {}),
       ...(row["error_code"] ? { errorCode: row["error_code"] as string } : {}),
+      attempts: Number(row["attempts"] ?? 0),
+      nextAttemptAt: Number(row["next_attempt_at"] ?? 0),
       createdAt: row["created_at"] as string,
       updatedAt: row["updated_at"] as string,
     };
