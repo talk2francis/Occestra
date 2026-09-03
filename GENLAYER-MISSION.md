@@ -31,7 +31,9 @@ one bounded repair. Provenance stays separately anchored on X Layer.
 
 ## Invariants (the guard enforces the mechanical ones)
 
-- Work only on `feat/genlayer-consensus-review`. Never merge to `main`.
+- Built on `feat/genlayer-consensus-review`. **Merged to `main` 2026-09-03 with the owner's
+  explicit instruction, for the Builder submission.** Before that point the rule was: never
+  merge. Further GenLayer work should branch again rather than commit to main directly.
 - Never modify `gate.ts`, `anchor.ts`, `seal.ts`, `registry.ts`, `KeepsakeRegistry.sol`.
   Occestra takes real money and anchors real provenance through those.
 - No secrets in git, ever. The GenLayer submitter key is server-only and separate from the
@@ -46,6 +48,16 @@ one bounded repair. Provenance stays separately anchored on X Layer.
   repair brief. Never free-form validator prose — that is an injection path into generation.
 - Verify GenLayer APIs against the installed SDK source, not against memory or draft snippets.
 - No fabricated transactions, benchmark numbers, addresses, or validator consensus.
+
+## Live
+
+| | |
+|---|---|
+| Contract | `0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9` (Bradbury, 4221) |
+| Deploy tx | `0x8dfe44cc2823bc5d0f230b3a342c2481c41958a1b1f9927661e262310e983d1b` |
+| Deployer | `0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342` |
+| Evidence | `https://api.occestra.xyz/genlayer/evidence/<reviewId>` |
+| Results | `GENLAYER-EVALUATION.md` — 12 reviews, 6 ruled, 6 failed consensus, 0 overturns |
 
 ## Facts established by audit (2026-09-03, P1)
 

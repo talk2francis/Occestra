@@ -6,7 +6,7 @@
     "name": "GenLayer Bradbury testnet",
     "chainId": 4221
   },
-  "currentPhase": "P7",
+  "currentPhase": "P9",
   "phases": [
     {
       "id": "P1",
@@ -160,8 +160,8 @@
     {
       "id": "P8",
       "title": "Honest benchmark corpus + GENLAYER-EVALUATION.md",
-      "status": "pending",
-      "commit": null,
+      "status": "complete",
+      "commit": "bb811e1016ff73912dcd7c4a571a26b79923379a",
       "commitMessage": "test(genlayer): publish consensus benchmark corpus",
       "acceptance": [
         "20-30 synthetic/public artifacts across visual, written, plan — no private customer material",
@@ -180,7 +180,7 @@
     {
       "id": "P9",
       "title": "Builder submission polish",
-      "status": "pending",
+      "status": "in_progress",
       "commit": null,
       "commitMessage": "docs(genlayer): prepare consensus review for builder submission",
       "acceptance": [
