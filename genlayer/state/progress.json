@@ -180,8 +180,8 @@
     {
       "id": "P9",
       "title": "Builder submission polish",
-      "status": "in_progress",
-      "commit": null,
+      "status": "complete",
+      "commit": "6c65e66bd5cce871223306224157675608db7c27",
       "commitMessage": "docs(genlayer): prepare consensus review for builder submission",
       "acceptance": [
         "a steward who has never seen Occestra understands the 10 required points in five minutes",

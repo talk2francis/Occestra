@@ -146,6 +146,25 @@ should be deleted when gltest gains first-class screenshot mocking.
 Tracked in `genlayer/state/progress.json`; run `node scripts/genlayer.mjs status` from the
 repo root for the current phase and its acceptance criteria.
 
+
+## 90-second demo
+
+| Time | On screen |
+| --- | --- |
+| 0:00–0:10 | An Occestra artifact — a launch thread, already made. |
+| 0:10–0:20 | The Tribunal report: PASS, OQS v1.2.0, five axis scores. |
+| 0:20–0:30 | Press **Ask GenLayer**. The consent line is read aloud: only a redacted public snapshot goes on chain. |
+| 0:30–0:45 | `GET /genlayer/evidence/<reviewId>` — the exact frozen bytes validators fetch. Recompute the hash against the response header. |
+| 0:45–1:00 | The transaction on the Bradbury explorer: validators voting. |
+| 1:00–1:15 | The panel updates: **UPHELD**, band 70-84, with the contract address and transaction beneath it. |
+| 1:15–1:25 | Show a review that did NOT reach consensus. It reads *unavailable* and claims nothing about the artifact. |
+| 1:25–1:30 | The three layers side by side: created by Occestra, adjudicated by GenLayer, proven on X Layer. |
+
+Closing line: **"Created by Occestra. Adjudicated by GenLayer. Proven on X Layer."**
+
+The honest version of this demo includes the failed review. Six of twelve reviews did not reach
+consensus on Bradbury, and a demo that hides that is selling something the product does not do.
+
 ## Definition of done for the first Builder contribution
 
 - contract lint passes;
