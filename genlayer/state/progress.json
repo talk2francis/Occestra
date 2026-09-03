@@ -20,7 +20,7 @@
         "every gl.* call in the contract is verified against the installed SDK source, not docs memory",
         "direct tests run offline with web + LLM mocked",
         "direct tests cover: local PASS upheld, PASS overturned, FAIL upheld, FAIL overturned, undetermined, malformed evidence, artifact hash mismatch, wrong evidence origin, publicForConsensus=false, unsupported profile, invalid OQS version, duplicate review id, unavailable evidence, visual/written/plan review",
-        "consensus compares stable fields (decision, scoreBand, criticalFailure, normalized failureCodes) — never free-form prose",
+        "consensus compares stable fields (decision, scoreBand, criticalFailure, normalized failureCodes) \u2014 never free-form prose",
         "npm run check stays green",
         "no unrelated existing test was weakened to go green"
       ],
@@ -29,7 +29,7 @@
     },
     {
       "id": "P2",
-      "title": "packages/genlayer — Bradbury client + evidence schemas",
+      "title": "packages/genlayer \u2014 Bradbury client + evidence schemas",
       "status": "complete",
       "commit": "09595c198896a9583b106c382c25e6267de4156b",
       "commitMessage": "feat(genlayer): add Bradbury client and evidence schemas",
@@ -54,7 +54,7 @@
       "commit": "7f508c9192eff9aff3d2f7ec6e3f8ed7293956d5",
       "commitMessage": "feat(consensus): add immutable GenLayer evidence snapshots",
       "acceptance": [
-        "consensus_reviews table added via the existing store migration style — no second database",
+        "consensus_reviews table added via the existing store migration style \u2014 no second database",
         "GET /genlayer/evidence/:reviewId returns the exact frozen snapshot, byte-stable across calls",
         "GET /genlayer/artifacts/:reviewId serves a frozen public consensus asset, never a private storage path",
         "GET /genlayer/reviews/:reviewId returns review state",
@@ -88,7 +88,7 @@
       ],
       "blockers": [],
       "notes": [
-        "DEVIATION from the spec's 'reuse jobs.ts': jobs.ts recovery REQUEUES AND RE-RUNS anything that was 'running' at restart (deliberate — the buyer paid, so we eat the provider cost twice). For a consensus review that behaviour is actively wrong: re-running a SUBMITTED review would submit a SECOND on-chain transaction. consensus_reviews.status is already a durable state machine with transaction_hash for resumption, so the worker drives off that table instead. No second database, no new queue table — the intent of the rule is kept, the mechanism is not."
+        "DEVIATION from the spec's 'reuse jobs.ts': jobs.ts recovery REQUEUES AND RE-RUNS anything that was 'running' at restart (deliberate \u2014 the buyer paid, so we eat the provider cost twice). For a consensus review that behaviour is actively wrong: re-running a SUBMITTED review would submit a SECOND on-chain transaction. consensus_reviews.status is already a durable state machine with transaction_hash for resumption, so the worker drives off that table instead. No second database, no new queue table \u2014 the intent of the rule is kept, the mechanism is not."
       ]
     },
     {
@@ -100,7 +100,7 @@
       "acceptance": [
         "a GenLayer verdict never mutates a historical local Tribunal report",
         "repair produces a NEW artifact version with explicit repairedFrom lineage",
-        "only normalized fields (decision, criticalFailure, failureCodes, score band) reach the repair brief — never validator prose",
+        "only normalized fields (decision, criticalFailure, failureCodes, score band) reach the repair brief \u2014 never validator prose",
         "at most 1 automatic consensus-triggered repair; further review requires explicit request",
         "an UPHELD local FAIL does not trigger pointless regeneration",
         "lineage is exposed in the domain model and API",
@@ -132,8 +132,8 @@
     {
       "id": "P7",
       "title": "Bradbury deployment + real smoke reviews",
-      "status": "in_progress",
-      "commit": null,
+      "status": "complete",
+      "commit": "bdb6643423ee35879b274fce5cf370f56823c8e7",
       "commitMessage": "feat(genlayer): deploy quality adjudicator to Bradbury",
       "acceptance": [
         "GATE: every local test green, no secrets in git, dedicated funded GenLayer wallet, X Layer production keys untouched",
@@ -150,10 +150,10 @@
         "Submitter/deployer wallet 0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342, key in /root/.occestra-secrets/genlayer.env (chmod 600, separate file from occestra.env). Funding ask: 10 GEN. Live fee data 2026-09-03: baseFee 0.119 gwei, SDK adds flat 2 gwei priority -> ~2.12 gwei effective; ~0.064 GEN per tx at a pessimistic 30M gas; deploy + 3 smoke + 30 benchmark + 10 retries = ~2.8 GEN.",
         "AWAITING OWNER: wallet must be funded before any deploy. Verify balance with eth_getBalance before P7 starts.",
         "Deploy tooling ready: scripts/genlayer-deploy.mjs --check passes every gate except funding. Benchmark corpus (25 cases) + harness ready at scripts/genlayer-benchmark.mjs --run. Both blocked on the wallet.",
-        "DEPLOYED 2026-09-03: OccestraQualityAdjudicator at 0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9 on Bradbury (chain 4221). Deploy tx 0x8dfe44cc2823bc5d0f230b3a342c2481c41958a1b1f9927661e262310e983d1b, deployer 0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342, 3 validators AGREE, FINISHED_WITH_RETURN. review_count() reads 0 and all four methods resolve. GOTCHA: the SDK's waitForTransactionReceipt defaults to 50x3s=150s, which is shorter than GenLayer finality — a successful deploy exited non-zero and looked like a failure. Never redeploy on that signal; read the tx first.",
-        "SMOKE 1 (origin guard, no prod needed) PASSED on chain: tx 0x63b3e9cfc4e300434c69240f9dba90b9f94862f54bcbadfcad47def603a809a3 — foreign evidence origin rejected, validators AGREE, FINISHED_WITH_ERROR, review_count stayed 0. Proves the SSRF-style guard holds against real validators.",
-        "RISK FOUND: systemd occestra-mcp.service WorkingDirectory=/root/occestra/packages/mcp-server — the SAME tree I build in. npm run build during this session rewrote the live dist/ with branch code. The running pid (started Aug 10) still serves old code from memory, but ANY restart silently deploys the branch to the live LISTED ASP #5213. Positive smoke reviews also require prod to serve /genlayer/evidence/, since the contract pins that origin.",
-        "PROD FINDING: ANTHROPIC_API_KEY in /etc/occestra/env returns 401 (invalid). The model critic is therefore UNAVAILABLE on the live ASP, and artifacts are being graded on deterministic checks alone — the Tribunal records this honestly in notes + coverageGaps, but axes come back undefined. OPENAI_API_KEY is valid (200). Needs a new Anthropic key or a provider switch. Discovered because a deliberately-slop benchmark artifact 'passed'.",
+        "DEPLOYED 2026-09-03: OccestraQualityAdjudicator at 0xd3baaBD39F6d83949803de0a62B84a04285Ef3d9 on Bradbury (chain 4221). Deploy tx 0x8dfe44cc2823bc5d0f230b3a342c2481c41958a1b1f9927661e262310e983d1b, deployer 0x2C0DD61f5a4f1d5a7BAff79362641AfB6fBA3342, 3 validators AGREE, FINISHED_WITH_RETURN. review_count() reads 0 and all four methods resolve. GOTCHA: the SDK's waitForTransactionReceipt defaults to 50x3s=150s, which is shorter than GenLayer finality \u2014 a successful deploy exited non-zero and looked like a failure. Never redeploy on that signal; read the tx first.",
+        "SMOKE 1 (origin guard, no prod needed) PASSED on chain: tx 0x63b3e9cfc4e300434c69240f9dba90b9f94862f54bcbadfcad47def603a809a3 \u2014 foreign evidence origin rejected, validators AGREE, FINISHED_WITH_ERROR, review_count stayed 0. Proves the SSRF-style guard holds against real validators.",
+        "RISK FOUND: systemd occestra-mcp.service WorkingDirectory=/root/occestra/packages/mcp-server \u2014 the SAME tree I build in. npm run build during this session rewrote the live dist/ with branch code. The running pid (started Aug 10) still serves old code from memory, but ANY restart silently deploys the branch to the live LISTED ASP #5213. Positive smoke reviews also require prod to serve /genlayer/evidence/, since the contract pins that origin.",
+        "PROD FINDING: ANTHROPIC_API_KEY in /etc/occestra/env returns 401 (invalid). The model critic is therefore UNAVAILABLE on the live ASP, and artifacts are being graded on deterministic checks alone \u2014 the Tribunal records this honestly in notes + coverageGaps, but axes come back undefined. OPENAI_API_KEY is valid (200). Needs a new Anthropic key or a provider switch. Discovered because a deliberately-slop benchmark artifact 'passed'.",
         "SMOKE 2+3 submitted on chain from PRODUCTION: oce_gl_ef811bfa921b46649073 (tx 0x7523122b1ebd7583e1024d43d57264808caa93adcdd68c8380fe721d9ce9cd14) and oce_gl_d9438b1a4a8546999cec (tx 0x79cf2d1d89bd201a17c4d84465c3aa9df5c1aaf9428038aef816839882ec1ad7). Synthetic content, NOT customer artifacts. Evidence endpoint verified: served bytes hash exactly to the stored evidenceHash, immutable cache headers, no secrets."
       ]
     },
@@ -164,16 +164,16 @@
       "commit": "bb811e1016ff73912dcd7c4a571a26b79923379a",
       "commitMessage": "test(genlayer): publish consensus benchmark corpus",
       "acceptance": [
-        "20-30 synthetic/public artifacts across visual, written, plan — no private customer material",
+        "20-30 synthetic/public artifacts across visual, written, plan \u2014 no private customer material",
         "per-case record of expected issue, local verdict, axis results, GenLayer decision, band, codes, agreement, latency, tx hash, finalization",
         "agreement rate, overturn rate, undetermined rate, catch rate, median + p95 latency, false positives/negatives caught",
         "no claim of statistical significance from a small sample",
         "honest examples where GenLayer improved, agreed, was uncertain, and surprised us",
-        "/consensus exposes only real aggregate counts — no seeded numbers"
+        "/consensus exposes only real aggregate counts \u2014 no seeded numbers"
       ],
       "blockers": [],
       "notes": [
-        "Corpus took three corrections, and each time the Tribunal was right and the corpus wrong: (1) 'clean' written cases were undifferentiated prose, which the structure axis correctly marks down; (2) launch_thread content was written as markdown documents, which platform_fit correctly marks down for being the wrong shape for the medium; (3) guest_guide routes to the PLAN profile. Also found: the plan profile returns uniform 70s (the pass threshold) for source_coverage/date_validity/uncertainty_disclosure regardless of content — worth investigating separately as a possible gap in plan grading. Visual cases are NOT COVERED in this pass (no rendered bytes) and are recorded as such.",
+        "Corpus took three corrections, and each time the Tribunal was right and the corpus wrong: (1) 'clean' written cases were undifferentiated prose, which the structure axis correctly marks down; (2) launch_thread content was written as markdown documents, which platform_fit correctly marks down for being the wrong shape for the medium; (3) guest_guide routes to the PLAN profile. Also found: the plan profile returns uniform 70s (the pass threshold) for source_coverage/date_validity/uncertainty_disclosure regardless of content \u2014 worth investigating separately as a possible gap in plan grading. Visual cases are NOT COVERED in this pass (no rendered bytes) and are recorded as such.",
         "Critic variance observed at the threshold: w06 scored platform_fit 70 (PASS) on one run and 62 (FAIL) on the next, same text. Borderline artifacts genuinely flip. That is the strongest argument for an independent appellate layer and belongs in the evaluation."
       ]
     },
