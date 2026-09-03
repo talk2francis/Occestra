@@ -78,7 +78,7 @@ Types.Keepsake = [ {name:"keepsakeId",type:"string"}, {name:"manifestHash",type:
 - Two-step handover: startSealerHandover / acceptSealerHandover; custom errors NotSealer, NotPendingSealer, ZeroLeaf, AlreadySealed, ZeroAddress.
 - NatSpec: NEVER write "@word" tokens in comments (solc parses as doc tags and fails).
 
-## Tribunal — Occestra Quality Standard, OQS_VERSION = "1.0.1"
+## Tribunal — Occestra Quality Standard, OQS_VERSION = "1.2.0"
 Model critique axes (0–100 each): composition, legibility, style_fidelity, grounding, platform_fit.
 Pass rule: every axis >= 70 AND zero hard deterministic failures. Repair loop: on fail, produce a repairBrief and regenerate; max 2 repairs; the final TribunalReport ALWAYS ships inside the pack (pass or not).
 Deterministic checks (id | applies to | hard):

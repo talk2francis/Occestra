@@ -68,6 +68,10 @@ export const PRICES = {
   // Free, and it has to be. A buyer choosing a House Style blind pays for a render they did
   // not want, and a wrong style is not a refund — it is just a bad invitation.
   oce_style_catalog: 0,
+  // Free, and listed here because a tool absent from this table is answered with 404 at the
+  // paywall — an unpriced tool is not a free tool, it is an unreachable one. Independent
+  // review stays free until real GenLayer execution economics are measured.
+  oce_consensus_review: 0,
 } as const satisfies Record<string, number>;
 
 export type ToolName = keyof typeof PRICES;

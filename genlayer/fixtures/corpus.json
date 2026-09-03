@@ -1,0 +1,275 @@
+{
+  "$comment": "The consensus benchmark corpus. Every case is synthetic and public \u2014 no customer material, and nothing here describes a real person, venue or product. Each carries the defect it was BUILT to have, so agreement can be measured against something other than our own opinion. Cases are deliberately mixed: some are clean, some are broken in ways the Tribunal should catch, and a few are genuinely ambiguous, because a benchmark where every answer is obvious measures nothing. Written cases are shaped like real Occestra artifacts \u2014 entry point, ordered parts, landing \u2014 because the OQS structure axis grades exactly that, and a 'clean' case that is one undifferentiated block is not clean. Plan cases still carry prose where the plan profile expects structured payloads, and visual cases have no rendered bytes; both are recorded as NOT COVERED rather than reported as results.",
+  "schemaVersion": "1",
+  "cases": [
+    {
+      "id": "w01",
+      "kind": "written",
+      "expect": "clean",
+      "title": "Launch thread \u2014 specific and grounded",
+      "text": "1/ Tidepool turns a folder of field recordings into a mixed, mastered album.\n\n2/ Imports WAV and AIFF. Ships 40 presets. Exports stems.\n\n3/ It does not do noise removal. Run those files through something else first, then bring them here.\n\n4/ Free while in beta \u2014 no account needed to try it on a single track.",
+      "issue": null,
+      "artifactKind": "launch_thread"
+    },
+    {
+      "id": "w02",
+      "kind": "written",
+      "expect": "fail",
+      "issue": "FACTUAL_SUPPORT",
+      "title": "Launch thread \u2014 unsupported superlatives",
+      "text": "1/ Tidepool turns field recordings into a mastered album.\n\n2/ It is the fastest audio tool ever built and the only one professionals trust.\n\n3/ Studies show it is 400% better than every competitor.\n\n4/ Everyone who tries it switches immediately.",
+      "artifactKind": "launch_thread"
+    },
+    {
+      "id": "w03",
+      "kind": "written",
+      "expect": "fail",
+      "issue": "BRIEF_MISMATCH",
+      "title": "Launch thread \u2014 generic filler",
+      "text": "1/ In today's fast-paced world, innovation is key.\n\n2/ We leverage cutting-edge technology to deliver unparalleled value at scale.\n\n3/ A seamless experience that empowers users to achieve more.\n\n4/ Ready to take your workflow to the next level? The future is here.",
+      "artifactKind": "launch_thread"
+    },
+    {
+      "id": "w04",
+      "kind": "written",
+      "expect": "fail",
+      "issue": "STYLE_DRIFT",
+      "title": "Toast \u2014 wrong register entirely",
+      "text": "PURSUANT TO THE MARRIAGE HEREIN CELEBRATED, THE UNDERSIGNED REGISTERS APPROVAL OF THE UNION. NOTWITHSTANDING THE FOREGOING, CONGRATULATIONS ARE EXTENDED SUBJECT TO THE CONDITIONS SET FORTH BELOW. SIGNED AND DATED THIS DAY IN THE PRESENCE OF THE ASSEMBLED PARTIES.",
+      "artifactKind": "toast"
+    },
+    {
+      "id": "w05",
+      "kind": "written",
+      "expect": "fail",
+      "issue": "BRIEF_MISMATCH",
+      "title": "Toast \u2014 no shape at all",
+      "text": "So anyway I met Sam once and they were nice and then there was that thing with the car and also the dog and I forget the rest but congratulations I guess and the food here is good and someone should probably say something about the parents but I did not prepare anything so this is it really.",
+      "artifactKind": "toast"
+    },
+    {
+      "id": "w06",
+      "kind": "written",
+      "expect": "clean",
+      "title": "Story page \u2014 plain and particular",
+      "text": "## The table\n\nIt came from a house on Rye Lane that no longer exists.\n\n## The mark\n\nThere is a burn near the left edge, from a pan set down too fast in 1998. Nobody has ever sanded it out.\n\n## Since then\n\nEvery birthday in this family has been eaten around it.",
+      "issue": null,
+      "artifactKind": "story_page"
+    },
+    {
+      "id": "w07",
+      "kind": "written",
+      "expect": "ambiguous",
+      "title": "Launch thread \u2014 terse, arguably too terse",
+      "text": "1/ Tidepool. Field recordings in, album out.\n\n2/ Free while in beta.",
+      "issue": null,
+      "artifactKind": "launch_thread"
+    },
+    {
+      "id": "w08",
+      "kind": "written",
+      "expect": "fail",
+      "issue": "SOURCE_COVERAGE",
+      "title": "Thread \u2014 grounded claims, no sources",
+      "text": "1/ The museum opens at 9am on Sundays, and entry is free until noon.\n\n2/ Parking on the north side is unrestricted after 10am.\n\n3/ The cafe closes at 4pm sharp.\n\n4/ Worth a morning if you are nearby.",
+      "artifactKind": "launch_thread"
+    },
+    {
+      "id": "p01",
+      "kind": "plan",
+      "expect": "clean",
+      "issue": null,
+      "title": "Day plan \u2014 grounded and honest about uncertainty",
+      "text": "10:00 arrive at the gardens (opening hours not confirmed \u2014 call ahead). 12:30 lunch nearby, 30 min walk allowed. 14:00 free time. Budget: entry 12 x 4 = 48, lunch ~25pp = 100, total ~148."
+    },
+    {
+      "id": "p02",
+      "kind": "plan",
+      "expect": "fail",
+      "issue": "SCHEDULE_CONFLICT",
+      "title": "Day plan \u2014 impossible schedule",
+      "text": "14:00 lunch in the north quarter. 14:15 gallery tour in the south quarter, 40 minutes away. 14:30 boat departure from the harbour. 14:45 return for dessert at the first restaurant."
+    },
+    {
+      "id": "p03",
+      "kind": "plan",
+      "expect": "fail",
+      "issue": "BUDGET_INCONSISTENCY",
+      "title": "Budget \u2014 does not add up",
+      "text": "Venue 400. Catering 650. Flowers 120. Music 300. Stationery 80. Total: 1,200. Deposit already paid: 500, so 600 remains outstanding."
+    },
+    {
+      "id": "p04",
+      "kind": "plan",
+      "expect": "fail",
+      "issue": "SOURCE_COVERAGE",
+      "title": "Plan \u2014 missing sources on every grounded claim",
+      "text": "The restaurant seats 40 and has step-free access. The weather that weekend will be mild and dry. The venue permits candles indoors and closes at 1am."
+    },
+    {
+      "id": "p05",
+      "kind": "plan",
+      "expect": "fail",
+      "issue": "FACTUAL_SUPPORT",
+      "title": "Plan \u2014 claims a booking is confirmed",
+      "text": "Your table is booked and confirmed for 8pm, party of six, window seat guaranteed. The florist has accepted the order and delivery is locked in for Friday morning."
+    },
+    {
+      "id": "p06",
+      "kind": "plan",
+      "expect": "clean",
+      "issue": null,
+      "title": "Contingency \u2014 real fallbacks",
+      "text": "If it rains: move to the covered terrace (capacity 30, so 10 guests stand). If the band cancels: the venue's PA takes a phone via Bluetooth; playlist prepared. If numbers drop below 20: cancel the second catering tray by Thursday for a refund."
+    },
+    {
+      "id": "p07",
+      "kind": "plan",
+      "expect": "ambiguous",
+      "issue": null,
+      "title": "Plan \u2014 thin but not wrong",
+      "text": "Morning: park. Afternoon: lunch and a walk. Evening: dinner somewhere in town. Budget roughly 150 for four people."
+    },
+    {
+      "id": "v01",
+      "kind": "visual",
+      "expect": "clean",
+      "issue": null,
+      "title": "Invitation \u2014 clear hierarchy, legible",
+      "render": {
+        "bg": "#faf7f2",
+        "fg": "#17141a",
+        "headline": "Mara & Sam",
+        "body": "Saturday 14 June \u00b7 6pm \u00b7 The Old Dairy",
+        "size": 64
+      }
+    },
+    {
+      "id": "v02",
+      "kind": "visual",
+      "expect": "fail",
+      "issue": "LEGIBILITY",
+      "title": "Invitation \u2014 inadequate contrast",
+      "render": {
+        "bg": "#e8e4dd",
+        "fg": "#ddd8d0",
+        "headline": "Mara & Sam",
+        "body": "Saturday 14 June \u00b7 6pm \u00b7 The Old Dairy",
+        "size": 64
+      }
+    },
+    {
+      "id": "v03",
+      "kind": "visual",
+      "expect": "fail",
+      "issue": "LEGIBILITY",
+      "title": "Invitation \u2014 body copy far too small",
+      "render": {
+        "bg": "#faf7f2",
+        "fg": "#17141a",
+        "headline": "Mara & Sam",
+        "body": "Saturday 14 June \u00b7 6pm \u00b7 The Old Dairy",
+        "size": 6
+      }
+    },
+    {
+      "id": "v04",
+      "kind": "visual",
+      "expect": "fail",
+      "issue": "BRIEF_MISMATCH",
+      "title": "Invitation \u2014 required date missing",
+      "render": {
+        "bg": "#faf7f2",
+        "fg": "#17141a",
+        "headline": "Mara & Sam",
+        "body": "The Old Dairy",
+        "size": 64
+      }
+    },
+    {
+      "id": "v05",
+      "kind": "visual",
+      "expect": "fail",
+      "issue": "COMPOSITION",
+      "title": "Invitation \u2014 no focal hierarchy",
+      "render": {
+        "bg": "#faf7f2",
+        "fg": "#17141a",
+        "headline": "Mara & Sam",
+        "body": "Saturday 14 June \u00b7 6pm \u00b7 The Old Dairy",
+        "size": 28,
+        "flat": true
+      }
+    },
+    {
+      "id": "v06",
+      "kind": "visual",
+      "expect": "fail",
+      "issue": "SUBJECT_FIDELITY",
+      "title": "Invitation \u2014 wrong subject entirely",
+      "render": {
+        "bg": "#faf7f2",
+        "fg": "#17141a",
+        "headline": "Annual Tax Seminar",
+        "body": "Saturday 14 June \u00b7 6pm \u00b7 The Old Dairy",
+        "size": 64
+      }
+    },
+    {
+      "id": "v07",
+      "kind": "visual",
+      "expect": "fail",
+      "issue": "STYLE_DRIFT",
+      "title": "Invitation \u2014 off the House Style palette",
+      "render": {
+        "bg": "#00ff00",
+        "fg": "#ff00ff",
+        "headline": "Mara & Sam",
+        "body": "Saturday 14 June \u00b7 6pm \u00b7 The Old Dairy",
+        "size": 64
+      }
+    },
+    {
+      "id": "v08",
+      "kind": "visual",
+      "expect": "clean",
+      "issue": null,
+      "title": "Hero \u2014 strong composition",
+      "render": {
+        "bg": "#2d1b4e",
+        "fg": "#faf7f2",
+        "headline": "Tidepool",
+        "body": "Field recordings in. Album out.",
+        "size": 72
+      }
+    },
+    {
+      "id": "v09",
+      "kind": "visual",
+      "expect": "ambiguous",
+      "issue": null,
+      "title": "Hero \u2014 sparse, arguably underdesigned",
+      "render": {
+        "bg": "#faf7f2",
+        "fg": "#8e8a94",
+        "headline": "Tidepool",
+        "body": "",
+        "size": 40
+      }
+    },
+    {
+      "id": "v10",
+      "kind": "visual",
+      "expect": "fail",
+      "issue": "LEGIBILITY",
+      "title": "Hero \u2014 text over a busy field",
+      "render": {
+        "bg": "#6b3fa0",
+        "fg": "#7a52ad",
+        "headline": "Tidepool",
+        "body": "Field recordings in. Album out.",
+        "size": 48
+      }
+    }
+  ]
+}

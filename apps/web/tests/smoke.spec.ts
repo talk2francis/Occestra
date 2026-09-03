@@ -28,6 +28,7 @@ const PAGES = [
   { path: "/docs/jobs", must: /job|connection|lifecycle/i },
   { path: "/docs/judges", must: /judge|proof|claim/i },
   { path: "/docs/changelog", must: /changed|changelog|V2/i },
+  { path: "/consensus", must: /final word|independent review|GenLayer/i },
 ];
 
 for (const page of PAGES) {

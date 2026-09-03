@@ -140,6 +140,7 @@ describe("the tools", () => {
     // Everything in the price table, plus the one tool whose price is not its own:
     // oce_create_pack_job costs exactly what the tool it runs costs.
     expect(names).toEqual([...TOOL_NAMES, "oce_create_pack_job"].sort());
+    expect(names).toContain("oce_consensus_review");
     expect(names).toContain("oce_verify_keepsake");
 
     // Descriptions are the storefront — they must actually sell, and state the price.

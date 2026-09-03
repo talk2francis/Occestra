@@ -6,6 +6,7 @@
  * concrete example, and what is provable afterwards. None of them overclaim — a tool that
  * promises more than it does earns a bad review the first time it is called.
  */
+import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { verifySeal, leafOfSeal, chainFor } from "@occestra/receipts";
@@ -13,6 +14,8 @@ import { rubricAsJson } from "@occestra/tribunal";
 import { BriefContextSchema, sanitizeGaps, sanitizeTribunal, saltedManifestCommitment, type HouseStyleId, type Pack } from "@occestra/studio-core";
 import { PACK_TOOLS, PRICES, type PackToolName, type ToolName } from "./gate.js";
 import { HOUSE_STYLES } from "@occestra/providers";
+import { networkLabel, type GenLayerConfig } from "@occestra/genlayer";
+import { ConsensusRefused, prepareConsensusReview } from "./consensus.js";
 import type { JobQueue } from "./jobs.js";
 import {
   PolicyRefusal,
@@ -204,6 +207,8 @@ export interface ServerContext extends PipelineContext {
   order?: { id: string; tool: string; priceUsdt: number; payerRef: string };
   /** Per-request tap: the payload this call answered with, for the idempotency store. */
   onResult?: (result: ToolResult) => void;
+  /** Absent = this deployment does no independent review, and says so rather than failing. */
+  genlayer?: GenLayerConfig;
 }
 
 export interface ToolResult {
@@ -675,6 +680,96 @@ export function buildServer(ctx: ServerContext): McpServer {
         collect: "When state is 'done', call oce_job_result. Also free.",
         publicPage: `${ctx.publicBaseUrl}/j/${jobId}`,
       });
+    },
+  );
+
+  /* -------------------------------------------------- oce_consensus_review */
+
+  // Deliberately not a paid tool. Until real GenLayer execution economics are measured,
+  // charging for a review whose latency and cost we cannot yet quote would be guessing at the
+  // buyer's expense.
+  server.registerTool(
+    "oce_consensus_review",
+    {
+      title: "Ask GenLayer to review our grade (free)",
+      description: [
+        "Occestra grades its own work. This asks somebody else.",
+        "",
+        "The Tribunal is fast and its rubric is published, but it is still our critic applying our standard to our output. This submits a PUBLIC artifact to an Intelligent Contract on GenLayer, where independent AI validators read a frozen evidence snapshot and decide whether our PASS/FAIL verdict is actually supported: UPHELD, OVERTURNED, or UNDETERMINED.",
+        "",
+        "PRIVACY: only artifacts you explicitly publish for consensus are eligible, and you must pass publicForConsensus=true. Private Remember material is refused outright. What goes on chain is a redacted evidence snapshot — the brief, the rubric, our own scores, and the artifact itself — never your originals, tokens, or links.",
+        "",
+        "This returns immediately. Finality takes minutes, so poll oce_job_status-style at the reviewId, or GET /genlayer/reviews/<reviewId>.",
+        "",
+        "EXAMPLE: keepsakeId='oce_k_...', artifactId='hero', publicForConsensus=true -> {reviewId, status:'QUEUED'}.",
+      ].join("\n"),
+      inputSchema: {
+        keepsakeId: z.string().min(4).max(64).describe("The keepsake holding the artifact."),
+        artifactId: z.string().min(1).max(64).describe("Which artifact to put up for review."),
+        publicForConsensus: z
+          .boolean()
+          .describe(
+            "Must be true. Affirms this artifact may be published for public, permanent, independent review.",
+          ),
+      },
+    },
+    async ({ keepsakeId, artifactId, publicForConsensus }) => {
+      if (!ctx.genlayer) {
+        return ok({
+          requested: false,
+          note: "Independent review is not configured on this deployment.",
+        });
+      }
+
+      const pack = ctx.store.getPack(keepsakeId);
+      const artifact = pack?.artifacts.find((a) => a.id === artifactId);
+      if (!pack || !artifact) {
+        return ok({ requested: false, note: "No keepsake or artifact with those ids." });
+      }
+
+      const reviewId = `oce_gl_${randomUUID().replace(/-/g, "").slice(0, 20)}`;
+      try {
+        const prepared = await prepareConsensusReview(ctx.store, {
+          pack,
+          artifact,
+          consented: publicForConsensus === true,
+          reviewId,
+          network: networkLabel(ctx.genlayer),
+        });
+
+        ctx.store.createConsensusReview({
+          reviewId,
+          artifactId,
+          keepsakeId,
+          artifactHash: prepared.snapshot.artifactHash,
+          profile: prepared.snapshot.profile,
+          oqsVersion: prepared.snapshot.oqsVersion,
+          localVerdict: prepared.snapshot.localVerdict,
+          evidenceJson: prepared.evidenceJson,
+          evidenceHash: prepared.evidenceHash,
+          network: networkLabel(ctx.genlayer),
+          ...(ctx.genlayer.contractAddress
+            ? { contractAddress: ctx.genlayer.contractAddress }
+            : {}),
+        } as Parameters<typeof ctx.store.createConsensusReview>[0]);
+
+        return ok({
+          requested: true,
+          reviewId,
+          status: "QUEUED",
+          network: networkLabel(ctx.genlayer),
+          localVerdict: prepared.snapshot.localVerdict,
+          evidenceHash: prepared.evidenceHash,
+          poll: `/genlayer/reviews/${reviewId}`,
+          note: "Validators are independent. We do not know what they will say, and an OVERTURNED result stands.",
+        });
+      } catch (error) {
+        if (error instanceof ConsensusRefused) {
+          return ok({ requested: false, code: error.code, note: error.message });
+        }
+        ctx.deps.log?.("consensus review request failed", error);
+        return ok({ requested: false, note: "Could not prepare an independent review." });
+      }
     },
   );
 

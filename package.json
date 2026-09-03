@@ -13,7 +13,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build --workspace @occestra/studio-core && npm run build --workspace @occestra/tribunal && npm run build --workspace @occestra/receipts && npm run build --workspace @occestra/providers && npm run build --workspace @occestra/contracts && npm run build --workspace @occestra/mcp-server",
+    "build": "npm run build --workspace @occestra/studio-core && npm run build --workspace @occestra/tribunal && npm run build --workspace @occestra/genlayer && npm run build --workspace @occestra/receipts && npm run build --workspace @occestra/providers && npm run build --workspace @occestra/contracts && npm run build --workspace @occestra/mcp-server",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",

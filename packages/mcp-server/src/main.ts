@@ -10,6 +10,8 @@ import { DevGate, OkxGate, type PaymentGate } from "./gate.js";
 import { buildGrader } from "./grader.js";
 import { buildApp, type AppContext } from "./http.js";
 import { JobQueue } from "./jobs.js";
+import { readGenLayerConfig } from "@occestra/genlayer";
+import { ConsensusWorker } from "./genlayer-worker.js";
 import { VERSION, packResult } from "./server.js";
 import { Store } from "./store.js";
 
@@ -106,6 +108,15 @@ const ctx: AppContext = {
     : {}),
 };
 
+/* -------------------------------------------------- GenLayer consensus */
+
+// Optional throughout. A deployment with no GenLayer configuration plans, generates, grades
+// and seals exactly as before — the consensus surfaces simply report that they are off.
+const genlayerConfig = readGenLayerConfig(env);
+if (genlayerConfig) {
+  ctx.genlayer = genlayerConfig;
+}
+
 /* -------------------------------------------------------------- job queue */
 
 const jobs = new JobQueue({
@@ -116,6 +127,17 @@ const jobs = new JobQueue({
 ctx.jobs = jobs;
 
 const recovered = jobs.start();
+
+// The worker only runs where a review could actually be submitted: a deployed contract and
+// a funded submitter key. A read-only deployment still serves every consensus page.
+if (genlayerConfig?.contractAddress && genlayerConfig.submitterPrivateKey) {
+  const consensus = new ConsensusWorker({
+    store,
+    config: genlayerConfig,
+    ...(built.deps.log ? { log: built.deps.log } : {}),
+  });
+  consensus.start();
+}
 
 const app = buildApp(ctx);
 

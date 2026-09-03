@@ -1,0 +1,106 @@
+{
+  "w08": {
+    "packId": "oce_glbench",
+    "artifactId": "w08",
+    "localVerdict": "FAIL",
+    "localAxes": {
+      "voice": 0,
+      "specificity": 0,
+      "factual_support": 0,
+      "structure": 0,
+      "platform_fit": 0
+    },
+    "criticAvailable": true
+  },
+  "w01": {
+    "packId": "oce_glbench",
+    "artifactId": "w01",
+    "localVerdict": "PASS",
+    "localAxes": {
+      "voice": 82,
+      "specificity": 85,
+      "factual_support": 88,
+      "structure": 80,
+      "platform_fit": 72
+    },
+    "criticAvailable": true
+  },
+  "w02": {
+    "packId": "oce_glbench",
+    "artifactId": "w02",
+    "localVerdict": "FAIL",
+    "localAxes": {
+      "voice": 55,
+      "specificity": 40,
+      "factual_support": 20,
+      "structure": 62,
+      "platform_fit": 65
+    },
+    "criticAvailable": true
+  },
+  "w03": {
+    "packId": "oce_glbench",
+    "artifactId": "w03",
+    "localVerdict": "FAIL",
+    "localAxes": {
+      "voice": 12,
+      "specificity": 8,
+      "factual_support": 40,
+      "structure": 38,
+      "platform_fit": 15
+    },
+    "criticAvailable": true
+  },
+  "w04": {
+    "packId": "oce_glbench",
+    "artifactId": "w04",
+    "localVerdict": "FAIL",
+    "localAxes": {
+      "voice": 5,
+      "specificity": 8,
+      "factual_support": 72,
+      "structure": 40,
+      "platform_fit": 4
+    },
+    "criticAvailable": true
+  },
+  "w05": {
+    "packId": "oce_glbench",
+    "artifactId": "w05",
+    "localVerdict": "FAIL",
+    "localAxes": {
+      "voice": 14,
+      "specificity": 18,
+      "factual_support": 70,
+      "structure": 12,
+      "platform_fit": 15
+    },
+    "criticAvailable": true
+  },
+  "w06": {
+    "packId": "oce_glbench",
+    "artifactId": "w06",
+    "localVerdict": "FAIL",
+    "localAxes": {
+      "voice": 88,
+      "specificity": 92,
+      "factual_support": 72,
+      "structure": 82,
+      "platform_fit": 62
+    },
+    "criticAvailable": true
+  },
+  "w07": {
+    "packId": "oce_glbench",
+    "artifactId": "w07",
+    "localVerdict": "FAIL",
+    "localAxes": {
+      "voice": 62,
+      "specificity": 55,
+      "factual_support": 72,
+      "structure": 58,
+      "platform_fit": 60
+    },
+    "criticAvailable": true
+  }
+}

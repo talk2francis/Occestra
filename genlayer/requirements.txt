@@ -1,0 +1,14 @@
+# Installed from PyPI, not git refs. The previous git pins could not resolve: genlayer-test
+# 0.29 requires genlayer-py <0.17, while the file asked for genlayer-py 0.18. PyPI also avoids
+# GitHub's anonymous-clone rate limiting, which broke `pip install` outright on this VPS.
+genlayer-test==0.29.2      # gltest — direct/integration contract testing
+genlayer-py==0.16.3        # pulled in by genlayer-test; pinned so the pair stays resolvable
+genvm-linter==0.11.0       # genvm-lint — AST safety checks + ABI schema
+
+# Required by the direct-mode VM, and silently degrading without them: without cloudpickle the
+# pickling check is skipped with only a warning, and without Pillow every screenshot-mode
+# render raises ModuleNotFoundError mid-test.
+cloudpickle>=3.1.2
+Pillow>=11.0.0
+
+python-dotenv>=1.0.1

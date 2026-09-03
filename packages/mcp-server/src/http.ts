@@ -5,17 +5,19 @@
  * The paywall sits between "which tool did you ask for" and "run it": we read the tool name
  * off the JSON-RPC body, price it, and gate it BEFORE any model is touched.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express, { type Express, type Request, type Response } from "express";
 import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
+import { networkLabel } from "@occestra/genlayer";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun } from "./demo.js";
 import { handleGalleryPublish, handleGalleryWithdraw } from "./showcase.js";
 import { PolicyRefusal, screenToolInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
+import { ConsensusRefused, prepareConsensusReview } from "./consensus.js";
 import {
   VERSION,
   buildServer,
@@ -646,6 +648,181 @@ export function buildApp(ctx: AppContext): Express {
       return;
     }
     res.type("text/markdown").send(rubricAsMarkdown());
+  });
+
+  /* ------------------------------------------- GenLayer consensus evidence */
+
+  // The three public GenLayer surfaces. Two of them are fetched by validators on a public
+  // chain, which is why they serve stored bytes verbatim and never re-render anything: a
+  // review is a ruling about specific bytes, and regenerating them would quietly change what
+  // was adjudicated after the fact.
+
+  // Real counts, straight from the table. /consensus renders these and shows nothing when
+  // they are zero, rather than seeding a number that makes the feature look used.
+  app.get("/genlayer/stats", (_req, res) => {
+    res.json({ ...ctx.store.consensusStats(), asOf: new Date().toISOString() });
+  });
+
+  // Every review an artifact has ever had, oldest first. This is the endpoint that shows
+  // Occestra being overturned and then fixing it — v1 PASS/OVERTURNED, v2 PASS/UPHELD — and
+  // it reads the history rather than reconstructing it, because none of it is ever rewritten.
+  app.get("/genlayer/lineage/:artifactId", (req, res) => {
+    const reviews = ctx.store.consensusLineage(String(req.params["artifactId"] ?? ""));
+    res.json({
+      artifactId: String(req.params["artifactId"] ?? ""),
+      reviews: reviews.map((review) => ({
+        reviewId: review.reviewId,
+        artifactVersion: review.artifactVersion,
+        ...(review.repairedFrom ? { repairedFrom: review.repairedFrom } : {}),
+        localVerdict: review.localVerdict,
+        status: review.status,
+        ...(review.decision ? { decision: review.decision } : {}),
+        ...(review.scoreBand ? { scoreBand: review.scoreBand } : {}),
+        failureCodes: review.failureCodes,
+        artifactHash: review.artifactHash,
+        createdAt: review.createdAt,
+        ...(review.finalizedAt ? { finalizedAt: review.finalizedAt } : {}),
+      })),
+    });
+  });
+
+  // Ask for an independent review. Returns immediately with a review id: GenLayer finality
+  // takes minutes, and holding a marketplace client open across it is exactly the mistake the
+  // pack job queue exists to avoid.
+  app.post("/genlayer/reviews", async (req, res) => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const keepsakeId = String(body["keepsakeId"] ?? "");
+    const artifactId = String(body["artifactId"] ?? "");
+    // Consent is explicit and affirmative. There is no default, and "not false" is not "true".
+    const consented = body["publicForConsensus"] === true;
+
+    if (!keepsakeId || !artifactId) {
+      res.status(400).json({ error: "keepsakeId and artifactId are required" });
+      return;
+    }
+    if (!ctx.genlayer) {
+      res.status(503).json({ error: "independent review is not configured on this deployment" });
+      return;
+    }
+
+    const pack = ctx.store.getPack(keepsakeId);
+    const artifact = pack?.artifacts.find((a) => a.id === artifactId);
+    if (!pack || !artifact) {
+      res.status(404).json({ error: "no such keepsake or artifact" });
+      return;
+    }
+
+    const reviewId = `oce_gl_${randomUUID().replace(/-/g, "").slice(0, 20)}`;
+    try {
+      const prepared = await prepareConsensusReview(ctx.store, {
+        pack,
+        artifact,
+        consented,
+        reviewId,
+        network: networkLabel(ctx.genlayer),
+        ...(ctx.genlayer.contractAddress ? { contractAddress: ctx.genlayer.contractAddress } : {}),
+      });
+
+      ctx.store.createConsensusReview({
+        reviewId,
+        artifactId,
+        keepsakeId,
+        artifactHash: prepared.snapshot.artifactHash,
+        profile: prepared.snapshot.profile,
+        oqsVersion: prepared.snapshot.oqsVersion,
+        localVerdict: prepared.snapshot.localVerdict,
+        evidenceJson: prepared.evidenceJson,
+        evidenceHash: prepared.evidenceHash,
+        network: networkLabel(ctx.genlayer),
+        ...(ctx.genlayer.contractAddress ? { contractAddress: ctx.genlayer.contractAddress } : {}),
+      } as Parameters<typeof ctx.store.createConsensusReview>[0]);
+
+      res.status(202).json({
+        reviewId,
+        status: "QUEUED",
+        network: networkLabel(ctx.genlayer),
+        evidenceUrl: `/genlayer/evidence/${reviewId}`,
+        poll: `/genlayer/reviews/${reviewId}`,
+      });
+    } catch (error) {
+      if (error instanceof ConsensusRefused) {
+        res.status(409).json({ error: error.message, code: error.code });
+        return;
+      }
+      ctx.deps.log?.("consensus preparation failed", error);
+      res.status(500).json({ error: "could not prepare an independent review" });
+    }
+  });
+
+  // The frozen evidence snapshot. Immutable by construction — the row is written once and
+  // this hands back exactly what was written, so the hash a validator computes still matches.
+  app.get("/genlayer/evidence/:reviewId", (req, res) => {
+    const review = ctx.store.consensusReview(String(req.params["reviewId"] ?? ""));
+    if (!review) {
+      res.status(404).json({ error: "no consensus review with that id" });
+      return;
+    }
+    res
+      .type("application/json")
+      // Safe to cache forever precisely because nothing can ever change here.
+      .set("Cache-Control", "public, max-age=31536000, immutable")
+      .set("X-Occestra-Evidence-Hash", review.evidenceHash)
+      .send(review.evidenceJson);
+  });
+
+  // The frozen public asset a validator renders for a visual review. This is a copy taken at
+  // freeze time, not a pointer into pack storage — a later repair must not be able to change
+  // the image that an existing review already ruled on. No storage key is ever exposed.
+  app.get("/genlayer/artifacts/:reviewId", (req, res) => {
+    const reviewId = String(req.params["reviewId"] ?? "");
+    const review = ctx.store.consensusReview(reviewId);
+    if (!review) {
+      res.status(404).json({ error: "no consensus review with that id" });
+      return;
+    }
+    const bytes = ctx.store.consensusArtifact(reviewId);
+    if (!bytes) {
+      res.status(404).json({ error: "this review has no frozen visual artifact" });
+      return;
+    }
+    res
+      .type("image/png")
+      .set("Cache-Control", "public, max-age=31536000, immutable")
+      .send(Buffer.from(bytes));
+  });
+
+  // Review state. Deliberately not the whole row: evidence_json is served at its own URL, and
+  // raw provider errors stay in the logs — a caller gets a sanitized code, never a stack.
+  app.get("/genlayer/reviews/:reviewId", (req, res) => {
+    const review = ctx.store.consensusReview(String(req.params["reviewId"] ?? ""));
+    if (!review) {
+      res.status(404).json({ error: "no consensus review with that id" });
+      return;
+    }
+    res.json({
+      reviewId: review.reviewId,
+      artifactId: review.artifactId,
+      artifactHash: review.artifactHash,
+      profile: review.profile,
+      oqsVersion: review.oqsVersion,
+      localVerdict: review.localVerdict,
+      evidenceHash: review.evidenceHash,
+      evidenceUrl: `/genlayer/evidence/${encodeURIComponent(review.reviewId)}`,
+      network: review.network,
+      ...(review.contractAddress ? { intelligentContractAddress: review.contractAddress } : {}),
+      ...(review.transactionHash ? { transactionHash: review.transactionHash } : {}),
+      status: review.status,
+      ...(review.decision ? { decision: review.decision } : {}),
+      ...(review.scoreBand ? { scoreBand: review.scoreBand } : {}),
+      ...(review.criticalFailure ? { criticalFailure: review.criticalFailure } : {}),
+      failureCodes: review.failureCodes,
+      artifactVersion: review.artifactVersion,
+      ...(review.repairedFrom ? { repairedFrom: review.repairedFrom } : {}),
+      ...(review.submittedAt ? { submittedAt: review.submittedAt } : {}),
+      ...(review.finalizedAt ? { finalizedAt: review.finalizedAt } : {}),
+      ...(review.errorCode ? { errorCode: review.errorCode } : {}),
+      createdAt: review.createdAt,
+    });
   });
 
   /* ------------------------------------------------------ a2a capabilities */

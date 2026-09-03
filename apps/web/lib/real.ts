@@ -121,6 +121,7 @@ export const TOOLS = [
   { name: "oce_job_result", price: 0, gives: "Collect the finished pack. Free — you already paid" },
   { name: "oce_cancel_job", price: 0, gives: "Stop a job. Free. Queued cancels refund in full" },
   { name: "oce_style_catalog", price: 0, gives: "Every House Style, its real palette, and a real passing example. Free — call it first" },
+  { name: "oce_consensus_review", price: 0, gives: "Independent GenLayer validators review whether our own grade was justified. Free" },
 ] as const;
 
 export const OQS_AXES = ["composition", "legibility", "style_fidelity", "grounding", "platform_fit"] as const;
