@@ -1,0 +1,24 @@
+# gltest reads this to pick a network. Direct-mode tests need none of it — they run offline
+# against mocks — but without the file gltest warns on every run and defaults to a localnet
+# RPC that is not running here.
+networks:
+  default: localnet
+
+  localnet:
+    url: http://127.0.0.1:4000/api
+    accounts: []
+
+  # Bradbury and Asimov are the SAME chain (id 4221): both RPCs report an identical chain id
+  # and block height. Asimov is the current name. Deployment targets are set in P7; nothing
+  # here should point at a live network during direct testing.
+  testnet_bradbury:
+    id: 4221
+    url: https://rpc-bradbury.genlayer.com
+
+  testnet_asimov:
+    id: 4221
+    url: https://rpc-asimov.genlayer.com
+
+paths:
+  contracts: contracts
+  artifacts: artifacts
