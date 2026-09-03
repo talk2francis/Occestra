@@ -172,7 +172,10 @@
         "/consensus exposes only real aggregate counts — no seeded numbers"
       ],
       "blockers": [],
-      "notes": []
+      "notes": [
+        "Corpus took three corrections, and each time the Tribunal was right and the corpus wrong: (1) 'clean' written cases were undifferentiated prose, which the structure axis correctly marks down; (2) launch_thread content was written as markdown documents, which platform_fit correctly marks down for being the wrong shape for the medium; (3) guest_guide routes to the PLAN profile. Also found: the plan profile returns uniform 70s (the pass threshold) for source_coverage/date_validity/uncertainty_disclosure regardless of content — worth investigating separately as a possible gap in plan grading. Visual cases are NOT COVERED in this pass (no rendered bytes) and are recorded as such.",
+        "Critic variance observed at the threshold: w06 scored platform_fit 70 (PASS) on one run and 62 (FAIL) on the next, same text. Borderline artifacts genuinely flip. That is the strongest argument for an independent appellate layer and belongs in the evaluation."
+      ]
     },
     {
       "id": "P9",

@@ -72,15 +72,15 @@ if (!contract || !key) {
  * One case, end to end. Any failure is recorded as a failure — never smoothed away, because a
  * benchmark that quietly drops its awkward cases is measuring its own optimism.
  */
-async function runCase(c) {
+async function runCase(c, staged) {
   const started = Date.now();
   const row = {
     caseId: c.id,
     artifactKind: c.kind,
     expected: c.expect,
     expectedIssue: c.issue ?? null,
-    localVerdict: null,
-    localAxes: null,
+    localVerdict: staged?.localVerdict ?? null,
+    localAxes: staged?.localAxes ?? null,
     consensusDecision: null,
     scoreBand: null,
     failureCodes: [],
@@ -90,26 +90,30 @@ async function runCase(c) {
     note: null,
   };
 
+  if (!staged) {
+    row.note = "not staged";
+    return row;
+  }
+
   try {
-    const created = await fetch(`${api}/genlayer/benchmark-case`, {
+    const created = await fetch(`${api}/genlayer/reviews`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(c),
+      body: JSON.stringify({
+        keepsakeId: staged.packId,
+        artifactId: staged.artifactId,
+        publicForConsensus: true,
+      }),
     });
     if (!created.ok) {
-      row.note = `could not stage the case: HTTP ${created.status}`;
+      row.note = `could not request a review: HTTP ${created.status}`;
       return row;
     }
-    const { reviewId, localVerdict, localAxes } = await created.json();
-    row.localVerdict = localVerdict ?? null;
-    row.localAxes = localAxes ?? null;
+    const { reviewId } = await created.json();
 
-    // Poll until finality or a terminal failure. No timeout means a hung case would hang the
-    // benchmark, so it gives up and says so rather than waiting forever.
-    const deadline = Date.now() + 20 * 60 * 1000;
+    const deadline = Date.now() + 25 * 60 * 1000;
     for (;;) {
-      const res = await fetch(`${api}/genlayer/reviews/${reviewId}`);
-      const review = await res.json();
+      const review = await (await fetch(`${api}/genlayer/reviews/${reviewId}`)).json();
       row.transactionHash = review.transactionHash ?? row.transactionHash;
 
       if (review.status === "FINALIZED") {
@@ -120,14 +124,15 @@ async function runCase(c) {
         break;
       }
       if (review.status === "FAILED") {
+        // A consensus breakdown is a real outcome and is reported as one. It is not a verdict.
         row.note = `review unavailable: ${review.errorCode ?? "unknown"}`;
         break;
       }
       if (Date.now() > deadline) {
-        row.note = "did not finalize within 20 minutes";
+        row.note = "did not finalize within 25 minutes";
         break;
       }
-      await new Promise((r) => setTimeout(r, 15_000));
+      await new Promise((r) => setTimeout(r, 20_000));
     }
   } catch (error) {
     row.note = `error: ${error.message}`;
@@ -137,10 +142,28 @@ async function runCase(c) {
   return row;
 }
 
+/**
+ * Which corpus cases have been staged and graded.
+ *
+ * Written by genlayer/smoke/stage-corpus.mjs, which runs as a second process against the
+ * store. Staging is deliberately NOT an HTTP endpoint: a route that accepts arbitrary content
+ * into a live, listed ASP is an attack surface this feature does not need.
+ */
+let stagedIndex = {};
+try {
+  stagedIndex = JSON.parse(readFileSync("genlayer/fixtures/staged.json", "utf8"));
+} catch {
+  console.error(
+    "\n  No genlayer/fixtures/staged.json. Run genlayer/smoke/stage-corpus.mjs first —\n" +
+      "  it grades each case with the live Tribunal so the comparison means something.\n",
+  );
+  process.exit(1);
+}
+
 const rows = [];
 for (const c of cases) {
   process.stdout.write(`  ${c.id} ... `);
-  const row = await runCase(c);
+  const row = await runCase(c, stagedIndex[c.id]);
   rows.push(row);
   console.log(row.finalized ? `${row.consensusDecision} (${Math.round(row.latencyMs / 1000)}s)` : `— ${row.note}`);
 }
