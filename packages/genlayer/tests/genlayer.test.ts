@@ -246,3 +246,33 @@ describe("reading a verdict back", () => {
     expect(normalizeFailureCodes([])).toEqual([]);
   });
 });
+
+describe("disclosing what the Tribunal could not check", () => {
+  it("says outright when the critic was unavailable", () => {
+    // The Tribunal leaves axes undefined when it could not reach the critic. Flattening that
+    // to {} would present a deterministic-only PASS as a fully graded one — a stronger claim
+    // than Occestra actually made, put in front of validators asked to judge that very claim.
+    const degraded = inputs();
+    delete (degraded.tribunal as { axes?: unknown }).axes;
+    degraded.tribunal.coverageGaps = ["CRITIQUE_UNAVAILABLE: provider responded 401"];
+
+    const snapshot = buildEvidenceSnapshot(degraded);
+    expect(snapshot.localTribunal.criticAvailable).toBe(false);
+    expect(snapshot.localTribunal.coverageGaps[0]).toContain("CRITIQUE_UNAVAILABLE");
+  });
+
+  it("reports a fully graded artifact as fully graded", () => {
+    const snapshot = buildEvidenceSnapshot(inputs());
+    expect(snapshot.localTribunal.criticAvailable).toBe(true);
+    expect(snapshot.localTribunal.axes).toEqual({ voice: 82 });
+  });
+
+  it("changes the evidence hash, so a degraded grade is not interchangeable with a full one", () => {
+    const full = buildEvidenceSnapshot(inputs());
+    const degraded = inputs();
+    delete (degraded.tribunal as { axes?: unknown }).axes;
+    expect(hashEvidenceSnapshot(buildEvidenceSnapshot(degraded))).not.toBe(
+      hashEvidenceSnapshot(full),
+    );
+  });
+});

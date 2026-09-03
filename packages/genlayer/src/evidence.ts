@@ -52,10 +52,12 @@ export interface EvidenceInputs {
   };
 
   tribunal: {
+    /** Undefined when the critic was unavailable — that distinction is carried, not flattened. */
     axes?: Readonly<Record<string, number>>;
     hardFailures?: readonly string[];
     issues?: readonly string[];
     repairs: number;
+    coverageGaps?: readonly string[];
   };
 
   /** The owner's explicit, recorded decision to publish this for consensus. */
@@ -139,6 +141,11 @@ export function buildEvidenceSnapshot(inputs: EvidenceInputs): EvidenceSnapshot 
       hardFailures: [...(inputs.tribunal.hardFailures ?? [])],
       issues: [...(inputs.tribunal.issues ?? [])],
       repairs: inputs.tribunal.repairs,
+      // The Tribunal leaves axes undefined when the critic could not be reached. An empty
+      // object would read as "graded, scored nothing", which is a different and flattering
+      // claim, so the distinction is stated outright.
+      criticAvailable: inputs.tribunal.axes !== undefined,
+      coverageGaps: [...(inputs.tribunal.coverageGaps ?? [])],
     },
 
     artifact: {

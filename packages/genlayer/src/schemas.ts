@@ -103,6 +103,15 @@ export const EvidenceSnapshotSchema = z
         hardFailures: z.array(z.string()),
         issues: z.array(z.string()),
         repairs: z.number().int().min(0),
+        /**
+         * False when the model critic could not be reached, so this verdict rests on the
+         * deterministic checks alone. Validators MUST be told: a PASS graded without a critic
+         * is a much weaker claim than one graded with it, and hiding that would ask them to
+         * adjudicate a confidence Occestra never actually had.
+         */
+        criticAvailable: z.boolean(),
+        /** What the Tribunal could not check, in its own words. */
+        coverageGaps: z.array(z.string()),
       })
       .strict(),
 

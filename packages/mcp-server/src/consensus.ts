@@ -184,6 +184,7 @@ export async function prepareConsensusReview(
       hardFailures: report.deterministic.filter((c) => c.hard && !c.passed).map((c) => c.id),
       issues: report.issues,
       repairs: report.repairs,
+      coverageGaps: report.coverageGaps,
     },
     publicForConsensus: true,
   });
