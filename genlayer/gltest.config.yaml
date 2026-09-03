@@ -1,24 +1,16 @@
-# gltest reads this to pick a network. Direct-mode tests need none of it — they run offline
-# against mocks — but without the file gltest warns on every run and defaults to a localnet
-# RPC that is not running here.
-networks:
-  default: localnet
-
-  localnet:
-    url: http://127.0.0.1:4000/api
-    accounts: []
-
-  # Bradbury and Asimov are the SAME chain (id 4221): both RPCs report an identical chain id
-  # and block height. Asimov is the current name. Deployment targets are set in P7; nothing
-  # here should point at a live network during direct testing.
-  testnet_bradbury:
-    id: 4221
-    url: https://rpc-bradbury.genlayer.com
-
-  testnet_asimov:
-    id: 4221
-    url: https://rpc-asimov.genlayer.com
-
+# gltest configuration.
+#
+# Only `paths` is set, and that is deliberate. `localnet`, `studionet`, `testnet_asimov` and
+# `testnet_bradbury` are PRESET networks gltest already knows; declaring a `networks:` block
+# here REPLACES that preset list rather than extending it, and redefining one sends it down
+# the custom-network path which demands `accounts` and `chain_type` and dies on an empty list.
+#
+# Both mistakes shipped once in this branch and broke `gltest` outright — first with an empty
+# accounts list, then with a networks block that emptied the preset list. Overriding nothing
+# is correct here: direct tests need no network at all, because every web fetch, render and
+# LLM call is mocked and strict_mocks turns an unmocked call into a failure.
+#
+# Deployment targets are passed on the command line (`--network testnet_bradbury`), not set here.
 paths:
   contracts: contracts
   artifacts: artifacts
