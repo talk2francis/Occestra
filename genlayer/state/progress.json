@@ -6,7 +6,7 @@
     "name": "GenLayer Bradbury testnet",
     "chainId": 4221
   },
-  "currentPhase": "P6",
+  "currentPhase": "P7",
   "phases": [
     {
       "id": "P1",
@@ -112,8 +112,8 @@
     {
       "id": "P6",
       "title": "Public consensus UI in Amethyst Daylight",
-      "status": "in_progress",
-      "commit": null,
+      "status": "complete",
+      "commit": "128175db50f36079a0edfc1bea73657e2d6dc834",
       "commitMessage": "feat(web): surface GenLayer consensus adjudication",
       "acceptance": [
         "/consensus explains the CREATE-GRADE / ADJUDICATE / PROVE trust split",
@@ -132,7 +132,7 @@
     {
       "id": "P7",
       "title": "Bradbury deployment + real smoke reviews",
-      "status": "pending",
+      "status": "in_progress",
       "commit": null,
       "commitMessage": "feat(genlayer): deploy quality adjudicator to Bradbury",
       "acceptance": [
