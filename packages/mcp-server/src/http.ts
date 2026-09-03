@@ -657,6 +657,12 @@ export function buildApp(ctx: AppContext): Express {
   // review is a ruling about specific bytes, and regenerating them would quietly change what
   // was adjudicated after the fact.
 
+  // Real counts, straight from the table. /consensus renders these and shows nothing when
+  // they are zero, rather than seeding a number that makes the feature look used.
+  app.get("/genlayer/stats", (_req, res) => {
+    res.json({ ...ctx.store.consensusStats(), asOf: new Date().toISOString() });
+  });
+
   // Every review an artifact has ever had, oldest first. This is the endpoint that shows
   // Occestra being overturned and then fixing it — v1 PASS/OVERTURNED, v2 PASS/UPHELD — and
   // it reads the history rather than reconstructing it, because none of it is ever rewritten.
