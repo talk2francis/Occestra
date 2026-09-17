@@ -1,4 +1,4 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
 """Independent GenLayer quality adjudication for Occestra artifacts.
 
 Occestra grades its own work. The Tribunal is fast, versioned and public, but it is still
@@ -15,7 +15,12 @@ it never re-grades from scratch, and it never silently converts a failed review 
 
 import json
 from dataclasses import dataclass
-from genlayer import *
+import genlayer as gl
+
+# The runtime's current decorator lives at gl.storage.allow. Keeping a local name also makes
+# the v0.11 RC linter recognize the storage-safe dataclass while preserving the exact runtime
+# behavior of the official examples.
+allow_storage = gl.storage.allow
 
 
 # Only Occestra publishes evidence. Letting a caller name any URL would turn every validator
@@ -239,16 +244,16 @@ class ConsensusReview:
     critical_failure: str
     failure_codes_json: str
     requester: str
-    created_at: u64
+    created_at: gl.u64
 
 
-class OccestraQualityAdjudicator(gl.Contract):
-    reviews: TreeMap[str, ConsensusReview]
-    review_ids_by_artifact: TreeMap[str, str]
-    review_counter: u256
+class OccestraQualityAdjudicator(gl.contract.Contract):
+    reviews: gl.storage.TreeMap[str, ConsensusReview]
+    review_ids_by_artifact: gl.storage.TreeMap[str, str]
+    review_counter: gl.u256
 
     def __init__(self) -> None:
-        self.review_counter = u256(0)
+        self.review_counter = gl.u256(0)
 
     def _validate_inputs(
         self,
@@ -283,7 +288,7 @@ class OccestraQualityAdjudicator(gl.Contract):
         profile: str,
         oqs_version: str,
         local_verdict: str,
-        created_at: u64,
+        created_at: gl.u64,
     ) -> None:
         self._validate_inputs(
             review_id, evidence_url, artifact_hash, profile, oqs_version, local_verdict
@@ -329,7 +334,7 @@ class OccestraQualityAdjudicator(gl.Contract):
         # Latest review wins the artifact index; every review stays addressable by its own id,
         # so a re-review after repair never erases the ruling it replaced.
         self.review_ids_by_artifact[artifact_hash] = review_id
-        self.review_counter += u256(1)
+        self.review_counter += gl.u256(1)
 
     @gl.public.view
     def get_review(self, review_id: str) -> dict:

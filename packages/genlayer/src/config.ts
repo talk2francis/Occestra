@@ -9,7 +9,7 @@
  */
 import { chains } from "genlayer-js";
 
-export type GenLayerNetwork = "bradbury" | "asimov" | "localnet" | "studionet";
+export type GenLayerNetwork = "bradbury" | "asimov" | "localnet" | "studionet" | "studio-dev";
 
 export interface GenLayerConfig {
   network: GenLayerNetwork;
@@ -19,6 +19,8 @@ export interface GenLayerConfig {
   contractAddress?: `0x${string}`;
   /** Present only when this process is allowed to submit. Never leaves the server. */
   submitterPrivateKey?: `0x${string}`;
+  /** Canonical explorer when an SDK preview chain intentionally omits one. */
+  explorerUrl?: string;
 }
 
 /**
@@ -31,7 +33,12 @@ const CHAINS = {
   asimov: chains.testnetAsimov,
   localnet: chains.localnet,
   studionet: chains.studionet,
+  "studio-dev": chains.studioDevnet,
 } as const;
+
+const EXPLORERS: Partial<Record<GenLayerNetwork, string>> = {
+  "studio-dev": "https://explorer-studio-dev.genlayer.com",
+};
 
 function isNetwork(value: string): value is GenLayerNetwork {
   return value in CHAINS;
@@ -87,6 +94,7 @@ export function readGenLayerConfig(env: NodeJS.ProcessEnv = process.env): GenLay
     ...(submitterPrivateKey
       ? { submitterPrivateKey: submitterPrivateKey as `0x${string}` }
       : {}),
+    ...(EXPLORERS[rawNetwork] ? { explorerUrl: EXPLORERS[rawNetwork] } : {}),
   };
 }
 
@@ -113,4 +121,8 @@ export function canSubmitConsensusReviews(env: NodeJS.ProcessEnv = process.env):
 /** The public network label stored on reviews and shown in the UI. */
 export function networkLabel(config: GenLayerConfig): string {
   return `genlayer-${config.network}`;
+}
+
+export function networkChainId(config: GenLayerConfig): number {
+  return config.chain.id;
 }

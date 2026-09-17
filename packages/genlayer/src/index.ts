@@ -4,3 +4,4 @@ export * from "./evidence.js";
 export * from "./client.js";
 export * from "./reviews.js";
 export * from "./repair.js";
+export { isSuccessful as isConsensusExecutionSuccessful } from "genlayer-js";

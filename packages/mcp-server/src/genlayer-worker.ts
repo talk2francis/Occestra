@@ -44,6 +44,7 @@ export interface ConsensusWorkerConfig {
   chain?: {
     submit: typeof submitConsensusReview;
     status: (config: GenLayerConfig, hash: string) => Promise<string | undefined>;
+    successful?: (config: GenLayerConfig, hash: string) => Promise<boolean>;
     read: typeof getConsensusReview;
   };
 }
@@ -90,6 +91,11 @@ export class ConsensusWorker {
           // Only running it against the chain surfaced this.
           const raw = tx as { status?: number | string; statusName?: string } | undefined;
           return raw?.statusName ?? (typeof raw?.status === "string" ? raw.status : undefined);
+        },
+        successful: async (config: GenLayerConfig, hash: string) => {
+          const { createReadClient, isConsensusExecutionSuccessful } = await import("@occestra/genlayer");
+          const tx = await createReadClient(config).getTransaction({ hash: hash as never });
+          return isConsensusExecutionSuccessful(tx);
         },
         read: getConsensusReview,
       }
@@ -166,6 +172,11 @@ export class ConsensusWorker {
       }
       // Not an error — just not there yet. Backoff keeps us off the RPC.
       this.cfg.store.backoffConsensusReview(review.reviewId, Date.now() + BASE_BACKOFF_MS);
+      return;
+    }
+
+    if (this.chain.successful && !(await this.chain.successful(this.cfg.config, review.transactionHash!))) {
+      this.fail(review, "EXECUTION_FAILED");
       return;
     }
 

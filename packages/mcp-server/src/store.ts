@@ -157,6 +157,7 @@ export interface ConsensusReviewRow {
   evidenceJson: string;
   evidenceHash: string;
   network: string;
+  chainId?: number;
   contractAddress?: string;
   transactionHash?: string;
   status: string;
@@ -413,6 +414,7 @@ export class Store {
         evidence_hash        TEXT NOT NULL,
         public_for_consensus INTEGER NOT NULL,
         network              TEXT NOT NULL,
+        chain_id             INTEGER,
         contract_address     TEXT,
         transaction_hash     TEXT,
         status               TEXT NOT NULL,
@@ -439,6 +441,10 @@ export class Store {
       CREATE INDEX IF NOT EXISTS idx_artifacts_pack ON artifacts(pack_id);
       CREATE INDEX IF NOT EXISTS idx_seals_unanchored ON seals_pending(anchored_at);
     `);
+    const consensusColumns = this.db.pragma("table_info(consensus_reviews)") as Array<{ name: string }>;
+    if (!consensusColumns.some((column) => column.name === "chain_id")) {
+      this.db.exec("ALTER TABLE consensus_reviews ADD COLUMN chain_id INTEGER");
+    }
   }
 
   /* ------------------------------------------------------------------ packs */
@@ -1560,11 +1566,11 @@ export class Store {
       .prepare(
         `INSERT INTO consensus_reviews
            (review_id, artifact_id, keepsake_id, artifact_hash, profile, oqs_version,
-            local_verdict, evidence_json, evidence_hash, public_for_consensus, network,
+            local_verdict, evidence_json, evidence_hash, public_for_consensus, network, chain_id,
             contract_address, transaction_hash, status, decision, score_band, critical_failure,
             failure_codes_json, submitted_at, finalized_at, error_code, attempts,
             next_attempt_at, artifact_version, repaired_from, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         row.reviewId,
@@ -1578,6 +1584,7 @@ export class Store {
         row.evidenceHash,
         1,
         row.network,
+        row.chainId ?? null,
         row.contractAddress ?? null,
         null,
         "QUEUED",
@@ -1698,6 +1705,19 @@ export class Store {
     return this.consensusReviewsForArtifact(artifactId);
   }
 
+  /** Most recent real ruling for the public consensus page, preferring Studio-dev evidence. */
+  featuredConsensusReview(): ConsensusReviewRow | undefined {
+    const row = this.db
+      .prepare(
+        `SELECT * FROM consensus_reviews
+          WHERE decision IS NOT NULL AND status IN ('ACCEPTED', 'FINALIZED')
+          ORDER BY CASE WHEN chain_id = 61997 THEN 0 ELSE 1 END, created_at DESC
+          LIMIT 1`,
+      )
+      .get() as Record<string, unknown> | undefined;
+    return row ? this.toConsensusReviewRow(row) : undefined;
+  }
+
   /** How many consensus-triggered repairs this artifact has already had. Bounds the loop. */
   consensusRepairCount(artifactId: string): number {
     const row = this.db
@@ -1738,6 +1758,7 @@ export class Store {
       evidenceJson: row["evidence_json"] as string,
       evidenceHash: row["evidence_hash"] as string,
       network: row["network"] as string,
+      ...(row["chain_id"] ? { chainId: Number(row["chain_id"]) } : {}),
       ...(row["contract_address"] ? { contractAddress: row["contract_address"] as string } : {}),
       ...(row["transaction_hash"] ? { transactionHash: row["transaction_hash"] as string } : {}),
       status: row["status"] as string,

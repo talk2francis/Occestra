@@ -19,6 +19,7 @@ import {
   type OnChainReview,
   type ScoreBand,
 } from "./schemas.js";
+import { isSuccessful } from "genlayer-js";
 import type { TransactionHash, TransactionStatus } from "genlayer-js/types";
 import type { GenLayerConfig } from "./config.js";
 import { createReadClient, createWriteClient, type GenLayerReadClient } from "./client.js";
@@ -101,7 +102,7 @@ export async function submitConsensusReview(
 
   const client = createWriteClient(config);
   try {
-    const transactionHash = await client.writeContract({
+    const call = {
       address: config.contractAddress,
       functionName: "request_review",
       args: [
@@ -114,7 +115,11 @@ export async function submitConsensusReview(
         BigInt(Math.floor(new Date(snapshot.createdAt).getTime() / 1000)),
       ],
       value: 0n,
-    });
+    };
+    // Consensus v0.6 is fee funded. Simulation observes this exact method and the SDK combines
+    // that usage with the live Studio fee policy; sending a v1-style fee-less write is invalid.
+    const fees = await client.estimateTransactionFeesForWrite(call);
+    const transactionHash = await client.writeContract({ ...call, fees });
     return { transactionHash: String(transactionHash), status: "SUBMITTED" };
   } catch (cause) {
     // Wallet and RPC errors carry endpoints, nonces and sometimes key material in their
@@ -147,6 +152,39 @@ export function waitForConsensusAccepted(
   options?: { interval?: number; retries?: number },
 ) {
   return waitFor(config, transactionHash, "ACCEPTED", options);
+}
+
+/** Studio v0.6 reaches a usable ruling at DECIDED, before fee settlement is finalized. */
+export async function waitForConsensusDecision(
+  config: GenLayerConfig,
+  transactionHash: string,
+  options?: { interval?: number; retries?: number },
+) {
+  const transaction = await createReadClient(config).waitForDecision({
+    hash: transactionHash as TransactionHash,
+    ...(options?.interval === undefined ? {} : { interval: options.interval }),
+    ...(options?.retries === undefined ? {} : { retries: options.retries }),
+  });
+  if (!isSuccessful(transaction)) {
+    throw new GenLayerSubmissionError("EXECUTION_FAILED", "GenLayer reached a decision but contract execution failed");
+  }
+  return transaction;
+}
+
+export async function waitForConsensusFinalization(
+  config: GenLayerConfig,
+  transactionHash: string,
+  options?: { interval?: number; retries?: number },
+) {
+  const transaction = await createReadClient(config).waitForFinalization({
+    hash: transactionHash as TransactionHash,
+    ...(options?.interval === undefined ? {} : { interval: options.interval }),
+    ...(options?.retries === undefined ? {} : { retries: options.retries }),
+  });
+  if (!isSuccessful(transaction)) {
+    throw new GenLayerSubmissionError("EXECUTION_FAILED", "finalized GenLayer execution was unsuccessful");
+  }
+  return transaction;
 }
 
 export function waitForConsensusFinalized(

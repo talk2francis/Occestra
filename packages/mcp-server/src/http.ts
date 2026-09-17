@@ -10,7 +10,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import express, { type Express, type Request, type Response } from "express";
 import { rubricAsJson, rubricAsMarkdown } from "@occestra/tribunal";
 import { HOUSE_STYLES } from "@occestra/providers";
-import { networkLabel } from "@occestra/genlayer";
+import { networkChainId, networkLabel } from "@occestra/genlayer";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
 import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun } from "./demo.js";
@@ -44,6 +44,8 @@ export interface AppContext extends ServerContext {
   demoDailyCap?: number;
   /** Free runs one caller may take per day. Default 2 — enough to try it, not to farm it. */
   demoPerIpCap?: number;
+  /** Capability held by the production caller that may publish an artifact to GenLayer. */
+  consensusRequestSecret?: string;
   /**
    * How long a paid response may take before it hands back a job handle instead of a pack.
    * Defaults to MARKETPLACE_BUDGET_MS; overridden in tests, and by OCE_MARKETPLACE_BUDGET_MS
@@ -663,13 +665,44 @@ export function buildApp(ctx: AppContext): Express {
     res.json({ ...ctx.store.consensusStats(), asOf: new Date().toISOString() });
   });
 
+  app.get("/genlayer/featured", (_req, res) => {
+    const review = ctx.store.featuredConsensusReview();
+    if (!review) {
+      res.status(404).json({ error: "no completed consensus review is available" });
+      return;
+    }
+    const explorerBase = review.chainId === 61997
+      ? "https://explorer-studio-dev.genlayer.com"
+      : review.chainId === 4221 || review.network.includes("bradbury") || review.network.includes("asimov")
+        ? "https://explorer-bradbury.genlayer.com"
+        : undefined;
+    res.json({
+      reviewId: review.reviewId,
+      artifactId: review.artifactId,
+      localVerdict: review.localVerdict,
+      oqsVersion: review.oqsVersion,
+      network: review.network,
+      ...(review.chainId ? { chainId: review.chainId } : {}),
+      status: review.status,
+      decision: review.decision,
+      ...(review.scoreBand ? { scoreBand: review.scoreBand } : {}),
+      failureCodes: review.failureCodes,
+      ...(review.criticalFailure ? { criticalFailure: review.criticalFailure } : {}),
+      ...(review.contractAddress ? { intelligentContractAddress: review.contractAddress } : {}),
+      ...(review.transactionHash ? { transactionHash: review.transactionHash } : {}),
+      evidenceUrl: `${ctx.publicBaseUrl}/genlayer/evidence/${encodeURIComponent(review.reviewId)}`,
+      ...(explorerBase && review.transactionHash ? { explorerUrl: `${explorerBase}/tx/${review.transactionHash}` } : {}),
+      ...(review.finalizedAt ? { finalizedAt: review.finalizedAt } : {}),
+    });
+  });
+
   // Every review an artifact has ever had, oldest first. This is the endpoint that shows
   // Occestra being overturned and then fixing it — v1 PASS/OVERTURNED, v2 PASS/UPHELD — and
   // it reads the history rather than reconstructing it, because none of it is ever rewritten.
-  app.get("/genlayer/lineage/:artifactId", (req, res) => {
-    const reviews = ctx.store.consensusLineage(String(req.params["artifactId"] ?? ""));
+  const sendLineage = (keepsakeId: string | undefined, artifactId: string, res: Response) => {
+    const reviews = ctx.store.consensusLineage(artifactId).filter((review) => !keepsakeId || review.keepsakeId === keepsakeId);
     res.json({
-      artifactId: String(req.params["artifactId"] ?? ""),
+      ...(keepsakeId ? { keepsakeId } : {}), artifactId,
       reviews: reviews.map((review) => ({
         reviewId: review.reviewId,
         artifactVersion: review.artifactVersion,
@@ -684,6 +717,22 @@ export function buildApp(ctx: AppContext): Express {
         ...(review.finalizedAt ? { finalizedAt: review.finalizedAt } : {}),
       })),
     });
+  };
+
+  app.get("/genlayer/lineage/:artifactId", (req, res) => {
+    sendLineage(undefined, String(req.params["artifactId"] ?? ""), res);
+  });
+
+  // The page-scoped form prevents an artifact id from one public pack being used to discover
+  // lineage belonging to another pack with the same local artifact id.
+  app.get("/k/:keepsakeId/genlayer/lineage/:artifactId", (req, res) => {
+    const keepsakeId = String(req.params["keepsakeId"] ?? "");
+    const pack = ctx.store.getPack(keepsakeId);
+    if (!pack || ctx.store.isPrivate(keepsakeId) || !pack.artifacts.some((artifact) => artifact.id === req.params["artifactId"])) {
+      res.status(404).json({ error: "no such public keepsake or artifact" });
+      return;
+    }
+    sendLineage(keepsakeId, String(req.params["artifactId"] ?? ""), res);
   });
 
   // Ask for an independent review. Returns immediately with a review id: GenLayer finality
@@ -702,6 +751,14 @@ export function buildApp(ctx: AppContext): Express {
     }
     if (!ctx.genlayer) {
       res.status(503).json({ error: "independent review is not configured on this deployment" });
+      return;
+    }
+    // This endpoint makes a permanent public-chain request. Knowing a public /k URL is never
+    // authority to make that request: the production caller must present the server-held
+    // capability. We audit only its one-way actor reference, never the capability itself.
+    const capability = req.get("x-oce-consensus-capability");
+    if (!ctx.consensusRequestSecret || capability !== ctx.consensusRequestSecret) {
+      res.status(403).json({ error: "an authenticated owner capability is required" });
       return;
     }
 
@@ -734,15 +791,24 @@ export function buildApp(ctx: AppContext): Express {
         evidenceJson: prepared.evidenceJson,
         evidenceHash: prepared.evidenceHash,
         network: networkLabel(ctx.genlayer),
+        chainId: networkChainId(ctx.genlayer),
         ...(ctx.genlayer.contractAddress ? { contractAddress: ctx.genlayer.contractAddress } : {}),
       } as Parameters<typeof ctx.store.createConsensusReview>[0]);
+      ctx.store.audit("consensus_review_requested", {
+        packId: keepsakeId,
+        actor: ctx.store.actorHash(capability),
+        detail: `artifact:${artifactId}; authorization:production_capability`,
+      });
 
       res.status(202).json({
         reviewId,
         status: "QUEUED",
         network: networkLabel(ctx.genlayer),
+        chainId: networkChainId(ctx.genlayer),
         evidenceUrl: `/genlayer/evidence/${reviewId}`,
         poll: `/genlayer/reviews/${reviewId}`,
+        caller: "production owner capability",
+        authorization: "verified",
       });
     } catch (error) {
       if (error instanceof ConsensusRefused) {
@@ -809,6 +875,7 @@ export function buildApp(ctx: AppContext): Express {
       evidenceHash: review.evidenceHash,
       evidenceUrl: `/genlayer/evidence/${encodeURIComponent(review.reviewId)}`,
       network: review.network,
+      ...(review.chainId ? { chainId: review.chainId } : {}),
       ...(review.contractAddress ? { intelligentContractAddress: review.contractAddress } : {}),
       ...(review.transactionHash ? { transactionHash: review.transactionHash } : {}),
       status: review.status,

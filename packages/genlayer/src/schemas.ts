@@ -165,6 +165,7 @@ export const ConsensusReviewSchema = z
     publicForConsensus: z.literal(true),
 
     network: z.string(),
+    chainId: z.number().int().positive().optional(),
     intelligentContractAddress: Address.optional(),
     transactionHash: z.string().optional(),
 
