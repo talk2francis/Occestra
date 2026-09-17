@@ -11,6 +11,7 @@ import { GuillocheRing } from "@/components/ui/guilloche";
 import { SealMark } from "@/components/ui/seal-mark";
 import {
   STYLE_NAMES,
+  fetchConsensusLineage,
   fetchKeepsake,
   isPrivatePack,
   type PrivatePack,
@@ -57,6 +58,8 @@ export default async function KeepsakePage({ params }: { params: Promise<{ id: s
   if (isPrivatePack(pack)) return <PrivateKeepsakePage pack={pack} />;
 
   const styleId = pack.artifacts.find((artifact) => artifact.styleId)?.styleId;
+  const lineages = await Promise.all(pack.artifacts.map(async (artifact) => [artifact.id, await fetchConsensusLineage(pack.id, artifact.id)] as const));
+  const reviewsByArtifact = new Map(lineages);
   const created = pack.createdAt.slice(0, 10);
 
   return (
@@ -135,7 +138,24 @@ export default async function KeepsakePage({ params }: { params: Promise<{ id: s
         <h2 className="text-kicker text-amethyst">The work</h2>
         <div className="mt-4 space-y-4">
           {pack.artifacts.map((artifact) => (
-            <ArtifactView key={artifact.id} artifact={artifact} />
+            <div key={artifact.id}>
+              <ArtifactView artifact={artifact} />
+              {(reviewsByArtifact.get(artifact.id)?.length ?? 0) > 0 && (
+                <div className="mt-3 rounded-xl border border-amethyst/20 bg-amethyst/5 p-4">
+                  <p className="text-kicker text-amethyst">Independent GenLayer review</p>
+                  <ol className="mt-2 space-y-2 text-[0.8rem] text-ink/70">
+                    {reviewsByArtifact.get(artifact.id)!.map((review) => (
+                      <li key={review.reviewId}>
+                        v{review.artifactVersion} · local {review.localVerdict} · {review.status}
+                        {review.decision ? ` · ${review.decision}` : ""}
+                        {review.repairedFrom ? ` · repaired from ${review.repairedFrom}` : ""}
+                        {review.failureCodes.length ? ` · ${review.failureCodes.join(", ")}` : ""}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </section>

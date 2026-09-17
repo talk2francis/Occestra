@@ -32,6 +32,7 @@ def _renderable_screenshots(monkeypatch):
     from gltest.direct import wasi_mock
 
     original = wasi_mock._handle_web_render
+    original_llm = wasi_mock._handle_llm_request
     png = _tiny_png()
 
     def patched(vm, data):
@@ -43,4 +44,15 @@ def _renderable_screenshots(monkeypatch):
         return result
 
     monkeypatch.setattr(wasi_mock, "_handle_web_render", patched)
+
+    # genlayer-test 0.30.0-rc.2 parses mocked JSON into a dict before returning it, while the
+    # v0.6-rc5 SDK correctly expects the nondeterministic host boundary to return JSON text and
+    # performs the parse itself. Preserve the real boundary shape until the RC harness catches up.
+    def patched_llm(vm, data):
+        result = original_llm(vm, data)
+        if data.get("response_format") == "json" and isinstance(result.get("ok"), (dict, list)):
+            return {"ok": __import__("json").dumps(result["ok"])}
+        return result
+
+    monkeypatch.setattr(wasi_mock, "_handle_llm_request", patched_llm)
     yield

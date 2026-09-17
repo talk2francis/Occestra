@@ -4,6 +4,7 @@ import { OQS_VERSION } from "@occestra/tribunal";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Badge } from "@/components/ui/badge";
 import { ConsensusPanel } from "@/components/consensus-panel";
+import type { ConsensusReviewView } from "@/components/consensus-panel";
 
 export const metadata: Metadata = {
   title: "Our grader doesn't get the final word",
@@ -35,6 +36,16 @@ async function fetchStats(): Promise<ConsensusStats | undefined> {
   }
 }
 
+async function fetchFeaturedReview(): Promise<ConsensusReviewView | undefined> {
+  try {
+    const res = await fetch(`${INTERNAL}/genlayer/featured`, { cache: "no-store" });
+    if (!res.ok) return undefined;
+    return (await res.json()) as ConsensusReviewView;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The three layers, and what each is actually responsible for. */
 const LAYERS = [
   {
@@ -55,7 +66,7 @@ const LAYERS = [
 ];
 
 export default async function ConsensusPage() {
-  const stats = await fetchStats();
+  const [stats, featured] = await Promise.all([fetchStats(), fetchFeaturedReview()]);
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-12 sm:px-8 sm:py-16">
@@ -116,29 +127,19 @@ export default async function ConsensusPage() {
       {/* ------------------------------------------------------- what it looks like */}
 
       <section className="mt-14">
-        <SectionHeading kicker="on a pack page" lede="What you see when a review has been made, and disagreed with us.">
-          The panel
+        <SectionHeading kicker="on chain" lede="A completed review from Occestra's durable store, with its frozen evidence and explorer proof.">
+          Latest independent ruling
         </SectionHeading>
 
         <div className="mt-8">
-          <ConsensusPanel
-            review={{
-              reviewId: "oce_gl_example_review",
-              status: "FINALIZED",
-              decision: "OVERTURNED",
-              scoreBand: "50-69",
-              criticalFailure: "LEGIBILITY",
-              failureCodes: ["LEGIBILITY", "BRIEF_MISMATCH"],
-              localVerdict: "PASS",
-              oqsVersion: OQS_VERSION,
-              network: "genlayer-bradbury",
-            }}
-          />
+          {featured ? (
+            <ConsensusPanel review={featured} />
+          ) : (
+            <p className="max-w-[54ch] text-[0.95rem] leading-relaxed text-ink/60">
+              No completed review is available to display yet.
+            </p>
+          )}
         </div>
-        <p className="mt-3 text-[0.8rem] text-ink/45">
-          An illustration of the layout, not a real review. Real reviews carry a contract
-          address and a transaction you can open on the explorer.
-        </p>
       </section>
 
       {/* -------------------------------------------------------------- counters */}

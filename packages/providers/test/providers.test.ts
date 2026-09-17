@@ -1,4 +1,7 @@
 import sharp from "sharp";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
@@ -214,6 +217,23 @@ describe("cost governor", () => {
     now = Date.parse("2026-07-13T00:01:00.000Z");
     expect(() => governor.checkLlm(0.5)).not.toThrow();
     expect(governor.usage.usd).toBe(0);
+  });
+
+  it("reserves concurrent spend before calls and survives a restart", () => {
+    const dir = mkdtempSync(join(tmpdir(), "occestra-cost-"));
+    const file = join(dir, "costs.json");
+    try {
+      const first = new CostGovernor({ dailyImageCap: 10, dailyLlmUsdCap: 1 }, Date.now, file);
+      const reservation = first.reserveLlm(0.75);
+      expect(() => first.reserveLlm(0.3)).toThrow(CapExceeded);
+      first.settleLlm(reservation, 0.6);
+
+      const restarted = new CostGovernor({ dailyImageCap: 10, dailyLlmUsdCap: 1 }, Date.now, file);
+      expect(restarted.usage.usd).toBe(0.6);
+      expect(() => restarted.reserveLlm(0.5)).toThrow(CapExceeded);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

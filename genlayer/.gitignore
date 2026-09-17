@@ -1,4 +1,5 @@
 .venv/
+.venv-studio-next/
 artifacts/
 __pycache__/
 *.pyc

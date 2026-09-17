@@ -64,6 +64,20 @@ export interface PublicPack {
   seal?: PublicSeal;
 }
 
+export interface ConsensusReviewSummary {
+  reviewId: string;
+  artifactVersion: number;
+  repairedFrom?: string;
+  localVerdict: string;
+  status: string;
+  decision?: string;
+  scoreBand?: string;
+  failureCodes: string[];
+  artifactHash: string;
+  createdAt: string;
+  finalizedAt?: string;
+}
+
 /** The deliberately sparse shape returned for a private Remember pack. */
 export interface PrivatePack {
   id: string;
@@ -157,6 +171,16 @@ export async function fetchKeepsake(id: string): Promise<KeepsakePack | undefine
   } catch {
     return undefined;
   }
+}
+
+/** Persisted independent-review history for this exact public pack artifact. */
+export async function fetchConsensusLineage(keepsakeId: string, artifactId: string): Promise<ConsensusReviewSummary[]> {
+  try {
+    const res = await fetch(`${INTERNAL}/k/${encodeURIComponent(keepsakeId)}/genlayer/lineage/${encodeURIComponent(artifactId)}`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { reviews?: ConsensusReviewSummary[] };
+    return Array.isArray(body.reviews) ? body.reviews : [];
+  } catch { return []; }
 }
 
 /** leaf = keccak256(abi.encode(keccak256(bytes(keepsakeId)), manifestHash, packKind, createdAt)) */

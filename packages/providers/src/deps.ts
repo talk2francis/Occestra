@@ -38,6 +38,7 @@ export interface ProviderEnv {
   OCE_PLACES_KEY?: string;
   OCE_DAILY_IMAGE_CAP?: string;
   OCE_DAILY_LLM_USD_CAP?: string;
+  OCE_COST_LEDGER_PATH?: string;
   OCE_ANTHROPIC_MODEL?: string;
   OCE_OPENAI_MODEL?: string;
   OCE_OPENAI_IMAGE_MODEL?: string;
@@ -155,6 +156,7 @@ export function buildDeps(env: ProviderEnv, options: BuildDepsOptions = {}): Bui
       dailyLlmUsdCap: numberOr(env.OCE_DAILY_LLM_USD_CAP, DEFAULT_LIMITS.dailyLlmUsdCap),
     },
     now,
+    env.OCE_COST_LEDGER_PATH,
   );
 
   const routerEnv = { ...env, ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}) };

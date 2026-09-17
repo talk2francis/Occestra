@@ -1,0 +1,33 @@
+{
+  "source": {
+    "network": "studio-dev",
+    "chainId": 61997,
+    "observedAt": "2026-09-17T13:42:00Z",
+    "sdk": "genlayer-js@2.0.0-rc.1",
+    "note": "Deployment profile came from Studio-dev live fee policy. request_review was measured by simulating the exact production application call for review oce_gl_dfd603e54b4c4b20964b."
+  },
+  "deploy": {
+    "leaderTimeunitsAllocation": "100",
+    "validatorTimeunitsAllocation": "200",
+    "appealRounds": "0",
+    "executionBudgetPerRound": "25000000000000000",
+    "rotations": ["3"],
+    "maxPriceGenPerTimeUnit": "2",
+    "storageFeeMaxGasPrice": "300000000",
+    "receiptFeeMaxGasPrice": "300000000"
+  },
+  "methods": {
+    "request_review": {
+      "leaderTimeunitsAllocation": "100",
+      "validatorTimeunitsAllocation": "200",
+      "appealRounds": "0",
+      "executionBudgetPerRound": "197605200000000",
+      "executionConsumed": "82339000000000",
+      "totalMessageFees": "0",
+      "rotations": ["3"],
+      "maxPriceGenPerTimeUnit": "2",
+      "storageFeeMaxGasPrice": "300000000",
+      "receiptFeeMaxGasPrice": "300000000"
+    }
+  }
+}

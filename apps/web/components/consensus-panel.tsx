@@ -35,6 +35,7 @@ export interface ConsensusReviewView {
   localVerdict: "PASS" | "FAIL";
   oqsVersion: string;
   network: string;
+  chainId?: number;
   intelligentContractAddress?: string;
   transactionHash?: string;
   artifactVersion?: number;
@@ -42,6 +43,7 @@ export interface ConsensusReviewView {
   createdAt?: string;
   finalizedAt?: string;
   explorerUrl?: string;
+  evidenceUrl?: string;
 }
 
 /** Headline and supporting line for each state. Plain language, no hedging in either direction. */
@@ -203,6 +205,7 @@ export function ConsensusPanel({
       {review.status !== "NOT_REQUESTED" && (
         <dl className="mt-5 border-t border-ink/8 pt-4">
           <Row label="Network">{review.network}</Row>
+          {review.chainId && <Row label="Chain ID">{review.chainId}</Row>}
           <Row label="Review id">{review.reviewId}</Row>
           <Row label="OQS">v{review.oqsVersion}</Row>
           {review.scoreBand && <Row label="Score band">{review.scoreBand}</Row>}
@@ -223,6 +226,13 @@ export function ConsensusPanel({
               ) : (
                 review.transactionHash
               )}
+            </Row>
+          )}
+          {review.evidenceUrl && (
+            <Row label="Frozen evidence">
+              <a className="text-amethyst underline decoration-amethyst/30 underline-offset-2" href={review.evidenceUrl} rel="noreferrer">
+                Open snapshot
+              </a>
             </Row>
           )}
           {review.finalizedAt && <Row label="Finalized">{review.finalizedAt}</Row>}

@@ -59,7 +59,7 @@ export function explorerTransactionUrl(
   config: GenLayerConfig,
   transactionHash: string,
 ): string | undefined {
-  const base = config.chain.blockExplorers?.default?.url;
+  const base = config.explorerUrl ?? config.chain.blockExplorers?.default?.url;
   if (!base) return undefined;
   return `${base.replace(/\/$/, "")}/tx/${transactionHash}`;
 }
@@ -68,7 +68,7 @@ export function explorerAddressUrl(
   config: GenLayerConfig,
   address: string,
 ): string | undefined {
-  const base = config.chain.blockExplorers?.default?.url;
+  const base = config.explorerUrl ?? config.chain.blockExplorers?.default?.url;
   if (!base) return undefined;
   return `${base.replace(/\/$/, "")}/address/${address}`;
 }
