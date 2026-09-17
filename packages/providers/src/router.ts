@@ -47,6 +47,10 @@ const IMAGE_USD: Record<ImageQuality, { square: number; oblong: number }> = {
 };
 
 const DEFAULT_IMAGE_QUALITY: ImageQuality = "high";
+// A conservative reservation made before any text or vision request. Actual provider usage
+// replaces it after the response. This closes the old race where every concurrent request
+// checked a zero-dollar estimate and only recorded spend after the money was gone.
+const MODEL_CALL_RESERVATION_USD = 0.1;
 
 export function imageCostUsd(size: string, quality: ImageQuality = DEFAULT_IMAGE_QUALITY): number {
   const [width, height] = size.split("x").map(Number);
@@ -395,19 +399,20 @@ export class ModelRouter implements TextModelPort {
       throw new Error("no text model is configured — set ANTHROPIC_API_KEY or OPENAI_API_KEY");
     }
 
-    this.governor.checkLlm();
+    const reserved = this.governor.reserveLlm(MODEL_CALL_RESERVATION_USD);
 
     let lastError: unknown;
     for (const port of chain) {
       try {
         const result = await port.complete(request);
-        this.governor.recordLlmSpend(result.usdCost);
+        this.governor.settleLlm(reserved, result.usdCost);
         return result;
       } catch (error) {
         lastError = error;
       }
     }
 
+    this.governor.releaseLlm(reserved);
     throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
@@ -415,10 +420,16 @@ export class ModelRouter implements TextModelPort {
     if (!this.image) throw new Error("no image model is configured — set OPENAI_API_KEY");
 
     this.governor.checkImage();
-    const result = await this.image.generate(request);
-    this.governor.recordImage();
-    this.governor.recordLlmSpend(result.usdCost);
-    return result;
+    const reserved = this.governor.reserveLlm(imageCostUsd(request.size, request.quality));
+    try {
+      const result = await this.image.generate(request);
+      this.governor.recordImage();
+      this.governor.settleLlm(reserved, result.usdCost);
+      return result;
+    } catch (error) {
+      this.governor.releaseLlm(reserved);
+      throw error;
+    }
   }
 
   /**
@@ -440,9 +451,15 @@ export class ModelRouter implements TextModelPort {
     const governor = this.governor;
     return {
       async completeWithContent(request, content) {
-        const result = await model.completeWithContent(request, content);
-        governor.recordLlmSpend(result.usdCost);
-        return result;
+        const reserved = governor.reserveLlm(MODEL_CALL_RESERVATION_USD);
+        try {
+          const result = await model.completeWithContent(request, content);
+          governor.settleLlm(reserved, result.usdCost);
+          return result;
+        } catch (error) {
+          governor.releaseLlm(reserved);
+          throw error;
+        }
       },
     };
   }
