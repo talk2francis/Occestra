@@ -1,0 +1,17 @@
+{
+  "network": "studio-dev",
+  "chainId": 61997,
+  "rpc": "https://studio-dev.genlayer.com/api",
+  "explorer": "https://explorer-studio-dev.genlayer.com",
+  "contract": "OccestraQualityAdjudicator",
+  "address": "0xaB13426A90CaF4eb9ee16440145A3239f7F4B8E0",
+  "deployTx": "0x45c5f2a3e8e40e3ce70da9ca6ca3c108cba732f3db76e15b22fae194ac142bac",
+  "deployer": "0xb0B8cBEDf9f99FaE1c1D56D1266127B942cE055B",
+  "deployedAt": "2026-09-17T13:44:55Z",
+  "tooling": {
+    "genlayerJs": "2.0.0-rc.1",
+    "genlayerPy": "0.19.0rc2",
+    "genlayerTest": "0.30.0rc2",
+    "cli": "0.40.0-rc.3"
+  }
+}

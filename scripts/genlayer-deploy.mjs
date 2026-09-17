@@ -14,7 +14,7 @@
  */
 import { readFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { createClient, createAccount, chains } from "genlayer-js";
+import { createClient, createAccount, chains, isSuccessful } from "genlayer-js";
 
 const CONTRACT = "genlayer/contracts/OccestraQualityAdjudicator.py";
 const MODE = process.argv.includes("--deploy") ? "deploy" : "check";
@@ -41,7 +41,7 @@ console.log("\n  Preflight\n");
 if (!existsSync(CONTRACT)) healthy = fail(`${CONTRACT} is missing`);
 else {
   try {
-    const out = execFileSync("genlayer/.venv/bin/genvm-lint", ["lint", CONTRACT], {
+    const out = execFileSync("genlayer/.venv-studio-next/bin/genvm-lint", ["lint", CONTRACT], {
       encoding: "utf8",
     });
     if (/Lint passed/.test(out) && !/Warnings/.test(out)) ok("contract lints clean");
@@ -53,14 +53,14 @@ else {
 
 // 2. Direct tests pass. Deploying past a failing test is how a bad contract becomes permanent.
 try {
-  execFileSync("genlayer/.venv/bin/gltest", ["genlayer/tests/direct/", "-q"], {
+  execFileSync("./.venv-studio-next/bin/gltest", ["tests/direct/", "-q"], {
     encoding: "utf8",
     cwd: "genlayer",
   });
   ok("direct tests pass");
 } catch {
   try {
-    execFileSync("./.venv/bin/gltest", ["tests/direct/", "-q"], { encoding: "utf8", cwd: "genlayer" });
+    execFileSync("./.venv-studio-next/bin/gltest", ["tests/direct/", "-q"], { encoding: "utf8", cwd: "genlayer" });
     ok("direct tests pass");
   } catch (error) {
     healthy = fail(`direct tests are not green:\n${String(error.stdout ?? error.message).slice(-800)}`);
@@ -96,8 +96,13 @@ if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
 }
 
 // 5. The wallet is actually funded.
-const network = env.GENLAYER_NETWORK?.trim() || "bradbury";
-const chain = network === "asimov" ? chains.testnetAsimov : chains.testnetBradbury;
+const network = env.GENLAYER_NETWORK?.trim() || "studio-dev";
+const chain =
+  network === "studio-dev"
+    ? chains.studioDevnet
+    : network === "asimov"
+      ? chains.testnetAsimov
+      : chains.testnetBradbury;
 let account;
 if (key && /^0x[0-9a-fA-F]{64}$/.test(key)) {
   account = createAccount(key);
@@ -127,38 +132,46 @@ if (MODE === "check") {
 
 /* ------------------------------------------------------------------ deploy */
 
-const code = readFileSync(CONTRACT);
+const code = readFileSync(CONTRACT, "utf8");
 const client = createClient({ chain, account });
 
 console.log(`  Deploying ${CONTRACT} to ${chain.name} (chain ${chain.id})...\n`);
-const txHash = await client.deployContract({ code, args: [] });
+// Studio v0.6 requires a funded fee lifecycle. Resolve the network's current policy and
+// include the resulting distribution and deposit on the deployment transaction.
+const estimate = await client.estimateTransactionFees({});
+console.log(`  fee deposit: ${estimate.feeValue} wei`);
+const txHash = await client.deployContract({
+  code,
+  args: [],
+  fees: {
+    distribution: estimate.distribution,
+    ...(estimate.messageAllocations ? { messageAllocations: estimate.messageAllocations } : {}),
+    feeValue: estimate.feeValue,
+  },
+});
 console.log(`  deploy tx: ${txHash}`);
 
-// ACCEPTED means the validators agreed and the contract exists; FINALIZED is the stronger
-// guarantee that follows minutes later. Waiting only for FINALIZED at the SDK's 150s default
-// makes a successful deploy exit non-zero — which happened here once, and would have been
-// read as "deploy failed, try again", i.e. a second contract and a wasted balance.
-const accepted = await client.waitForTransactionReceipt({
+const decided = await client.waitForDecision({
   hash: txHash,
-  status: "ACCEPTED",
   interval: 5_000,
   retries: 120,
+  fullTransaction: true,
 });
-const address = accepted?.recipient ?? accepted?.data?.contract_address;
-console.log(`  accepted: ${accepted?.statusName} · validators ${accepted?.resultName} · ${accepted?.txExecutionResultName}`);
+const address = decided?.data?.contract_address ?? decided?.txDataDecoded?.contractAddress;
+console.log(`  decided: ${decided?.statusName} · ${decided?.txExecutionResultName}`);
 
-if (accepted?.resultName && accepted.resultName !== "AGREE") {
-  console.error(`\n  Validators did not agree (${accepted.resultName}). Not recording this as a deployment.\n`);
+if (!isSuccessful(decided)) {
+  console.error(`\n  Deployment execution did not succeed. Not recording this as a deployment.\n`);
   process.exit(1);
 }
 
 console.log("  waiting for finality (this takes minutes; the contract is already usable)...");
 try {
-  const finalized = await client.waitForTransactionReceipt({
+  const finalized = await client.waitForFinalization({
     hash: txHash,
-    status: "FINALIZED",
     interval: 10_000,
     retries: 180,
+    fullTransaction: true,
   });
   console.log(`  finalized: ${finalized?.statusName}`);
 } catch {
@@ -175,5 +188,5 @@ console.log(`    deployTx        ${txHash}`);
 console.log(`    deployer        ${account.address}`);
 console.log(`    explorer        ${chain.blockExplorers?.default?.url ?? ""}`);
 console.log(`    deployedAt      (stamp this from your shell; scripts here take no clock)`);
-if (!address) console.log(`\n    receipt: ${JSON.stringify(receipt).slice(0, 2000)}`);
+if (!address) console.log(`\n    receipt: ${JSON.stringify(decided).slice(0, 2000)}`);
 console.log("\n  Record these in genlayer/README.md and .env, then run the smoke reviews.\n");

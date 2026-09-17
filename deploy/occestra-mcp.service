@@ -7,6 +7,7 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/root/occestra
 EnvironmentFile=/etc/occestra/env
+EnvironmentFile=/root/.occestra-secrets/genlayer.env
 ExecStart=/root/.local/node-v22.23.2-linux-x64/bin/node packages/mcp-server/dist/main.js
 Restart=on-failure
 RestartSec=5
