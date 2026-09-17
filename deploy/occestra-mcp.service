@@ -1,0 +1,15 @@
+[Unit]
+Description=Occestra MCP and API service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/occestra
+EnvironmentFile=/etc/occestra/env
+ExecStart=/root/.local/node-v22.23.2-linux-x64/bin/node packages/mcp-server/dist/main.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

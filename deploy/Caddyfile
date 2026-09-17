@@ -1,0 +1,45 @@
+{
+	email francisokafor2001@gmail.com
+}
+
+occestra.xyz {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3010
+}
+
+www.occestra.xyz {
+	redir https://occestra.xyz{uri} permanent
+}
+
+api.occestra.xyz {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8412
+}
+
+marque.trade {
+	encode zstd gzip
+
+	handle_path /agents/bound/* {
+		reverse_proxy 127.0.0.1:8611
+	}
+	handle_path /agents/lattice/* {
+		reverse_proxy 127.0.0.1:8612
+	}
+	handle_path /agents/sluicegate/* {
+		reverse_proxy 127.0.0.1:8613
+	}
+	handle_path /agents/redcell/* {
+		reverse_proxy 127.0.0.1:8614
+	}
+	handle_path /agents/keel/* {
+		reverse_proxy 127.0.0.1:8610
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3200
+	}
+}
+
+www.marque.trade {
+	redir https://marque.trade{uri} permanent
+}

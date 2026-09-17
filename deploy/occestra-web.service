@@ -1,0 +1,18 @@
+[Unit]
+Description=Occestra public web application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/occestra/apps/web/.next/standalone/apps/web
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/occestra/web.env
+Environment=PORT=3010
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/root/.local/node-v22.23.2-linux-x64/bin/node server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
