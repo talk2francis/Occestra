@@ -342,6 +342,30 @@ describe("reading the chain's status", () => {
 });
 
 describe("recording a verdict as soon as it exists", () => {
+  it("invokes repair once only after a finalized overturn", async () => {
+    const store = seed({ status: "SUBMITTED", transactionHash: "0xtx" });
+    const repair = vi.fn(async (parent) => {
+      store.createConsensusReview({
+        ...parent,
+        reviewId: "oce_gl_repaired_0001",
+        artifactVersion: 2,
+        repairedFrom: parent.reviewId,
+      } as Parameters<typeof store.createConsensusReview>[0]);
+    });
+    const w = new ConsensusWorker({ store, config: CONFIG, chain: chain({ status: async () => "FINALIZED" }), repairOverturn: repair });
+    await w.tick();
+    await w.tick();
+    expect(repair).toHaveBeenCalledTimes(1);
+    expect(store.consensusLineage("art_thread")[1]?.repairedFrom).toBe(REVIEW_ID);
+  });
+
+  it("does not spend on repair at ACCEPTED", async () => {
+    const store = seed({ status: "SUBMITTED", transactionHash: "0xtx" });
+    const repair = vi.fn();
+    await new ConsensusWorker({ store, config: CONFIG, chain: chain({ status: async () => "ACCEPTED" }), repairOverturn: repair }).tick();
+    expect(repair).not.toHaveBeenCalled();
+  });
+
   it("stores the ruling at ACCEPTED, without claiming finality", async () => {
     // The contract's state is readable once validators agree. On Bradbury finality trails by
     // a long way, and waiting for it before recording anything left a decided review showing

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtifactView } from "@/components/keepsake/artifact-view";
+import { ConsensusOwnerControls } from "@/components/keepsake/consensus-owner-controls";
 import { ShareRow } from "@/components/keepsake/share";
 import { TribunalReport } from "@/components/keepsake/tribunal-report";
 import { VerifyButton } from "@/components/keepsake/verify-button";
@@ -155,6 +156,7 @@ export default async function KeepsakePage({ params }: { params: Promise<{ id: s
                   </ol>
                 </div>
               )}
+              <ConsensusOwnerControls keepsakeId={pack.id} artifactId={artifact.id} hasReview={(reviewsByArtifact.get(artifact.id)?.length ?? 0) > 0} />
             </div>
           ))}
         </div>

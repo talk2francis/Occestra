@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-23 — GenLayer production review and overturn repair
+
+- Real `/k/:id` pack pages now let the browser that created the pack request an independent
+  review after explicit public-consensus consent. The API verifies the run capability against
+  the exact completed pack; knowing a public keepsake URL is not authorization.
+- Pack pages read and render persisted review lineage from SQLite, including pending states,
+  finalized rulings, failure codes, artifact versions, and `repairedFrom` links.
+- A finalized `OVERTURNED` ruling now invokes one bounded repair, regrades the new artifact,
+  freezes it as version 2, and queues a follow-up GenLayer review. The sealed source pack and
+  original evidence remain immutable. Repair failures retry durably without rewriting a valid
+  on-chain ruling as failed.
+
 All notable changes to Occestra are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project

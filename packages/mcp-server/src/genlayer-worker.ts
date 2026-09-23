@@ -40,6 +40,8 @@ export interface ConsensusWorkerConfig {
   pollMs?: number;
   evidenceOrigin?: string;
   log?: (message: string, detail?: unknown) => void;
+  /** Creates and queues the bounded repaired version after a finalized overturn. */
+  repairOverturn?: (review: ConsensusReviewRow) => Promise<void>;
   /** Injected in tests. Defaults to the real chain calls. */
   chain?: {
     submit: typeof submitConsensusReview;
@@ -152,6 +154,7 @@ export class ConsensusWorker {
         ? { contractAddress: this.cfg.config.contractAddress }
         : {}),
     });
+
   }
 
   private async poll(review: ConsensusReviewRow): Promise<void> {
@@ -197,6 +200,24 @@ export class ConsensusWorker {
       ...(status === "FINALIZED" ? { finalizedAt: new Date().toISOString() } : {}),
     });
 
+    // Finality is the action boundary. ACCEPTED is enough to display a ruling, but it can still
+    // be reorged; provider spend and a follow-up transaction happen only after FINALIZED. The
+    // lineage row written by repairOverturn makes this idempotent across every later tick/restart.
+    if (
+      status === "FINALIZED" &&
+      outcome.decision === "OVERTURNED" &&
+      !this.cfg.store.consensusLineage(review.artifactId).some((item) => item.repairedFrom === review.reviewId)
+    ) {
+      await this.cfg.repairOverturn?.({
+        ...review,
+        status,
+        decision: outcome.decision,
+        scoreBand: outcome.scoreBand,
+        failureCodes: outcome.failureCodes,
+        ...(outcome.criticalFailure ? { criticalFailure: outcome.criticalFailure } : {}),
+      });
+    }
+
     if (status === "ACCEPTED") {
       // Keep watching for finality, but slowly — the ruling will not change.
       this.cfg.store.backoffConsensusReview(review.reviewId, Date.now() + BASE_BACKOFF_MS * 20);
@@ -220,6 +241,18 @@ export class ConsensusWorker {
     const message = error instanceof Error ? error.message : String(error);
     const reverted = /revert|already exists|UserError/i.test(message);
     const code = error instanceof GenLayerSubmissionError ? error.code : "REVIEW_FAILED";
+
+    // A repair failure cannot erase or downgrade a valid finalized ruling. Keep it actionable
+    // for bounded retries and expose only an operational code after the last attempt.
+    if (review.status === "FINALIZED" && review.decision === "OVERTURNED") {
+      if (review.attempts + 1 >= MAX_ATTEMPTS) {
+        this.cfg.store.updateConsensusReview(review.reviewId, { errorCode: "REPAIR_FAILED" });
+        this.cfg.store.backoffConsensusReview(review.reviewId, Number.MAX_SAFE_INTEGER);
+      } else {
+        this.cfg.store.backoffConsensusReview(review.reviewId, Date.now() + BASE_BACKOFF_MS * 2 ** review.attempts);
+      }
+      return;
+    }
 
     if (reverted || review.attempts + 1 >= MAX_ATTEMPTS) {
       this.fail(review, reverted ? "CONTRACT_REVERTED" : code);

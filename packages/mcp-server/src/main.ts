@@ -12,6 +12,7 @@ import { buildApp, type AppContext } from "./http.js";
 import { JobQueue } from "./jobs.js";
 import { readGenLayerConfig } from "@occestra/genlayer";
 import { ConsensusWorker } from "./genlayer-worker.js";
+import { consensusRepairHandler } from "./consensus-repair.js";
 import { VERSION, packResult } from "./server.js";
 import { Store } from "./store.js";
 
@@ -136,6 +137,7 @@ if (genlayerConfig?.contractAddress && genlayerConfig.submitterPrivateKey) {
     store,
     config: genlayerConfig,
     ...(built.deps.log ? { log: built.deps.log } : {}),
+    repairOverturn: consensusRepairHandler(ctx, genlayerConfig),
   });
   consensus.start();
 }

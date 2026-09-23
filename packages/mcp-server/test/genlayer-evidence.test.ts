@@ -25,6 +25,8 @@ import { buildGrader } from "../src/grader.js";
 import { buildApp, type AppContext } from "../src/http.js";
 import { Store } from "../src/store.js";
 import { ConsensusRefused, prepareConsensusReview } from "../src/consensus.js";
+import { recoveryHash } from "../src/demo.js";
+import { readGenLayerConfig } from "@occestra/genlayer";
 
 const NOW = Date.parse("2026-09-03T10:00:00.000Z");
 const dirs: string[] = [];
@@ -58,6 +60,10 @@ function makeApp(): { base: string; store: Store } {
     gate: new DevGate(),
     publicBaseUrl: "http://test.local",
     chainId: 196,
+    genlayer: readGenLayerConfig({
+      GENLAYER_NETWORK: "bradbury",
+      GENLAYER_QUALITY_CONTRACT_ADDRESS: `0x${"b".repeat(40)}`,
+    } as NodeJS.ProcessEnv),
   } as AppContext;
 
   const server = buildApp(ctx).listen(0);
@@ -246,6 +252,40 @@ describe("immutability", () => {
 });
 
 describe("the public endpoints", () => {
+  it("binds owner authorization to the exact completed Studio pack", () => {
+    const { store } = makeApp();
+    const tokenHash = recoveryHash("browser-capability");
+    store.createDemoRun({ id: "demo_owner", tokenHash, tool: "oce_launch_kit" });
+    store.finishDemoRun("demo_owner", "pack_1");
+    expect(store.ownsDemoPack("pack_1", "demo_owner", tokenHash)).toBe(true);
+    expect(store.ownsDemoPack("different_pack", "demo_owner", tokenHash)).toBe(false);
+    expect(store.ownsDemoPack("pack_1", "demo_owner", recoveryHash("wrong"))).toBe(false);
+  });
+
+  it("authenticates a real pack-page request with its browser capability", async () => {
+    const { base, store } = makeApp();
+    const artifact = writtenArtifact();
+    const ownedPack = { ...pack(artifact), createdAt: new Date(NOW).toISOString() } as Pack;
+    store.savePack(ownedPack);
+    store.createDemoRun({ id: "demo_owner_request_01", tokenHash: recoveryHash("browser-capability-token-1234567890"), tool: "oce_launch_kit" });
+    store.finishDemoRun("demo_owner_request_01", "pack_1");
+
+    const body = JSON.stringify({ keepsakeId: "pack_1", artifactId: artifact.id, publicForConsensus: true });
+    expect((await fetch(`${base}/genlayer/reviews`, { method: "POST", headers: { "content-type": "application/json" }, body })).status).toBe(403);
+
+    const response = await fetch(`${base}/genlayer/reviews`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-oce-run-id": "demo_owner_request_01",
+        "x-oce-recovery-token": "browser-capability-token-1234567890",
+      },
+      body,
+    });
+    expect(response.status).toBe(202);
+    expect((await response.json()).authorization).toBe("verified");
+  });
+
   async function seed(store: Store) {
     const prepared = await prepare(store, writtenArtifact());
     store.createConsensusReview({

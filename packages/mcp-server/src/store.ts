@@ -545,6 +545,14 @@ export class Store {
     return row ? toDemoRunRow(row) : undefined;
   }
 
+  /** Prove that a browser run capability produced this exact pack. */
+  ownsDemoPack(packId: string, runId: string, tokenHash: string): boolean {
+    const row = this.db
+      .prepare("SELECT 1 FROM demo_runs WHERE id = ? AND token_hash = ? AND pack_id = ? AND state = 'done'")
+      .get(runId, tokenHash, packId);
+    return Boolean(row);
+  }
+
   /* ----------------------------------------------------------------- events */
 
   /** The run's event log, written once when the run ends. */
@@ -1676,8 +1684,10 @@ export class Store {
   actionableConsensusReviews(now = Date.now(), limit = 20): ConsensusReviewRow[] {
     const rows = this.db
       .prepare(
-        `SELECT * FROM consensus_reviews
-          WHERE status IN ('QUEUED', 'SUBMITTED', 'ACCEPTED')
+        `SELECT * FROM consensus_reviews r
+          WHERE (status IN ('QUEUED', 'SUBMITTED', 'ACCEPTED')
+            OR (status = 'FINALIZED' AND decision = 'OVERTURNED' AND attempts < 6
+              AND NOT EXISTS (SELECT 1 FROM consensus_reviews child WHERE child.repaired_from = r.review_id)))
             AND next_attempt_at <= ?
           ORDER BY created_at ASC
           LIMIT ?`,

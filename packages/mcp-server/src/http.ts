@@ -13,7 +13,7 @@ import { HOUSE_STYLES } from "@occestra/providers";
 import { networkChainId, networkLabel } from "@occestra/genlayer";
 import { OkxGate, PACK_TOOLS, PRICES, isFree, paymentNonceOf, priceOf, type PackToolName, type PaymentGate } from "./gate.js";
 import { capabilities as a2aCapabilities } from "./a2a/capability.js";
-import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun } from "./demo.js";
+import { callerIp as demoCallerIp, handleDemoRecovery, handleDemoRun, recoveryHash } from "./demo.js";
 import { handleGalleryPublish, handleGalleryWithdraw } from "./showcase.js";
 import { PolicyRefusal, screenToolInput } from "./pipelines.js";
 import { handleDelete, handleUpload } from "./uploads.js";
@@ -753,11 +753,18 @@ export function buildApp(ctx: AppContext): Express {
       res.status(503).json({ error: "independent review is not configured on this deployment" });
       return;
     }
-    // This endpoint makes a permanent public-chain request. Knowing a public /k URL is never
-    // authority to make that request: the production caller must present the server-held
-    // capability. We audit only its one-way actor reference, never the capability itself.
+    // This endpoint makes a permanent public-chain request. The real pack page proves ownership
+    // with the same browser capability that created the pack. The deployment secret remains an
+    // operator-only fallback, but is never shipped to a browser.
     const capability = req.get("x-oce-consensus-capability");
-    if (!ctx.consensusRequestSecret || capability !== ctx.consensusRequestSecret) {
+    const runId = req.get("x-oce-run-id");
+    const recoveryToken = req.get("x-oce-recovery-token");
+    const ownerAuthorized = Boolean(
+      runId && recoveryToken &&
+      ctx.store.ownsDemoPack(keepsakeId, runId, recoveryHash(recoveryToken)),
+    );
+    const operatorAuthorized = Boolean(ctx.consensusRequestSecret && capability === ctx.consensusRequestSecret);
+    if (!ownerAuthorized && !operatorAuthorized) {
       res.status(403).json({ error: "an authenticated owner capability is required" });
       return;
     }
@@ -796,8 +803,8 @@ export function buildApp(ctx: AppContext): Express {
       } as Parameters<typeof ctx.store.createConsensusReview>[0]);
       ctx.store.audit("consensus_review_requested", {
         packId: keepsakeId,
-        actor: ctx.store.actorHash(capability),
-        detail: `artifact:${artifactId}; authorization:production_capability`,
+        actor: ctx.store.actorHash(ownerAuthorized ? recoveryToken! : capability!),
+        detail: `artifact:${artifactId}; authorization:${ownerAuthorized ? "studio_owner" : "operator"}`,
       });
 
       res.status(202).json({
@@ -807,7 +814,7 @@ export function buildApp(ctx: AppContext): Express {
         chainId: networkChainId(ctx.genlayer),
         evidenceUrl: `/genlayer/evidence/${reviewId}`,
         poll: `/genlayer/reviews/${reviewId}`,
-        caller: "production owner capability",
+        caller: ownerAuthorized ? "authenticated pack owner" : "operator capability",
         authorization: "verified",
       });
     } catch (error) {
